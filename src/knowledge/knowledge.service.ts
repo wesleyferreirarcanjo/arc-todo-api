@@ -1,5 +1,7 @@
 import {
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,6 +15,7 @@ import { ListKnowledgeQueryDto } from './dto/list-knowledge-query.dto';
 import { UpdateKnowledgeDto } from './dto/update-knowledge.dto';
 import { KnowledgeEntry } from './knowledge-entry.entity';
 import { KnowledgeScope } from './knowledge-scope.enum';
+import { KnowledgeAttachmentService } from './knowledge-attachment.service';
 
 export interface KnowledgeEntryResponse {
   id: string;
@@ -51,6 +54,8 @@ export class KnowledgeService {
     private readonly organizationsService: OrganizationsService,
     private readonly projectsService: ProjectsService,
     private readonly personsService: PersonsService,
+    @Inject(forwardRef(() => KnowledgeAttachmentService))
+    private readonly attachmentService: KnowledgeAttachmentService,
   ) {}
 
   async findAllGeneral(userId: string): Promise<KnowledgeEntry[]> {
@@ -116,6 +121,31 @@ export class KnowledgeService {
       qb.andWhere('knowledge.personId = :personId', {
         personId: query.personId,
       });
+    }
+
+    const hasAttachmentFilters =
+      query.fileName?.trim() ||
+      query.mimeType?.trim() ||
+      query.hasAttachments === true;
+
+    if (hasAttachmentFilters) {
+      qb.innerJoin('knowledge.attachments', 'attachment').distinct(true);
+    }
+
+    if (query.fileName?.trim()) {
+      qb.andWhere('attachment.originalFilename ILIKE :fileName', {
+        fileName: `%${query.fileName.trim()}%`,
+      });
+    }
+
+    if (query.mimeType?.trim()) {
+      qb.andWhere('attachment.mimeType ILIKE :mimeType', {
+        mimeType: `%${query.mimeType.trim()}%`,
+      });
+    }
+
+    if (query.hasAttachments === true) {
+      qb.andWhere('attachment.id IS NOT NULL');
     }
 
     qb.orderBy('knowledge.updatedAt', 'DESC');
@@ -436,6 +466,7 @@ export class KnowledgeService {
 
   async removeGeneral(userId: string, knowledgeId: string): Promise<void> {
     const entry = await this.findOneGeneral(userId, knowledgeId);
+    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
     await this.knowledgeRepository.remove(entry);
   }
 
@@ -445,6 +476,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<void> {
     const entry = await this.findOneOrganization(userId, orgId, knowledgeId);
+    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
     await this.knowledgeRepository.remove(entry);
   }
 
@@ -460,6 +492,7 @@ export class KnowledgeService {
       projectId,
       knowledgeId,
     );
+    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
     await this.knowledgeRepository.remove(entry);
   }
 
@@ -470,6 +503,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<void> {
     const entry = await this.findOnePerson(userId, orgId, personId, knowledgeId);
+    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
     await this.knowledgeRepository.remove(entry);
   }
 
@@ -483,6 +517,7 @@ export class KnowledgeService {
       personId,
       knowledgeId,
     );
+    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
     await this.knowledgeRepository.remove(entry);
   }
 

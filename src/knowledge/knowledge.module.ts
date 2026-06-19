@@ -3,6 +3,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { PersonsModule } from '../persons/persons.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { StorageModule } from '../storage/storage.module';
+import { KnowledgeAttachment } from './knowledge-attachment.entity';
+import { KnowledgeAttachmentService } from './knowledge-attachment.service';
+import {
+  GeneralPersonKnowledgeAttachmentsController,
+  GlobalKnowledgeAttachmentsController,
+  OrganizationKnowledgeAttachmentsController,
+  PersonKnowledgeAttachmentsController,
+  ProjectKnowledgeAttachmentsController,
+} from './knowledge-attachments.controller';
 import { KnowledgeEntry } from './knowledge-entry.entity';
 import { GeneralPersonKnowledgeController } from './knowledge-general-person.controller';
 import { KnowledgeGlobalController } from './knowledge-global.controller';
@@ -13,7 +23,8 @@ import { KnowledgeService } from './knowledge.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([KnowledgeEntry]),
+    TypeOrmModule.forFeature([KnowledgeEntry, KnowledgeAttachment]),
+    StorageModule,
     OrganizationsModule,
     ProjectsModule,
     PersonsModule,
@@ -24,7 +35,12 @@ import { KnowledgeService } from './knowledge.service';
     OrganizationKnowledgeController,
     ProjectKnowledgeController,
     PersonKnowledgeController,
+    GlobalKnowledgeAttachmentsController,
+    GeneralPersonKnowledgeAttachmentsController,
+    OrganizationKnowledgeAttachmentsController,
+    ProjectKnowledgeAttachmentsController,
+    PersonKnowledgeAttachmentsController,
   ],
-  providers: [KnowledgeService],
+  providers: [KnowledgeService, KnowledgeAttachmentService],
 })
 export class KnowledgeModule {}

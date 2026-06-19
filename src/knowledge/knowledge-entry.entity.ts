@@ -4,9 +4,11 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { KnowledgeAttachment } from './knowledge-attachment.entity';
 import { Organization } from '../organizations/organization.entity';
 import { Person } from '../persons/person.entity';
 import { Project } from '../projects/project.entity';
@@ -57,6 +59,9 @@ export class KnowledgeEntry {
   @ManyToOne(() => Person, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'person_id' })
   person: Person | null;
+
+  @OneToMany(() => KnowledgeAttachment, (attachment) => attachment.knowledgeEntry)
+  attachments: KnowledgeAttachment[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

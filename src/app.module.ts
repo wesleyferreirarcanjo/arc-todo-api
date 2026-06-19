@@ -8,6 +8,7 @@ import { KnowledgeModule } from './knowledge/knowledge.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PersonsModule } from './persons/persons.module';
 import { ProjectsModule } from './projects/projects.module';
+import { StorageModule } from './storage/storage.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
@@ -27,6 +28,7 @@ import { UsersModule } from './users/users.module';
     ProjectsModule,
     TasksModule,
     PersonsModule,
+    StorageModule,
     KnowledgeModule,
   ],
 })
