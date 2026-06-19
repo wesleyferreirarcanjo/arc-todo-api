@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './database/database.config';
 import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
+import { McpToolsModule } from './mcp-tools/mcp-tools.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PersonsModule } from './persons/persons.module';
 import { ProjectsModule } from './projects/projects.module';
@@ -30,6 +31,7 @@ import { UsersModule } from './users/users.module';
     PersonsModule,
     StorageModule,
     KnowledgeModule,
+    McpToolsModule,
   ],
 })
 export class AppModule {}
