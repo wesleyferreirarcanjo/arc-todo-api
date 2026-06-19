@@ -14,7 +14,8 @@ import {
   McpToolGroup,
 } from './mcp-tool-registry';
 import {
-  MCP_TOOL_TOKEN_ESTIMATE_METHOD,
+  MCP_TOOL_EXECUTION_ESTIMATE_METHOD,
+  MCP_TOOL_STARTUP_ESTIMATE_METHOD,
   estimateMcpToolTokens,
 } from './mcp-tool-token-estimator';
 
@@ -26,27 +27,53 @@ export interface McpToolSettingResponse {
   enabled: boolean;
   defaultEnabled: boolean;
   sortOrder: number;
-  estimatedTokens: number;
+  startupTokens: number;
+  executionTokens: number;
 }
 
-export interface McpToolGroupResponse {
+export interface McpToolGroupTokenTotals {
+  enabledStartupTokens: number;
+  totalStartupTokens: number;
+  enabledExecutionTokens: number;
+  totalExecutionTokens: number;
+}
+
+export interface McpToolGroupResponse extends McpToolGroupTokenTotals {
   group: McpToolGroup;
   tools: McpToolSettingResponse[];
-  enabledTokens: number;
-  totalTokens: number;
 }
 
-export interface McpTokenSummary {
-  estimateMethod: string;
+export interface McpTokenSummary extends McpToolGroupTokenTotals {
+  startupEstimateMethod: string;
+  executionEstimateMethod: string;
   enabledToolCount: number;
   totalToolCount: number;
-  enabledTokens: number;
-  totalTokens: number;
 }
 
 export interface McpToolsSettingsResponse {
   groups: McpToolGroupResponse[];
   tokenSummary: McpTokenSummary;
+}
+
+function sumToolTokens(
+  tools: McpToolSettingResponse[],
+  field: 'startupTokens' | 'executionTokens',
+  enabledOnly = false,
+): number {
+  return tools
+    .filter((tool) => !enabledOnly || tool.enabled)
+    .reduce((sum, tool) => sum + tool[field], 0);
+}
+
+function buildGroupTokenTotals(
+  tools: McpToolSettingResponse[],
+): McpToolGroupTokenTotals {
+  return {
+    enabledStartupTokens: sumToolTokens(tools, 'startupTokens', true),
+    totalStartupTokens: sumToolTokens(tools, 'startupTokens'),
+    enabledExecutionTokens: sumToolTokens(tools, 'executionTokens', true),
+    totalExecutionTokens: sumToolTokens(tools, 'executionTokens'),
+  };
 }
 
 @Injectable()
@@ -61,6 +88,8 @@ export class McpToolsService implements OnModuleInit {
   }
 
   private toResponse(setting: McpToolSetting): McpToolSettingResponse {
+    const tokens = estimateMcpToolTokens(setting.key, setting.description);
+
     return {
       key: setting.key,
       group: setting.group as McpToolGroup,
@@ -69,23 +98,23 @@ export class McpToolsService implements OnModuleInit {
       enabled: setting.enabled,
       defaultEnabled: setting.defaultEnabled,
       sortOrder: setting.sortOrder,
-      estimatedTokens: estimateMcpToolTokens(setting.key, setting.description),
+      startupTokens: tokens.startupTokens,
+      executionTokens: tokens.executionTokens,
     };
   }
 
-  private buildTokenSummary(
-    groups: McpToolGroupResponse[],
-  ): McpTokenSummary {
+  private buildTokenSummary(groups: McpToolGroupResponse[]): McpTokenSummary {
     const tools = groups.flatMap((group) => group.tools);
 
     return {
-      estimateMethod: MCP_TOOL_TOKEN_ESTIMATE_METHOD,
+      startupEstimateMethod: MCP_TOOL_STARTUP_ESTIMATE_METHOD,
+      executionEstimateMethod: MCP_TOOL_EXECUTION_ESTIMATE_METHOD,
       enabledToolCount: tools.filter((tool) => tool.enabled).length,
       totalToolCount: tools.length,
-      enabledTokens: tools
-        .filter((tool) => tool.enabled)
-        .reduce((sum, tool) => sum + tool.estimatedTokens, 0),
-      totalTokens: tools.reduce((sum, tool) => sum + tool.estimatedTokens, 0),
+      enabledStartupTokens: sumToolTokens(tools, 'startupTokens', true),
+      totalStartupTokens: sumToolTokens(tools, 'startupTokens'),
+      enabledExecutionTokens: sumToolTokens(tools, 'executionTokens', true),
+      totalExecutionTokens: sumToolTokens(tools, 'executionTokens'),
     };
   }
 
@@ -124,10 +153,7 @@ export class McpToolsService implements OnModuleInit {
       return {
         group,
         tools,
-        enabledTokens: tools
-          .filter((tool) => tool.enabled)
-          .reduce((sum, tool) => sum + tool.estimatedTokens, 0),
-        totalTokens: tools.reduce((sum, tool) => sum + tool.estimatedTokens, 0),
+        ...buildGroupTokenTotals(tools),
       };
     });
 
