@@ -4,7 +4,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './database/database.config';
 import { HealthModule } from './health/health.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 import { OrganizationsModule } from './organizations/organizations.module';
+import { PersonsModule } from './persons/persons.module';
 import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
@@ -24,6 +26,8 @@ import { UsersModule } from './users/users.module';
     OrganizationsModule,
     ProjectsModule,
     TasksModule,
+    PersonsModule,
+    KnowledgeModule,
   ],
 })
 export class AppModule {}

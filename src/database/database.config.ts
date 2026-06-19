@@ -1,7 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSourceOptions } from 'typeorm';
+import { KnowledgeEntry } from '../knowledge/knowledge-entry.entity';
 import { OrganizationMember } from '../organizations/organization-member.entity';
 import { Organization } from '../organizations/organization.entity';
+import { Person } from '../persons/person.entity';
 import { Project } from '../projects/project.entity';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
@@ -12,6 +14,8 @@ export const entities = [
   OrganizationMember,
   Project,
   Task,
+  Person,
+  KnowledgeEntry,
 ];
 
 export function getDatabaseConfig(
