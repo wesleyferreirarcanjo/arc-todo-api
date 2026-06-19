@@ -38,6 +38,7 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 | Resource | UUID | Notes |
 | --- | --- | --- |
 | PostgreSQL `arc-todo-postgres` | `bibl6ncxa3xkph2r8ubmbl4t` | Private; internal host `bibl6ncxa3xkph2r8ubmbl4t:5432` |
+| MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Private; internal host `minio-jsx5tkzb1b8hj5oz0ydt491u:9000` |
 | Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | `http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io` |
 
 ## Environment variables (production)
@@ -60,15 +61,25 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `NODE_ENV` | `production` |
 | `DB_MIGRATE_ON_START` | `true` (runs pending TypeORM migrations before the app starts) |
 | `DB_SYNCHRONIZE` | `false` (do not enable in production) |
+| `MINIO_ENDPOINT` | Internal MinIO hostname (`minio-jsx5tkzb1b8hj5oz0ydt491u`) |
+| `MINIO_PORT` | `9000` |
+| `MINIO_USE_SSL` | `false` |
+| `MINIO_ACCESS_KEY` | `arc_todo_minio` |
+| `MINIO_SECRET_KEY` | *(redacted — Coolify secret)* |
+| `MINIO_BUCKET` | `arc-todo` |
+| `MINIO_MAX_UPLOAD_BYTES` | `104857600` (100 MB) |
 
 ## Deploy order
 
 1. Ensure `arc-todo-postgres` is `running:healthy`.
-2. Deploy / restart `arc-todo-api`.
-3. Deploy `arc-todo-web` after the API URL is known (frontend bakes `VITE_API_BASE_URL` at build time).
+2. Ensure `arc-todo-minio` is `running:healthy`.
+3. Deploy / restart `arc-todo-api` (runs migrations and connects to MinIO on startup).
+4. Deploy `arc-todo-web` after the API URL is known (frontend bakes `VITE_API_BASE_URL` at build time).
 
 ## Notes
 
 - TypeORM migrations run automatically on startup when `DB_MIGRATE_ON_START=true`. Keep `DB_SYNCHRONIZE=false` in production.
+- MinIO is internal-only; knowledge attachment downloads are streamed through the authenticated API, not via public MinIO URLs.
+- The API auto-creates the `arc-todo` bucket on startup if it does not exist.
 - Git source uses the Coolify deploy key (`private_key_uuid`: `lms2y9fjpybdznft4t7uf3td`). Repositories are public for clone access during setup.
 - See [../arc-todo-web/coolify.md](../arc-todo-web/coolify.md) for the frontend Coolify reference.
