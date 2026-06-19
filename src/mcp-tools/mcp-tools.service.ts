@@ -13,6 +13,10 @@ import {
   MCP_TOOL_REGISTRY,
   McpToolGroup,
 } from './mcp-tool-registry';
+import {
+  MCP_TOOL_TOKEN_ESTIMATE_METHOD,
+  estimateMcpToolTokens,
+} from './mcp-tool-token-estimator';
 
 export interface McpToolSettingResponse {
   key: string;
@@ -22,11 +26,27 @@ export interface McpToolSettingResponse {
   enabled: boolean;
   defaultEnabled: boolean;
   sortOrder: number;
+  estimatedTokens: number;
 }
 
 export interface McpToolGroupResponse {
   group: McpToolGroup;
   tools: McpToolSettingResponse[];
+  enabledTokens: number;
+  totalTokens: number;
+}
+
+export interface McpTokenSummary {
+  estimateMethod: string;
+  enabledToolCount: number;
+  totalToolCount: number;
+  enabledTokens: number;
+  totalTokens: number;
+}
+
+export interface McpToolsSettingsResponse {
+  groups: McpToolGroupResponse[];
+  tokenSummary: McpTokenSummary;
 }
 
 @Injectable()
@@ -49,6 +69,23 @@ export class McpToolsService implements OnModuleInit {
       enabled: setting.enabled,
       defaultEnabled: setting.defaultEnabled,
       sortOrder: setting.sortOrder,
+      estimatedTokens: estimateMcpToolTokens(setting.key, setting.description),
+    };
+  }
+
+  private buildTokenSummary(
+    groups: McpToolGroupResponse[],
+  ): McpTokenSummary {
+    const tools = groups.flatMap((group) => group.tools);
+
+    return {
+      estimateMethod: MCP_TOOL_TOKEN_ESTIMATE_METHOD,
+      enabledToolCount: tools.filter((tool) => tool.enabled).length,
+      totalToolCount: tools.length,
+      enabledTokens: tools
+        .filter((tool) => tool.enabled)
+        .reduce((sum, tool) => sum + tool.estimatedTokens, 0),
+      totalTokens: tools.reduce((sum, tool) => sum + tool.estimatedTokens, 0),
     };
   }
 
@@ -74,17 +111,30 @@ export class McpToolsService implements OnModuleInit {
     }
   }
 
-  async findAllGrouped(): Promise<McpToolGroupResponse[]> {
+  async findAllGrouped(): Promise<McpToolsSettingsResponse> {
     const settings = await this.settingsRepository.find({
       order: { sortOrder: 'ASC', key: 'ASC' },
     });
 
-    return MCP_TOOL_GROUPS.map((group) => ({
-      group,
-      tools: settings
+    const groups = MCP_TOOL_GROUPS.map((group) => {
+      const tools = settings
         .filter((setting) => setting.group === group)
-        .map((setting) => this.toResponse(setting)),
-    }));
+        .map((setting) => this.toResponse(setting));
+
+      return {
+        group,
+        tools,
+        enabledTokens: tools
+          .filter((tool) => tool.enabled)
+          .reduce((sum, tool) => sum + tool.estimatedTokens, 0),
+        totalTokens: tools.reduce((sum, tool) => sum + tool.estimatedTokens, 0),
+      };
+    });
+
+    return {
+      groups,
+      tokenSummary: this.buildTokenSummary(groups),
+    };
   }
 
   async findEnabledKeys(): Promise<string[]> {

@@ -1,0 +1,1286 @@
+﻿{
+  "check_arc_todo_api_health": {
+    "properties": {},
+    "title": "EmptyInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_enabled_mcp_tools": {
+    "properties": {},
+    "title": "EmptyInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_organizations": {
+    "properties": {},
+    "title": "EmptyInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_organization": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id"
+    ],
+    "title": "GetOrganizationInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_projects": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id"
+    ],
+    "title": "ListProjectsInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_project": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
+    "title": "GetProjectInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_persons": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional organization UUID. Omit for global persons.",
+        "title": "Organization Id"
+      }
+    },
+    "title": "ListPersonsInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_person": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional organization UUID. Omit for global person lookup.",
+        "title": "Organization Id"
+      },
+      "person_id": {
+        "description": "Person UUID",
+        "title": "Person Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "person_id"
+    ],
+    "title": "GetPersonInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_tasks": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "status": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "todo | in_progress | done",
+        "title": "Status"
+      },
+      "criticity": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "low | medium | high | critical",
+        "title": "Criticity"
+      }
+    },
+    "title": "ListTasksInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_project_tasks": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
+    "title": "ProjectTaskScopeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_task": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id"
+    ],
+    "title": "GetTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_task": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Description"
+      },
+      "status": {
+        "default": "todo",
+        "title": "Status",
+        "type": "string"
+      },
+      "criticity": {
+        "default": "medium",
+        "title": "Criticity",
+        "type": "string"
+      },
+      "due_date": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Due Date"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "title"
+    ],
+    "title": "CreateTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_task": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "title": "Task Id",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Title"
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Description"
+      },
+      "status": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Status"
+      },
+      "criticity": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Criticity"
+      },
+      "due_date": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Due Date"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id"
+    ],
+    "title": "UpdateTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "delete_task": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id"
+    ],
+    "title": "GetTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_knowledge": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      }
+    },
+    "required": [
+      "scope"
+    ],
+    "title": "KnowledgeScopeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_knowledge": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "knowledge_id": {
+        "title": "Knowledge Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "scope",
+      "knowledge_id"
+    ],
+    "title": "KnowledgeEntryInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_knowledge": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "content": {
+        "title": "Content",
+        "type": "string"
+      }
+    },
+    "required": [
+      "scope",
+      "title",
+      "content"
+    ],
+    "title": "CreateKnowledgeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_knowledge": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "knowledge_id": {
+        "title": "Knowledge Id",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Title"
+      },
+      "content": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Content"
+      }
+    },
+    "required": [
+      "scope",
+      "knowledge_id"
+    ],
+    "title": "UpdateKnowledgeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "delete_knowledge": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "knowledge_id": {
+        "title": "Knowledge Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "scope",
+      "knowledge_id"
+    ],
+    "title": "KnowledgeEntryInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_knowledge_attachments": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "knowledge_id": {
+        "title": "Knowledge Id",
+        "type": "string"
+      },
+      "tag": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Tag"
+      }
+    },
+    "required": [
+      "scope",
+      "knowledge_id"
+    ],
+    "title": "ListAttachmentsInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "upload_knowledge_attachment": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "title": "Mime Type",
+        "type": "string"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "knowledge_id": {
+        "title": "Knowledge Id",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "content_base64": {
+        "title": "Content Base64",
+        "type": "string"
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Description"
+      },
+      "tags": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Tags"
+      }
+    },
+    "required": [
+      "scope",
+      "mime_type",
+      "knowledge_id",
+      "filename",
+      "content_base64"
+    ],
+    "title": "UploadAttachmentInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "download_knowledge_attachment": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "knowledge_id": {
+        "title": "Knowledge Id",
+        "type": "string"
+      },
+      "attachment_id": {
+        "title": "Attachment Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "scope",
+      "knowledge_id",
+      "attachment_id"
+    ],
+    "title": "DownloadAttachmentInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "delete_knowledge_attachment": {
+    "properties": {
+      "scope": {
+        "description": "general | organization | project | person",
+        "title": "Scope",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Project Id"
+      },
+      "person_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Person Id"
+      },
+      "file_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "File Name"
+      },
+      "mime_type": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Mime Type"
+      },
+      "has_attachments": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Has Attachments"
+      },
+      "knowledge_id": {
+        "title": "Knowledge Id",
+        "type": "string"
+      },
+      "attachment_id": {
+        "title": "Attachment Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "scope",
+      "knowledge_id",
+      "attachment_id"
+    ],
+    "title": "DeleteAttachmentInput",
+    "type": "object",
+    "additionalProperties": false
+  }
+}
