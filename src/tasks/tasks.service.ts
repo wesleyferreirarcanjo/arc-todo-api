@@ -6,9 +6,33 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task } from './task.entity';
 import { TaskPriority, TaskStatus } from './task.enums';
+
+export interface TaskWithContextResponse {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string | null;
+  projectId: string;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+  project: {
+    id: string;
+    name: string;
+    organizationId: string;
+  };
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
 
 @Injectable()
 export class TasksService {
@@ -28,6 +52,67 @@ export class TasksService {
       where: { projectId },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async findAllForUser(
+    userId: string,
+    query: ListTasksQueryDto,
+  ): Promise<TaskWithContextResponse[]> {
+    const qb = this.tasksRepository
+      .createQueryBuilder('task')
+      .innerJoinAndSelect('task.project', 'project')
+      .innerJoinAndSelect('project.organization', 'organization')
+      .innerJoin('organization.members', 'member')
+      .where('member.userId = :userId', { userId });
+
+    if (query.organizationId) {
+      qb.andWhere('organization.id = :organizationId', {
+        organizationId: query.organizationId,
+      });
+    }
+
+    if (query.projectId) {
+      qb.andWhere('project.id = :projectId', { projectId: query.projectId });
+    }
+
+    if (query.status) {
+      qb.andWhere('task.status = :status', { status: query.status });
+    }
+
+    if (query.priority) {
+      qb.andWhere('task.priority = :priority', { priority: query.priority });
+    }
+
+    qb.orderBy('task.updatedAt', 'DESC');
+
+    const tasks = await qb.getMany();
+
+    return tasks.map((task) => this.toTaskWithContext(task));
+  }
+
+  private toTaskWithContext(task: Task): TaskWithContextResponse {
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+      projectId: task.projectId,
+      createdById: task.createdById,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+      project: {
+        id: task.project.id,
+        name: task.project.name,
+        organizationId: task.project.organizationId,
+      },
+      organization: {
+        id: task.project.organization.id,
+        name: task.project.organization.name,
+        slug: task.project.organization.slug,
+      },
+    };
   }
 
   async create(
