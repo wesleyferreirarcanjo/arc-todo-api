@@ -20,7 +20,8 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 | Application UUID | `lmsx2avrg1k29ex12w6e3gce` |
 | Repository | [wesleyferreirarcanjo/arc-todo-api](https://github.com/wesleyferreirarcanjo/arc-todo-api) |
 | Branch | `main` |
-| Build pack | Nixpacks |
+| Build pack | Dockerfile |
+| Dockerfile | `/Dockerfile` |
 | Public URL | `http://lmsx2avrg1k29ex12w6e3gce.72.60.59.203.sslip.io` |
 | Health check | `GET /health` → `{ "status": "ok" }` |
 
@@ -28,9 +29,8 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 
 | Step | Command |
 | --- | --- |
-| Install | `npm ci` |
-| Build | `npm run build` |
-| Start | `npm run start:prod` |
+| Build | `docker build -f Dockerfile .` |
+| Start | `node dist/main.js` |
 | Port | `3000` |
 
 ## Related resources
@@ -40,7 +40,7 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 | PostgreSQL `arc-todo-postgres` | `bibl6ncxa3xkph2r8ubmbl4t` | Private; internal host `bibl6ncxa3xkph2r8ubmbl4t:5432` |
 | MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Private; internal host `minio-jsx5tkzb1b8hj5oz0ydt491u:9000` |
 | Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | `http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io` |
-| MCP `arc-todo-mcp` | *(fill after creating the Coolify resource)* | Streamable HTTP MCP at `/mcp` |
+| MCP `arc-todo-mcp` | `qv9bek5he3ns8upu71rphbrc` | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
 
 ## Environment variables (production)
 
