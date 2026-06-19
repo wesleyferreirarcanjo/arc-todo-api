@@ -4,6 +4,7 @@ import { OrganizationsModule } from '../organizations/organizations.module';
 import { PersonsModule } from '../persons/persons.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { KnowledgeEntry } from './knowledge-entry.entity';
+import { GeneralPersonKnowledgeController } from './knowledge-general-person.controller';
 import { KnowledgeGlobalController } from './knowledge-global.controller';
 import { OrganizationKnowledgeController } from './knowledge-organization.controller';
 import { PersonKnowledgeController } from './knowledge-person.controller';
@@ -19,6 +20,7 @@ import { KnowledgeService } from './knowledge.service';
   ],
   controllers: [
     KnowledgeGlobalController,
+    GeneralPersonKnowledgeController,
     OrganizationKnowledgeController,
     ProjectKnowledgeController,
     PersonKnowledgeController,

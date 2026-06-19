@@ -8,14 +8,18 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from '../organizations/organization.entity';
+import { User } from '../users/user.entity';
 
 @Entity('persons')
 export class Person {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'organization_id' })
-  organizationId: string;
+  @Column({ name: 'organization_id', nullable: true })
+  organizationId: string | null;
+
+  @Column({ name: 'created_by_id' })
+  createdById: string;
 
   @Column()
   name: string;
@@ -29,9 +33,13 @@ export class Person {
   @Column({ type: 'text', nullable: true })
   notes: string | null;
 
-  @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Organization, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'organization_id' })
-  organization: Organization;
+  organization: Organization | null;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'created_by_id' })
+  createdBy: User;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

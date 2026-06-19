@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, IsNull, Repository } from 'typeorm';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { PersonsService } from '../persons/persons.service';
 import { ProjectsService } from '../projects/projects.service';
@@ -39,7 +39,7 @@ export interface KnowledgeEntryResponse {
   person?: {
     id: string;
     name: string;
-    organizationId: string;
+    organizationId: string | null;
   } | null;
 }
 
@@ -75,6 +75,10 @@ export class KnowledgeService {
             .where(
               'knowledge.scope = :generalScope AND knowledge.createdById = :userId',
               { generalScope: KnowledgeScope.GENERAL, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :personScope AND knowledge.organizationId IS NULL AND knowledge.createdById = :userId`,
+              { personScope: KnowledgeScope.PERSON, userId },
             )
             .orWhere(
               `knowledge.scope IN (:...orgScopes) AND knowledge.organizationId IN (
@@ -155,6 +159,22 @@ export class KnowledgeService {
     });
   }
 
+  async findAllGeneralPerson(
+    userId: string,
+    personId: string,
+  ): Promise<KnowledgeEntry[]> {
+    await this.personsService.findOneGeneral(userId, personId);
+    return this.knowledgeRepository.find({
+      where: {
+        scope: KnowledgeScope.PERSON,
+        personId,
+        organizationId: IsNull(),
+        createdById: userId,
+      },
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
   async createGeneral(
     userId: string,
     dto: CreateKnowledgeDto,
@@ -227,6 +247,26 @@ export class KnowledgeService {
       content: dto.content,
       createdById: userId,
       organizationId: orgId,
+      projectId: null,
+      personId,
+    });
+
+    return this.knowledgeRepository.save(entry);
+  }
+
+  async createGeneralPerson(
+    userId: string,
+    personId: string,
+    dto: CreateKnowledgeDto,
+  ): Promise<KnowledgeEntry> {
+    await this.personsService.findOneGeneral(userId, personId);
+
+    const entry = this.knowledgeRepository.create({
+      scope: KnowledgeScope.PERSON,
+      title: dto.title,
+      content: dto.content,
+      createdById: userId,
+      organizationId: null,
       projectId: null,
       personId,
     });
@@ -312,6 +352,28 @@ export class KnowledgeService {
     return entry;
   }
 
+  async findOneGeneralPerson(
+    userId: string,
+    personId: string,
+    knowledgeId: string,
+  ): Promise<KnowledgeEntry> {
+    await this.personsService.findOneGeneral(userId, personId);
+
+    const entry = await this.knowledgeRepository.findOne({
+      where: {
+        id: knowledgeId,
+        scope: KnowledgeScope.PERSON,
+        personId,
+        organizationId: IsNull(),
+        createdById: userId,
+      },
+    });
+    if (!entry) {
+      throw new NotFoundException('Knowledge entry not found');
+    }
+    return entry;
+  }
+
   async updateGeneral(
     userId: string,
     knowledgeId: string,
@@ -358,6 +420,20 @@ export class KnowledgeService {
     return this.applyUpdate(entry, dto);
   }
 
+  async updateGeneralPerson(
+    userId: string,
+    personId: string,
+    knowledgeId: string,
+    dto: UpdateKnowledgeDto,
+  ): Promise<KnowledgeEntry> {
+    const entry = await this.findOneGeneralPerson(
+      userId,
+      personId,
+      knowledgeId,
+    );
+    return this.applyUpdate(entry, dto);
+  }
+
   async removeGeneral(userId: string, knowledgeId: string): Promise<void> {
     const entry = await this.findOneGeneral(userId, knowledgeId);
     await this.knowledgeRepository.remove(entry);
@@ -394,6 +470,19 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<void> {
     const entry = await this.findOnePerson(userId, orgId, personId, knowledgeId);
+    await this.knowledgeRepository.remove(entry);
+  }
+
+  async removeGeneralPerson(
+    userId: string,
+    personId: string,
+    knowledgeId: string,
+  ): Promise<void> {
+    const entry = await this.findOneGeneralPerson(
+      userId,
+      personId,
+      knowledgeId,
+    );
     await this.knowledgeRepository.remove(entry);
   }
 
