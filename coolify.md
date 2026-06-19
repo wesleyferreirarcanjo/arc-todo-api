@@ -57,6 +57,9 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `ADMIN_USERNAME` | `admin` |
 | `ADMIN_PASSWORD` | *(redacted — Coolify secret)* |
 | `CORS_ORIGIN` | Frontend URL (`http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io`) |
+| `NODE_ENV` | `production` |
+| `DB_MIGRATE_ON_START` | `true` (runs pending TypeORM migrations before the app starts) |
+| `DB_SYNCHRONIZE` | `false` (do not enable in production) |
 
 ## Deploy order
 
@@ -66,6 +69,6 @@ Secrets are stored in Coolify only. Do not commit real values.
 
 ## Notes
 
-- Postgres uses TypeORM `synchronize: true` today; plan migrations before production schema changes.
+- TypeORM migrations run automatically on startup when `DB_MIGRATE_ON_START=true`. Keep `DB_SYNCHRONIZE=false` in production.
 - Git source uses the Coolify deploy key (`private_key_uuid`: `lms2y9fjpybdznft4t7uf3td`). Repositories are public for clone access during setup.
 - See [../arc-todo-web/coolify.md](../arc-todo-web/coolify.md) for the frontend Coolify reference.

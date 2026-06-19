@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { getDatabaseConfig } from './database/database.config';
 import { HealthModule } from './health/health.module';
-import { Todo } from './todos/todo.entity';
-import { TodosModule } from './todos/todos.module';
-import { User } from './users/user.entity';
+import { OrganizationsModule } from './organizations/organizations.module';
+import { ProjectsModule } from './projects/projects.module';
+import { TasksModule } from './tasks/tasks.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -14,21 +15,15 @@ import { UsersModule } from './users/users.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
-        username: configService.get<string>('DB_USERNAME', 'postgres'),
-        password: configService.get<string>('DB_PASSWORD', 'postgres'),
-        database: configService.get<string>('DB_DATABASE', 'arc_todo'),
-        entities: [User, Todo],
-        synchronize: true,
-      }),
+      useFactory: (configService: ConfigService) =>
+        getDatabaseConfig(configService),
     }),
     HealthModule,
     UsersModule,
     AuthModule,
-    TodosModule,
+    OrganizationsModule,
+    ProjectsModule,
+    TasksModule,
   ],
 })
 export class AppModule {}

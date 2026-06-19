@@ -6,7 +6,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Todo } from '../todos/todo.entity';
+import { OrganizationMember } from '../organizations/organization-member.entity';
+import { Task } from '../tasks/task.entity';
 
 @Entity('users')
 export class User {
@@ -19,8 +20,11 @@ export class User {
   @Column({ name: 'password_hash' })
   passwordHash: string;
 
-  @OneToMany(() => Todo, (todo) => todo.user)
-  todos: Todo[];
+  @OneToMany(() => OrganizationMember, (member) => member.user)
+  organizationMemberships: OrganizationMember[];
+
+  @OneToMany(() => Task, (task) => task.createdBy)
+  createdTasks: Task[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

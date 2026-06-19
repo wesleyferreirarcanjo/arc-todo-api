@@ -5,9 +5,9 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { TodoPriority, TodoStatus } from '../todo.enums';
+import { TaskPriority, TaskStatus } from '../task.enums';
 
-export class CreateTodoDto {
+export class CreateTaskDto {
   @IsString()
   @IsNotEmpty()
   title: string;
@@ -17,12 +17,12 @@ export class CreateTodoDto {
   description?: string;
 
   @IsOptional()
-  @IsEnum(TodoStatus)
-  status?: TodoStatus;
+  @IsEnum(TaskStatus)
+  status?: TaskStatus;
 
   @IsOptional()
-  @IsEnum(TodoPriority)
-  priority?: TodoPriority;
+  @IsEnum(TaskPriority)
+  priority?: TaskPriority;
 
   @IsOptional()
   @IsDateString()
