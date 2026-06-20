@@ -49,12 +49,20 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 12,
   },
   {
+    key: 'create_project',
+    group: 'context',
+    displayName: 'Create project',
+    description: 'Create a project in an organization.',
+    defaultEnabled: true,
+    sortOrder: 13,
+  },
+  {
     key: 'get_project',
     group: 'context',
     displayName: 'Get project',
     description: 'Fetch one project by organization and project ID.',
     defaultEnabled: true,
-    sortOrder: 13,
+    sortOrder: 14,
   },
   {
     key: 'list_persons',
@@ -62,7 +70,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     displayName: 'List persons',
     description: 'List persons globally or within an organization.',
     defaultEnabled: true,
-    sortOrder: 14,
+    sortOrder: 15,
   },
   {
     key: 'get_person',
@@ -70,7 +78,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     displayName: 'Get person',
     description: 'Fetch one person globally or within an organization.',
     defaultEnabled: true,
-    sortOrder: 15,
+    sortOrder: 16,
   },
   {
     key: 'list_tasks',

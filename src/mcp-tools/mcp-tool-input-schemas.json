@@ -47,6 +47,51 @@
     "type": "object",
     "additionalProperties": false
   },
+  "create_project": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Description"
+      },
+      "color": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional hex color (e.g. #8778a3)",
+        "title": "Color"
+      }
+    },
+    "required": [
+      "organization_id",
+      "name"
+    ],
+    "title": "CreateProjectInput",
+    "type": "object",
+    "additionalProperties": false
+  },
   "get_project": {
     "properties": {
       "organization_id": {
