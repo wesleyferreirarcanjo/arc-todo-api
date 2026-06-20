@@ -1,5 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSourceOptions } from 'typeorm';
+import { Conversation } from '../conversations/conversation.entity';
+import { ConversationMessage } from '../conversations/conversation-message.entity';
+import { ConversationTaskContext } from '../conversations/conversation-task-context.entity';
 import { ChatbotSetting } from '../chatbot-settings/chatbot-setting.entity';
 import { KnowledgeEntry } from '../knowledge/knowledge-entry.entity';
 import { KnowledgeAttachment } from '../knowledge/knowledge-attachment.entity';
@@ -22,6 +25,9 @@ export const entities = [
   KnowledgeAttachment,
   McpToolSetting,
   ChatbotSetting,
+  Conversation,
+  ConversationMessage,
+  ConversationTaskContext,
 ];
 
 export function getDatabaseConfig(
