@@ -41,6 +41,7 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 | MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Private; internal host `minio-jsx5tkzb1b8hj5oz0ydt491u:9000` |
 | Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | `http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io` |
 | MCP `arc-todo-mcp` | `qv9bek5he3ns8upu71rphbrc` | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
+| Chatbot `arc-todo-chatbot` | *(provision in Coolify)* | Loads runtime AI settings from `GET /chatbot-settings/runtime` |
 
 ## Environment variables (production)
 
@@ -75,8 +76,10 @@ Secrets are stored in Coolify only. Do not commit real values.
 1. Ensure `arc-todo-postgres` is `running:healthy`.
 2. Ensure `arc-todo-minio` is `running:healthy`.
 3. Deploy / restart `arc-todo-api` (runs migrations and connects to MinIO on startup).
-4. Deploy `arc-todo-web` after the API URL is known (frontend bakes `VITE_API_BASE_URL` at build time).
-5. Configure MCP tools in the web app, then deploy / restart `arc-todo-mcp`.
+4. Deploy / restart `arc-todo-chatbot` so it can load chatbot settings from this API.
+5. Deploy `arc-todo-web` after the API and chatbot URLs are known (frontend bakes `VITE_API_BASE_URL` and `VITE_CHAT_API_BASE_URL` at build time).
+6. Configure chatbot settings at `/settings/chatbot` and MCP tools in the web app.
+7. Deploy / restart `arc-todo-mcp` after MCP tools are configured.
 
 ## Notes
 
@@ -84,5 +87,7 @@ Secrets are stored in Coolify only. Do not commit real values.
 - MinIO is internal-only; knowledge attachment downloads are streamed through the authenticated API, not via public MinIO URLs.
 - The API auto-creates the `arc-todo` bucket on startup if it does not exist.
 - Git source uses the Coolify deploy key (`private_key_uuid`: `lms2y9fjpybdznft4t7uf3td`). Repositories are public for clone access during setup.
+- Chatbot provider settings are stored in PostgreSQL and exposed via `/chatbot-settings`; the chatbot service reads them at runtime.
 - See [../arc-todo-web/coolify.md](../arc-todo-web/coolify.md) for the frontend Coolify reference.
+- See [../arc-todo-chatbot/coolify.md](../arc-todo-chatbot/coolify.md) for the chatbot service Coolify reference.
 - See [../arc-todo-mcp/coolify.md](../arc-todo-mcp/coolify.md) for the MCP server Coolify reference.

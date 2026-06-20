@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './database/database.config';
 import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
+import { ChatbotSettingsModule } from './chatbot-settings/chatbot-settings.module';
 import { McpToolsModule } from './mcp-tools/mcp-tools.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PersonsModule } from './persons/persons.module';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
     StorageModule,
     KnowledgeModule,
     McpToolsModule,
+    ChatbotSettingsModule,
   ],
 })
 export class AppModule {}

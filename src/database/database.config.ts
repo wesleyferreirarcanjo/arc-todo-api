@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSourceOptions } from 'typeorm';
+import { ChatbotSetting } from '../chatbot-settings/chatbot-setting.entity';
 import { KnowledgeEntry } from '../knowledge/knowledge-entry.entity';
 import { KnowledgeAttachment } from '../knowledge/knowledge-attachment.entity';
 import { McpToolSetting } from '../mcp-tools/mcp-tool-setting.entity';
@@ -20,6 +21,7 @@ export const entities = [
   KnowledgeEntry,
   KnowledgeAttachment,
   McpToolSetting,
+  ChatbotSetting,
 ];
 
 export function getDatabaseConfig(
