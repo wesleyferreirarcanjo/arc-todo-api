@@ -41,7 +41,7 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 | MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Private; internal host `minio-jsx5tkzb1b8hj5oz0ydt491u:9000` |
 | Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | `http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io` |
 | MCP `arc-todo-mcp` | `qv9bek5he3ns8upu71rphbrc` | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
-| Chatbot `arc-todo-chatbot` | *(provision in Coolify)* | Loads runtime AI settings from `GET /chatbot-settings/runtime` |
+| Chatbot `arc-todo-chatbot` | `nyagev0aqp4qow1zri6wise5` | `http://nyagev0aqp4qow1zri6wise5.72.60.59.203.sslip.io` |
 
 ## Environment variables (production)
 
