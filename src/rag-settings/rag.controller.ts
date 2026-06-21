@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
   RagProjectRetrieveDto,
@@ -35,5 +35,30 @@ export class RagController {
   @Get('index/jobs')
   listJobs() {
     return this.ragClientService.listJobs();
+  }
+
+  @Get('chunks')
+  listChunks(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('scope') scope?: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('projectId') projectId?: string,
+    @Query('personId') personId?: string,
+    @Query('knowledgeEntryId') knowledgeEntryId?: string,
+    @Query('attachmentId') attachmentId?: string,
+    @Query('mimeType') mimeType?: string,
+  ) {
+    return this.ragClientService.listChunks({
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+      scope,
+      organizationId,
+      projectId,
+      personId,
+      knowledgeEntryId,
+      attachmentId,
+      mimeType,
+    });
   }
 }

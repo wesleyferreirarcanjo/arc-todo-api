@@ -64,6 +64,31 @@ export class RagClientService {
     return this.requestRag('/index/jobs');
   }
 
+  listChunks(query: {
+    limit?: number;
+    offset?: number;
+    scope?: string;
+    organizationId?: string;
+    projectId?: string;
+    personId?: string;
+    knowledgeEntryId?: string;
+    attachmentId?: string;
+    mimeType?: string;
+  }): Promise<unknown> {
+    const params = new URLSearchParams();
+    if (query.limit !== undefined) params.set('limit', String(query.limit));
+    if (query.offset !== undefined) params.set('offset', String(query.offset));
+    if (query.scope) params.set('scope', query.scope);
+    if (query.organizationId) params.set('organizationId', query.organizationId);
+    if (query.projectId) params.set('projectId', query.projectId);
+    if (query.personId) params.set('personId', query.personId);
+    if (query.knowledgeEntryId) params.set('knowledgeEntryId', query.knowledgeEntryId);
+    if (query.attachmentId) params.set('attachmentId', query.attachmentId);
+    if (query.mimeType) params.set('mimeType', query.mimeType);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return this.requestRag(`/chunks${suffix}`);
+  }
+
   private async enqueueJob(input: {
     jobType: string;
     knowledgeEntryId: string;

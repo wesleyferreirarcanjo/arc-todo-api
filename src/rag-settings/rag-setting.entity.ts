@@ -34,7 +34,7 @@ export class RagSetting {
     type: 'text',
     array: true,
     default: () =>
-      "ARRAY['text/plain','text/markdown','text/csv','application/json']",
+      "ARRAY['text/plain','text/markdown','text/csv','application/json','application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']",
   })
   enabledMimeTypes: string[];
 
