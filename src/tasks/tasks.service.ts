@@ -4,7 +4,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
+import {
+  formatTaskDisplayId,
+  parseTaskDisplayId,
+} from '../common/utils/acronym.util';
+import { OrganizationsService } from '../organizations/organizations.service';
+import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
@@ -30,10 +36,22 @@ export interface TaskResponse {
   projectId: string;
   createdById: string | null;
   parentTaskId: string | null;
+  taskNumber: number;
+  displayId: string;
   createdAt: string;
   updatedAt: string;
   subtaskProgress?: SubtaskProgress | null;
   subtasks?: TaskResponse[];
+}
+
+export interface TaskResolveResponse {
+  id: string;
+  displayId: string;
+  taskNumber: number;
+  organizationId: string;
+  projectId: string;
+  title: string;
+  task: TaskResponse;
 }
 
 export interface TaskWithContextResponse extends TaskResponse {
@@ -42,6 +60,7 @@ export interface TaskWithContextResponse extends TaskResponse {
     name: string;
     organizationId: string;
     color: string;
+    acronym: string;
   };
   organization: {
     id: string;
@@ -58,6 +77,8 @@ export class TasksService {
     @InjectRepository(TaskHistoryEntry)
     private readonly historyRepository: Repository<TaskHistoryEntry>,
     private readonly projectsService: ProjectsService,
+    private readonly organizationsService: OrganizationsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findAll(
@@ -120,6 +141,7 @@ export class TasksService {
         name: task.project.name,
         organizationId: task.project.organizationId,
         color: task.project.color,
+        acronym: task.project.acronym,
       },
       organization: {
         id: task.project.organization.id,
@@ -141,19 +163,81 @@ export class TasksService {
       await this.validateParentTask(dto.parentTaskId, projectId);
     }
 
-    const task = this.tasksRepository.create({
-      title: dto.title,
-      description: dto.description ?? null,
-      status: dto.status ?? TaskStatus.TODO,
-      criticity: dto.criticity ?? TaskCriticity.MEDIUM,
-      dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
-      projectId,
-      createdById: userId,
-      parentTaskId: dto.parentTaskId ?? null,
+    const { saved, acronym } = await this.dataSource.transaction(
+      async (manager) => {
+        const project = await manager.findOne(Project, {
+          where: { id: projectId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!project) {
+          throw new NotFoundException('Project not found');
+        }
+
+        const taskNumber = project.nextTaskNumber;
+        project.nextTaskNumber = taskNumber + 1;
+        await manager.save(project);
+
+        const task = manager.create(Task, {
+          title: dto.title,
+          description: dto.description ?? null,
+          status: dto.status ?? TaskStatus.TODO,
+          criticity: dto.criticity ?? TaskCriticity.MEDIUM,
+          dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+          projectId,
+          createdById: userId,
+          parentTaskId: dto.parentTaskId ?? null,
+          taskNumber,
+        });
+
+        const savedTask = await manager.save(task);
+        return { saved: savedTask, acronym: project.acronym };
+      },
+    );
+
+    return this.toTaskResponse(saved, acronym);
+  }
+
+  async resolveByIdentifier(
+    userId: string,
+    identifier: string,
+  ): Promise<TaskResolveResponse> {
+    const parsed = parseTaskDisplayId(identifier);
+    if (!parsed) {
+      throw new BadRequestException(
+        'Invalid task identifier. Expected format like arc-1 or #arc-1',
+      );
+    }
+
+    const project = await this.projectsService.findByAcronym(parsed.acronym);
+    if (!project) {
+      throw new NotFoundException('Task not found');
+    }
+
+    await this.organizationsService.assertMember(userId, project.organizationId);
+
+    const task = await this.tasksRepository.findOne({
+      where: {
+        projectId: project.id,
+        taskNumber: parsed.taskNumber,
+      },
+    });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const [enriched] = await this.enrichTaskResponses([task], {
+      includeSubtasks: true,
     });
 
-    const saved = await this.tasksRepository.save(task);
-    return this.toTaskResponse(saved);
+    return {
+      id: task.id,
+      displayId: formatTaskDisplayId(project.acronym, task.taskNumber),
+      taskNumber: task.taskNumber,
+      organizationId: project.organizationId,
+      projectId: project.id,
+      title: task.title,
+      task: enriched,
+    };
   }
 
   async findOne(
@@ -378,7 +462,7 @@ export class TasksService {
     }
   }
 
-  private toTaskResponse(task: Task): TaskResponse {
+  private toTaskResponse(task: Task, projectAcronym: string): TaskResponse {
     return {
       id: task.id,
       title: task.title,
@@ -389,6 +473,8 @@ export class TasksService {
       projectId: task.projectId,
       createdById: task.createdById,
       parentTaskId: task.parentTaskId,
+      taskNumber: task.taskNumber,
+      displayId: formatTaskDisplayId(projectAcronym, task.taskNumber),
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
@@ -407,12 +493,13 @@ export class TasksService {
       .map((task) => task.id);
 
     const subtasksByParent = new Map<string, Task[]>();
+    let allSubtasks: Task[] = [];
     if (parentIds.length > 0) {
-      const subtasks = await this.tasksRepository.find({
+      allSubtasks = await this.tasksRepository.find({
         where: { parentTaskId: In(parentIds) },
         order: { createdAt: 'ASC' },
       });
-      for (const subtask of subtasks) {
+      for (const subtask of allSubtasks) {
         const parentId = subtask.parentTaskId!;
         const group = subtasksByParent.get(parentId) ?? [];
         group.push(subtask);
@@ -420,8 +507,22 @@ export class TasksService {
       }
     }
 
+    const projectIds = [
+      ...new Set([
+        ...tasks.map((task) => task.projectId),
+        ...allSubtasks.map((subtask) => subtask.projectId),
+      ]),
+    ];
+    const acronymsByProjectId =
+      await this.projectsService.findAcronymsByIds(projectIds);
+
     return tasks.map((task) => {
-      const response = this.toTaskResponse(task);
+      const acronym = acronymsByProjectId.get(task.projectId);
+      if (!acronym) {
+        throw new NotFoundException('Project not found for task');
+      }
+
+      const response = this.toTaskResponse(task, acronym);
       if (task.parentTaskId) {
         return response;
       }
@@ -433,7 +534,13 @@ export class TasksService {
 
       response.subtaskProgress = computeSubtaskProgress(children);
       if (options.includeSubtasks) {
-        response.subtasks = children.map((child) => this.toTaskResponse(child));
+        response.subtasks = children.map((child) => {
+          const childAcronym = acronymsByProjectId.get(child.projectId);
+          if (!childAcronym) {
+            throw new NotFoundException('Project not found for task');
+          }
+          return this.toTaskResponse(child, childAcronym);
+        });
       }
       return response;
     });

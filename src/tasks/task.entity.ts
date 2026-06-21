@@ -49,6 +49,9 @@ export class Task {
   @Column({ name: 'parent_task_id', nullable: true })
   parentTaskId: string | null;
 
+  @Column({ name: 'task_number', type: 'int' })
+  taskNumber: number;
+
   @ManyToOne(() => Task, (task) => task.subtasks, {
     onDelete: 'CASCADE',
     nullable: true,
