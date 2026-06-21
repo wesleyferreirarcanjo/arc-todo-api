@@ -11,8 +11,10 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { TaskActivityService } from './task-activity.service';
 import { TasksService } from './tasks.service';
 
 interface AuthRequest extends Request {
@@ -22,7 +24,10 @@ interface AuthRequest extends Request {
 @Controller('organizations/:orgId/projects/:projectId/tasks')
 @UseGuards(JwtAuthGuard)
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(
+    private readonly tasksService: TasksService,
+    private readonly taskActivityService: TaskActivityService,
+  ) {}
 
   @Get()
   findAll(
@@ -78,5 +83,52 @@ export class TasksController {
     @Req() req: AuthRequest,
   ) {
     return this.tasksService.remove(req.user.id, orgId, projectId, taskId);
+  }
+
+  @Get(':taskId/comments')
+  findComments(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.taskActivityService.findComments(
+      req.user.id,
+      orgId,
+      projectId,
+      taskId,
+    );
+  }
+
+  @Post(':taskId/comments')
+  createComment(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Body() dto: CreateTaskCommentDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.taskActivityService.createComment(
+      req.user.id,
+      orgId,
+      projectId,
+      taskId,
+      dto,
+    );
+  }
+
+  @Get(':taskId/history')
+  findHistory(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.taskActivityService.findHistory(
+      req.user.id,
+      orgId,
+      projectId,
+      taskId,
+    );
   }
 }

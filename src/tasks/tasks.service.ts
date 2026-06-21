@@ -10,6 +10,8 @@ import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task } from './task.entity';
 import { TaskCriticity, TaskStatus } from './task.enums';
+import { TaskHistoryEntry } from './task-history-entry.entity';
+import { buildTaskHistoryDrafts } from './task-history.util';
 
 export interface TaskWithContextResponse {
   id: string;
@@ -40,6 +42,8 @@ export class TasksService {
   constructor(
     @InjectRepository(Task)
     private readonly tasksRepository: Repository<Task>,
+    @InjectRepository(TaskHistoryEntry)
+    private readonly historyRepository: Repository<TaskHistoryEntry>,
     private readonly projectsService: ProjectsService,
   ) {}
 
@@ -165,6 +169,19 @@ export class TasksService {
   ): Promise<Task> {
     const task = await this.findOne(userId, orgId, projectId, taskId);
 
+    const historyDrafts = buildTaskHistoryDrafts(
+      {
+        title: task.title,
+        description: task.description,
+        dueDate: task.dueDate,
+      },
+      {
+        title: dto.title,
+        description: dto.description,
+        dueDate: dto.dueDate,
+      },
+    );
+
     if (dto.title !== undefined) task.title = dto.title;
     if (dto.description !== undefined) task.description = dto.description;
     if (dto.status !== undefined) task.status = dto.status;
@@ -178,7 +195,22 @@ export class TasksService {
       task.projectId = dto.projectId;
     }
 
-    return this.tasksRepository.save(task);
+    const saved = await this.tasksRepository.save(task);
+
+    if (historyDrafts.length > 0) {
+      const entries = historyDrafts.map((draft) =>
+        this.historyRepository.create({
+          taskId,
+          field: draft.field,
+          oldValue: draft.oldValue,
+          newValue: draft.newValue,
+          changedById: userId,
+        }),
+      );
+      await this.historyRepository.save(entries);
+    }
+
+    return saved;
   }
 
   async remove(
