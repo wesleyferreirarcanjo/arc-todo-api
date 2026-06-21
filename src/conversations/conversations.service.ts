@@ -245,10 +245,48 @@ export class ConversationsService {
       return;
     }
 
-    const normalized = content.trim().replace(/\s+/g, ' ');
-    conversation.title =
-      normalized.length > 60 ? `${normalized.slice(0, 57)}...` : normalized;
+    conversation.title = this.formatTitleFromMessageContent(content);
     await this.conversationRepository.save(conversation);
+  }
+
+  private formatTitleFromMessageContent(content: string): string {
+    const refPattern =
+      /\[\[ref:([^|\]]+)\|([^|\]]+)\|([^|\]]+)\|([^\]]+)\]\]/g;
+    let text = content;
+
+    for (const match of content.matchAll(refPattern)) {
+      const rawTitle = match[4]?.trim() ?? '';
+      if (!rawTitle) {
+        continue;
+      }
+
+      try {
+        text = text.replace(match[0], decodeURIComponent(rawTitle));
+      } catch {
+        text = text.replace(match[0], rawTitle);
+      }
+    }
+
+    const normalized = text.trim().replace(/\s+/g, ' ');
+    if (!normalized) {
+      const refs = [...content.matchAll(refPattern)].map((match) => {
+        const rawTitle = match[4]?.trim() ?? '';
+        try {
+          return decodeURIComponent(rawTitle);
+        } catch {
+          return rawTitle;
+        }
+      }).filter(Boolean);
+
+      if (refs.length > 0) {
+        const joined = refs.join(' · ');
+        return joined.length > 60 ? `${joined.slice(0, 57)}...` : joined;
+      }
+
+      return 'New conversation';
+    }
+
+    return normalized.length > 60 ? `${normalized.slice(0, 57)}...` : normalized;
   }
 
   private toSummaryResponse(
