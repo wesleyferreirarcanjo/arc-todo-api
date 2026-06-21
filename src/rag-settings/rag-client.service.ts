@@ -64,6 +64,10 @@ export class RagClientService {
     return this.requestRag('/index/jobs');
   }
 
+  getIndexStatus(): Promise<unknown> {
+    return this.requestRag('/index/status');
+  }
+
   listChunks(query: {
     limit?: number;
     offset?: number;

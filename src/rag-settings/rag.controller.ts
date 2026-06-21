@@ -37,6 +37,11 @@ export class RagController {
     return this.ragClientService.listJobs();
   }
 
+  @Get('index/status')
+  getIndexStatus() {
+    return this.ragClientService.getIndexStatus();
+  }
+
   @Get('chunks')
   listChunks(
     @Query('limit') limit?: string,
