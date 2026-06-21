@@ -31,4 +31,8 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsUUID()
   projectId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  parentTaskId?: string | null;
 }

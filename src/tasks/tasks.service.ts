@@ -1,9 +1,10 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
@@ -12,8 +13,14 @@ import { Task } from './task.entity';
 import { TaskCriticity, TaskStatus } from './task.enums';
 import { TaskHistoryEntry } from './task-history-entry.entity';
 import { buildTaskHistoryDrafts } from './task-history.util';
+import {
+  computeSubtaskProgress,
+  shouldCompleteParent,
+  shouldReopenParent,
+  SubtaskProgress,
+} from './task-hierarchy.util';
 
-export interface TaskWithContextResponse {
+export interface TaskResponse {
   id: string;
   title: string;
   description: string | null;
@@ -22,8 +29,14 @@ export interface TaskWithContextResponse {
   dueDate: string | null;
   projectId: string;
   createdById: string | null;
+  parentTaskId: string | null;
   createdAt: string;
   updatedAt: string;
+  subtaskProgress?: SubtaskProgress | null;
+  subtasks?: TaskResponse[];
+}
+
+export interface TaskWithContextResponse extends TaskResponse {
   project: {
     id: string;
     name: string;
@@ -51,12 +64,13 @@ export class TasksService {
     userId: string,
     orgId: string,
     projectId: string,
-  ): Promise<Task[]> {
+  ): Promise<TaskResponse[]> {
     await this.projectsService.findOne(userId, orgId, projectId);
-    return this.tasksRepository.find({
+    const tasks = await this.tasksRepository.find({
       where: { projectId },
       order: { createdAt: 'DESC' },
     });
+    return this.enrichTaskResponses(tasks);
   }
 
   async findAllForUser(
@@ -88,25 +102,19 @@ export class TasksService {
       qb.andWhere('task.criticity = :criticity', { criticity: query.criticity });
     }
 
+    if (query.parentTaskId) {
+      qb.andWhere('task.parentTaskId = :parentTaskId', {
+        parentTaskId: query.parentTaskId,
+      });
+    }
+
     qb.orderBy('task.updatedAt', 'DESC');
 
     const tasks = await qb.getMany();
+    const enriched = await this.enrichTaskResponses(tasks);
 
-    return tasks.map((task) => this.toTaskWithContext(task));
-  }
-
-  private toTaskWithContext(task: Task): TaskWithContextResponse {
-    return {
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      criticity: task.criticity,
-      dueDate: task.dueDate ? task.dueDate.toISOString() : null,
-      projectId: task.projectId,
-      createdById: task.createdById,
-      createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString(),
+    return tasks.map((task, index) => ({
+      ...enriched[index],
       project: {
         id: task.project.id,
         name: task.project.name,
@@ -118,7 +126,7 @@ export class TasksService {
         name: task.project.organization.name,
         slug: task.project.organization.slug,
       },
-    };
+    }));
   }
 
   async create(
@@ -126,8 +134,12 @@ export class TasksService {
     orgId: string,
     projectId: string,
     dto: CreateTaskDto,
-  ): Promise<Task> {
+  ): Promise<TaskResponse> {
     await this.projectsService.findOne(userId, orgId, projectId);
+
+    if (dto.parentTaskId) {
+      await this.validateParentTask(dto.parentTaskId, projectId);
+    }
 
     const task = this.tasksRepository.create({
       title: dto.title,
@@ -137,9 +149,11 @@ export class TasksService {
       dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
       projectId,
       createdById: userId,
+      parentTaskId: dto.parentTaskId ?? null,
     });
 
-    return this.tasksRepository.save(task);
+    const saved = await this.tasksRepository.save(task);
+    return this.toTaskResponse(saved);
   }
 
   async findOne(
@@ -147,7 +161,7 @@ export class TasksService {
     orgId: string,
     projectId: string,
     taskId: string,
-  ): Promise<Task> {
+  ): Promise<TaskResponse> {
     await this.projectsService.findOne(userId, orgId, projectId);
 
     const task = await this.tasksRepository.findOne({
@@ -157,7 +171,10 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    return task;
+    const [enriched] = await this.enrichTaskResponses([task], {
+      includeSubtasks: true,
+    });
+    return enriched;
   }
 
   async update(
@@ -166,8 +183,9 @@ export class TasksService {
     projectId: string,
     taskId: string,
     dto: UpdateTaskDto,
-  ): Promise<Task> {
-    const task = await this.findOne(userId, orgId, projectId, taskId);
+  ): Promise<TaskResponse> {
+    const task = await this.findTaskEntity(userId, orgId, projectId, taskId);
+    const previousStatus = task.status;
 
     const historyDrafts = buildTaskHistoryDrafts(
       {
@@ -184,15 +202,36 @@ export class TasksService {
 
     if (dto.title !== undefined) task.title = dto.title;
     if (dto.description !== undefined) task.description = dto.description;
-    if (dto.status !== undefined) task.status = dto.status;
     if (dto.criticity !== undefined) task.criticity = dto.criticity;
     if (dto.dueDate !== undefined) {
       task.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     }
 
+    if (dto.parentTaskId !== undefined) {
+      if (dto.parentTaskId === task.id) {
+        throw new BadRequestException('A task cannot be its own parent');
+      }
+      if (dto.parentTaskId === null) {
+        task.parentTaskId = null;
+      } else {
+        await this.validateParentTask(dto.parentTaskId, task.projectId, taskId);
+        task.parentTaskId = dto.parentTaskId;
+      }
+    }
+
     if (dto.projectId !== undefined && dto.projectId !== projectId) {
+      if (task.parentTaskId) {
+        throw new BadRequestException(
+          'Detach subtask from parent before moving to another project',
+        );
+      }
       await this.projectsService.findOne(userId, orgId, dto.projectId);
       task.projectId = dto.projectId;
+      await this.moveSubtasksWithParent(taskId, dto.projectId);
+    }
+
+    if (dto.status !== undefined) {
+      task.status = dto.status;
     }
 
     const saved = await this.tasksRepository.save(task);
@@ -210,7 +249,22 @@ export class TasksService {
       await this.historyRepository.save(entries);
     }
 
-    return saved;
+    if (dto.status !== undefined) {
+      if (task.parentTaskId) {
+        await this.syncParentStatusFromSubtask(
+          task.parentTaskId,
+          previousStatus,
+          dto.status,
+        );
+      } else if (dto.status === TaskStatus.DONE) {
+        await this.completeAllSubtasks(taskId);
+      }
+    }
+
+    const [enriched] = await this.enrichTaskResponses([saved], {
+      includeSubtasks: !saved.parentTaskId,
+    });
+    return enriched;
   }
 
   async remove(
@@ -219,7 +273,169 @@ export class TasksService {
     projectId: string,
     taskId: string,
   ): Promise<void> {
-    const task = await this.findOne(userId, orgId, projectId, taskId);
+    const task = await this.findTaskEntity(userId, orgId, projectId, taskId);
+    const subtasks = await this.tasksRepository.find({
+      where: { parentTaskId: taskId },
+    });
+    if (subtasks.length > 0) {
+      await this.tasksRepository.remove(subtasks);
+    }
     await this.tasksRepository.remove(task);
+  }
+
+  private async findTaskEntity(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    taskId: string,
+  ): Promise<Task> {
+    await this.projectsService.findOne(userId, orgId, projectId);
+    const task = await this.tasksRepository.findOne({
+      where: { id: taskId, projectId },
+    });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    return task;
+  }
+
+  private async validateParentTask(
+    parentTaskId: string,
+    projectId: string,
+    taskId?: string,
+  ): Promise<Task> {
+    const parent = await this.tasksRepository.findOne({
+      where: { id: parentTaskId, projectId },
+    });
+    if (!parent) {
+      throw new BadRequestException('Parent task not found in this project');
+    }
+    if (parent.parentTaskId) {
+      throw new BadRequestException('Subtasks cannot have subtasks');
+    }
+    if (taskId && parentTaskId === taskId) {
+      throw new BadRequestException('A task cannot be its own parent');
+    }
+    return parent;
+  }
+
+  private async moveSubtasksWithParent(
+    parentTaskId: string,
+    projectId: string,
+  ): Promise<void> {
+    await this.tasksRepository.update(
+      { parentTaskId },
+      { projectId },
+    );
+  }
+
+  private async completeAllSubtasks(parentTaskId: string): Promise<void> {
+    const subtasks = await this.tasksRepository.find({
+      where: { parentTaskId },
+    });
+    const openSubtasks = subtasks.filter(
+      (subtask) => subtask.status !== TaskStatus.DONE,
+    );
+    if (openSubtasks.length === 0) {
+      return;
+    }
+    for (const subtask of openSubtasks) {
+      subtask.status = TaskStatus.DONE;
+    }
+    await this.tasksRepository.save(openSubtasks);
+  }
+
+  private async syncParentStatusFromSubtask(
+    parentTaskId: string,
+    previousSubtaskStatus: TaskStatus,
+    nextSubtaskStatus: TaskStatus,
+  ): Promise<void> {
+    const parent = await this.tasksRepository.findOne({
+      where: { id: parentTaskId },
+    });
+    if (!parent) {
+      return;
+    }
+
+    const siblings = await this.tasksRepository.find({
+      where: { parentTaskId },
+    });
+
+    if (shouldCompleteParent(siblings)) {
+      if (parent.status !== TaskStatus.DONE) {
+        parent.status = TaskStatus.DONE;
+        await this.tasksRepository.save(parent);
+      }
+      return;
+    }
+
+    if (
+      shouldReopenParent(previousSubtaskStatus, nextSubtaskStatus) &&
+      parent.status === TaskStatus.DONE
+    ) {
+      parent.status = TaskStatus.IN_PROGRESS;
+      await this.tasksRepository.save(parent);
+    }
+  }
+
+  private toTaskResponse(task: Task): TaskResponse {
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      criticity: task.criticity,
+      dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+      projectId: task.projectId,
+      createdById: task.createdById,
+      parentTaskId: task.parentTaskId,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+    };
+  }
+
+  private async enrichTaskResponses(
+    tasks: Task[],
+    options: { includeSubtasks?: boolean } = {},
+  ): Promise<TaskResponse[]> {
+    if (tasks.length === 0) {
+      return [];
+    }
+
+    const parentIds = tasks
+      .filter((task) => !task.parentTaskId)
+      .map((task) => task.id);
+
+    const subtasksByParent = new Map<string, Task[]>();
+    if (parentIds.length > 0) {
+      const subtasks = await this.tasksRepository.find({
+        where: { parentTaskId: In(parentIds) },
+        order: { createdAt: 'ASC' },
+      });
+      for (const subtask of subtasks) {
+        const parentId = subtask.parentTaskId!;
+        const group = subtasksByParent.get(parentId) ?? [];
+        group.push(subtask);
+        subtasksByParent.set(parentId, group);
+      }
+    }
+
+    return tasks.map((task) => {
+      const response = this.toTaskResponse(task);
+      if (task.parentTaskId) {
+        return response;
+      }
+
+      const children = subtasksByParent.get(task.id) ?? [];
+      if (children.length === 0) {
+        return response;
+      }
+
+      response.subtaskProgress = computeSubtaskProgress(children);
+      if (options.includeSubtasks) {
+        response.subtasks = children.map((child) => this.toTaskResponse(child));
+      }
+      return response;
+    });
   }
 }

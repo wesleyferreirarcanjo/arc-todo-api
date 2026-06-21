@@ -212,6 +212,19 @@
         "default": null,
         "description": "low | medium | high | critical",
         "title": "Criticity"
+      },
+      "parent_task_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by parent task UUID",
+        "title": "Parent Task Id"
       }
     },
     "title": "ListTasksInput",
@@ -308,6 +321,19 @@
         ],
         "default": null,
         "title": "Due Date"
+      },
+      "parent_task_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Parent task UUID for one-level subtasks",
+        "title": "Parent Task Id"
       }
     },
     "required": [
@@ -392,6 +418,19 @@
         ],
         "default": null,
         "title": "Due Date"
+      },
+      "parent_task_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Parent task UUID; null detaches subtask",
+        "title": "Parent Task Id"
       }
     },
     "required": [

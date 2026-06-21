@@ -15,7 +15,8 @@
     "migration:revert": "typeorm migration:revert -d dist/data-source.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test:scope": "npm run build && node dist/scope-resolver/scope-match.util.js",
-    "test:task-history": "npm run build && node dist/tasks/task-history.util.js"
+    "test:task-history": "npm run build && node dist/tasks/task-history.util.js",
+    "test:task-hierarchy": "npm run build && node dist/tasks/task-hierarchy.util.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
