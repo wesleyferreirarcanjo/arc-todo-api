@@ -20,6 +20,7 @@ import { ListAttachmentQueryDto } from './dto/list-attachment-query.dto';
 import { KnowledgeAttachment } from './knowledge-attachment.entity';
 import { KnowledgeEntry } from './knowledge-entry.entity';
 import { KnowledgeService } from './knowledge.service';
+import { RagClientService } from '../rag-settings/rag-client.service';
 
 export interface KnowledgeAttachmentResponse {
   id: string;
@@ -48,6 +49,7 @@ export class KnowledgeAttachmentService {
     @Inject(forwardRef(() => KnowledgeService))
     private readonly knowledgeService: KnowledgeService,
     private readonly storageService: MinioStorageService,
+    private readonly ragClientService: RagClientService,
   ) {}
 
   uploadGeneral(
@@ -347,6 +349,7 @@ export class KnowledgeAttachmentService {
 
       try {
         const saved = await this.attachmentRepository.save(attachment);
+        await this.ragClientService.enqueueAttachmentIndex(entry.id, saved.id);
         return this.toResponse(saved);
       } catch (error) {
         await this.storageService.deleteObject(objectKey);

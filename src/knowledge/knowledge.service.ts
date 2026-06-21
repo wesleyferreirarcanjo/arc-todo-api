@@ -16,6 +16,7 @@ import { UpdateKnowledgeDto } from './dto/update-knowledge.dto';
 import { KnowledgeEntry } from './knowledge-entry.entity';
 import { KnowledgeScope } from './knowledge-scope.enum';
 import { KnowledgeAttachmentService } from './knowledge-attachment.service';
+import { RagClientService } from '../rag-settings/rag-client.service';
 
 export interface KnowledgeEntryResponse {
   id: string;
@@ -56,6 +57,7 @@ export class KnowledgeService {
     private readonly personsService: PersonsService,
     @Inject(forwardRef(() => KnowledgeAttachmentService))
     private readonly attachmentService: KnowledgeAttachmentService,
+    private readonly ragClientService: RagClientService,
   ) {}
 
   async findAllGeneral(userId: string): Promise<KnowledgeEntry[]> {
@@ -219,7 +221,7 @@ export class KnowledgeService {
       personId: null,
     });
 
-    return this.knowledgeRepository.save(entry);
+    return this.saveAndIndexEntry(entry);
   }
 
   async createOrganization(
@@ -239,7 +241,7 @@ export class KnowledgeService {
       personId: null,
     });
 
-    return this.knowledgeRepository.save(entry);
+    return this.saveAndIndexEntry(entry);
   }
 
   async createProject(
@@ -260,7 +262,7 @@ export class KnowledgeService {
       personId: null,
     });
 
-    return this.knowledgeRepository.save(entry);
+    return this.saveAndIndexEntry(entry);
   }
 
   async createPerson(
@@ -281,7 +283,7 @@ export class KnowledgeService {
       personId,
     });
 
-    return this.knowledgeRepository.save(entry);
+    return this.saveAndIndexEntry(entry);
   }
 
   async createGeneralPerson(
@@ -301,7 +303,7 @@ export class KnowledgeService {
       personId,
     });
 
-    return this.knowledgeRepository.save(entry);
+    return this.saveAndIndexEntry(entry);
   }
 
   async findOneGeneral(
@@ -527,7 +529,15 @@ export class KnowledgeService {
   ): Promise<KnowledgeEntry> {
     if (dto.title !== undefined) entry.title = dto.title;
     if (dto.content !== undefined) entry.content = dto.content;
-    return this.knowledgeRepository.save(entry);
+    const saved = await this.knowledgeRepository.save(entry);
+    await this.ragClientService.enqueueEntryIndex(saved.id);
+    return saved;
+  }
+
+  private async saveAndIndexEntry(entry: KnowledgeEntry): Promise<KnowledgeEntry> {
+    const saved = await this.knowledgeRepository.save(entry);
+    await this.ragClientService.enqueueEntryIndex(saved.id);
+    return saved;
   }
 
   private toResponse(entry: KnowledgeEntry): KnowledgeEntryResponse {

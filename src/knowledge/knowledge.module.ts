@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { PersonsModule } from '../persons/persons.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { RagSettingsModule } from '../rag-settings/rag-settings.module';
 import { StorageModule } from '../storage/storage.module';
 import { KnowledgeAttachment } from './knowledge-attachment.entity';
 import { KnowledgeAttachmentService } from './knowledge-attachment.service';
@@ -28,6 +29,7 @@ import { KnowledgeService } from './knowledge.service';
     OrganizationsModule,
     ProjectsModule,
     PersonsModule,
+    RagSettingsModule,
   ],
   controllers: [
     KnowledgeGlobalController,

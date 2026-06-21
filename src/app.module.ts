@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { ChatbotSettingsModule } from './chatbot-settings/chatbot-settings.module';
+import { RagSettingsModule } from './rag-settings/rag-settings.module';
 import { McpToolsModule } from './mcp-tools/mcp-tools.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { PersonsModule } from './persons/persons.module';
@@ -37,6 +38,7 @@ import { UsersModule } from './users/users.module';
     KnowledgeModule,
     McpToolsModule,
     ChatbotSettingsModule,
+    RagSettingsModule,
     ConversationsModule,
   ],
 })
