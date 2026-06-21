@@ -1,6 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/auth.service';
+import type {
+  RagProjectRetrieveDto,
+  RagRetrieveDto,
+  RagTokenEstimateDto,
+} from './dto/rag-retrieve.dto';
 
 @Injectable()
 export class RagClientService {
@@ -34,6 +44,26 @@ export class RagClientService {
     });
   }
 
+  retrieveGeneral(dto: RagRetrieveDto): Promise<unknown> {
+    return this.requestRag('/retrieve/general', { method: 'POST', body: dto });
+  }
+
+  retrieveProject(dto: RagProjectRetrieveDto): Promise<unknown> {
+    return this.requestRag('/retrieve/project', { method: 'POST', body: dto });
+  }
+
+  estimateTokens(dto: RagTokenEstimateDto): Promise<unknown> {
+    return this.requestRag('/tokens/estimate', { method: 'POST', body: dto });
+  }
+
+  syncIndex(): Promise<unknown> {
+    return this.requestRag('/index/sync', { method: 'POST', body: {} });
+  }
+
+  listJobs(): Promise<unknown> {
+    return this.requestRag('/index/jobs');
+  }
+
   private async enqueueJob(input: {
     jobType: string;
     knowledgeEntryId: string;
@@ -45,31 +75,88 @@ export class RagClientService {
     }
 
     try {
-      const token = await this.getServiceToken();
-      const response = await fetch(`${baseUrl.replace(/\/$/, '')}/index/jobs`, {
+      await this.requestRag('/index/jobs', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+        body: {
           jobType: input.jobType,
           knowledgeEntryId: input.knowledgeEntryId,
           attachmentId: input.attachmentId,
-        }),
+        },
+        throwOnError: false,
       });
-      if (!response.ok) {
-        const text = await response.text();
-        this.logger.warn(`Failed to enqueue RAG job: ${response.status} ${text}`);
-      }
     } catch (error) {
       this.logger.warn(`Failed to enqueue RAG job: ${String(error)}`);
     }
   }
 
+  private async requestRag<T>(
+    path: string,
+    options: {
+      method?: string;
+      body?: unknown;
+      throwOnError?: boolean;
+    } = {},
+  ): Promise<T> {
+    const throwOnError = options.throwOnError ?? true;
+    const baseUrl = this.getBaseUrl();
+    if (!baseUrl) {
+      if (throwOnError) {
+        throw new ServiceUnavailableException('RAG service is not configured');
+      }
+      throw new Error('RAG service is not configured');
+    }
+
+    try {
+      const token = await this.getServiceToken();
+      const response = await fetch(`${baseUrl.replace(/\/$/, '')}${path}`, {
+        method: options.method ?? 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body:
+          options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      });
+
+      if (!response.ok) {
+        let message = `RAG request failed (${response.status})`;
+        try {
+          const data = (await response.json()) as {
+            detail?: string;
+            message?: string;
+          };
+          message = data.detail ?? data.message ?? message;
+        } catch {
+          // ignore
+        }
+        if (throwOnError) {
+          throw new HttpException(message, response.status);
+        }
+        throw new Error(message);
+      }
+
+      if (response.status === 204) {
+        return undefined as T;
+      }
+
+      return (await response.json()) as T;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      if (throwOnError) {
+        throw new ServiceUnavailableException('RAG service unavailable');
+      }
+      throw error;
+    }
+  }
+
   private async getServiceToken(): Promise<string> {
     const username = this.configService.get<string>('ADMIN_USERNAME', 'admin');
-    const password = this.configService.get<string>('ADMIN_PASSWORD', 'admin123');
+    const password = this.configService.get<string>(
+      'ADMIN_PASSWORD',
+      'admin123',
+    );
     const result = await this.authService.login({ username, password });
     return result.access_token;
   }

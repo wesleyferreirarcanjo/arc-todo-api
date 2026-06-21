@@ -3,12 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { RagClientService } from './rag-client.service';
 import { RagSetting } from './rag-setting.entity';
+import { RagController } from './rag.controller';
 import { RagSettingsController } from './rag-settings.controller';
 import { RagSettingsService } from './rag-settings.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([RagSetting]), AuthModule],
-  controllers: [RagSettingsController],
+  controllers: [RagSettingsController, RagController],
   providers: [RagSettingsService, RagClientService],
   exports: [RagSettingsService, RagClientService],
 })
