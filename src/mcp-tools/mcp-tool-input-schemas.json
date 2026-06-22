@@ -1366,5 +1366,72 @@
     "title": "DeleteAttachmentInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "retrieve_knowledge": {
+    "properties": {
+      "question": {
+        "description": "Natural-language question to search indexed knowledge",
+        "title": "Question",
+        "type": "string"
+      },
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required with project_id for project-scoped retrieval.",
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required with organization_id for project-scoped retrieval.",
+        "title": "Project Id"
+      },
+      "top_k": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Max chunks to return (default from RAG settings)",
+        "title": "Top K"
+      },
+      "max_context_tokens": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Token budget for context (default from RAG settings)",
+        "title": "Max Context Tokens"
+      }
+    },
+    "required": [
+      "question"
+    ],
+    "title": "RetrieveKnowledgeInput",
+    "type": "object",
+    "additionalProperties": false
   }
 }

@@ -200,8 +200,17 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     defaultEnabled: true,
     sortOrder: 38,
   },
+  {
+    key: 'retrieve_knowledge',
+    group: 'rag',
+    displayName: 'Retrieve knowledge',
+    description:
+      'Search indexed Arc Todo knowledge for relevant chunks. Omit organization_id and project_id for general knowledge; provide both for project-scoped search (includes general + project chunks).',
+    defaultEnabled: true,
+    sortOrder: 40,
+  },
 ];
 
-export const MCP_TOOL_GROUPS = ['system', 'context', 'tasks', 'knowledge'] as const;
+export const MCP_TOOL_GROUPS = ['system', 'context', 'tasks', 'knowledge', 'rag'] as const;
 
 export type McpToolGroup = (typeof MCP_TOOL_GROUPS)[number];
