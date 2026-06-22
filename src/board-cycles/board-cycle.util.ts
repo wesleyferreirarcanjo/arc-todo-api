@@ -21,6 +21,46 @@ function atUtcMidnight(date: Date): Date {
   );
 }
 
+export function compareDateStrings(a: string, b: string): number {
+  return a.localeCompare(b);
+}
+
+/** Seven-day cycles anchored to the project's start date (UTC). */
+export function getProjectAnchoredCycleBounds(
+  projectStartDate: Date,
+  referenceDate: Date,
+): WeekBounds {
+  const anchor = atUtcMidnight(projectStartDate);
+  const ref = atUtcMidnight(referenceDate);
+  const msPerDay = 86400000;
+  const daysSinceStart = Math.max(
+    0,
+    Math.floor((ref.getTime() - anchor.getTime()) / msPerDay),
+  );
+  const cycleIndex = Math.floor(daysSinceStart / 7);
+  const start = new Date(anchor);
+  start.setUTCDate(anchor.getUTCDate() + cycleIndex * 7);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
+  return {
+    startDate: toDateString(start),
+    endDate: toDateString(end),
+  };
+}
+
+export function getNextCycleBounds(closedEndDate: string): WeekBounds {
+  const end = atUtcMidnight(new Date(`${closedEndDate}T00:00:00.000Z`));
+  const start = new Date(end);
+  start.setUTCDate(end.getUTCDate() + 1);
+  const nextEnd = new Date(start);
+  nextEnd.setUTCDate(start.getUTCDate() + 6);
+  return {
+    startDate: toDateString(start),
+    endDate: toDateString(nextEnd),
+  };
+}
+
+/** @deprecated use getProjectAnchoredCycleBounds */
 export function getWeekBounds(referenceDate: Date): WeekBounds {
   const base = atUtcMidnight(referenceDate);
   const day = base.getUTCDay();
@@ -35,16 +75,17 @@ export function getWeekBounds(referenceDate: Date): WeekBounds {
   };
 }
 
+/** @deprecated use getNextCycleBounds */
 export function getNextWeekBounds(closedEndDate: string): WeekBounds {
-  const end = atUtcMidnight(new Date(`${closedEndDate}T00:00:00.000Z`));
-  const start = new Date(end);
-  start.setUTCDate(end.getUTCDate() + 1);
-  const nextEnd = new Date(start);
-  nextEnd.setUTCDate(start.getUTCDate() + 6);
-  return {
-    startDate: toDateString(start),
-    endDate: toDateString(nextEnd),
-  };
+  return getNextCycleBounds(closedEndDate);
+}
+
+export function isCyclePeriodEnded(
+  endDate: string,
+  referenceDate: Date = new Date(),
+): boolean {
+  const today = toDateString(atUtcMidnight(referenceDate));
+  return compareDateStrings(today, endDate) > 0;
 }
 
 export function selectTasksForArchival<T extends ArchivalCandidate>(
@@ -67,16 +108,38 @@ export function selectTasksRemainingActive<T extends ArchivalCandidate>(
 }
 
 if (require.main === module) {
-  const week = getWeekBounds(new Date('2026-06-22T15:00:00.000Z'));
+  const projectStart = new Date('2026-06-05T15:00:00.000Z');
+  const first = getProjectAnchoredCycleBounds(
+    projectStart,
+    new Date('2026-06-05T15:00:00.000Z'),
+  );
   console.assert(
-    week.startDate === '2026-06-22' && week.endDate === '2026-06-28',
-    'expected Monday-Sunday week bounds',
+    first.startDate === '2026-06-05' && first.endDate === '2026-06-11',
+    'expected first cycle to start on project creation date',
   );
 
-  const nextWeek = getNextWeekBounds('2026-06-28');
+  const thirdWeek = getProjectAnchoredCycleBounds(
+    projectStart,
+    new Date('2026-06-20T12:00:00.000Z'),
+  );
   console.assert(
-    nextWeek.startDate === '2026-06-29' && nextWeek.endDate === '2026-07-05',
-    'expected next week to follow closed end date',
+    thirdWeek.startDate === '2026-06-19' && thirdWeek.endDate === '2026-06-25',
+    'expected anchored cycle index from project start',
+  );
+
+  const next = getNextCycleBounds('2026-06-11');
+  console.assert(
+    next.startDate === '2026-06-12' && next.endDate === '2026-06-18',
+    'expected next cycle to follow closed end date',
+  );
+
+  console.assert(
+    isCyclePeriodEnded('2026-06-11', new Date('2026-06-12T00:00:00.000Z')),
+    'expected cycle to end after end date',
+  );
+  console.assert(
+    !isCyclePeriodEnded('2026-06-11', new Date('2026-06-11T23:59:00.000Z')),
+    'expected cycle to remain active on end date',
   );
 
   const tasks: ArchivalCandidate[] = [

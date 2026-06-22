@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { formatTaskDisplayId } from '../common/utils/acronym.util';
+import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { Task } from '../tasks/task.entity';
 import { TaskStatus } from '../tasks/task.enums';
@@ -13,8 +14,10 @@ import {
   COMPLETION_TIMESTAMP_SOURCE_TASK_UPDATED_AT,
 } from './board-cycle.enums';
 import {
-  getNextWeekBounds,
-  getWeekBounds,
+  compareDateStrings,
+  getNextCycleBounds,
+  getProjectAnchoredCycleBounds,
+  isCyclePeriodEnded,
   selectTasksForArchival,
 } from './board-cycle.util';
 
@@ -50,6 +53,7 @@ export interface BoardCycleHistoryEntryResponse {
 export interface CurrentBoardCycleResponse {
   cycle: BoardCycleResponse;
   tasks: TaskResponse[];
+  autoClosesOn: string;
 }
 
 export interface AdvanceBoardCycleResponse {
@@ -73,6 +77,8 @@ export class BoardCyclesService {
     private readonly historyRepository: Repository<BoardCycleHistoryEntry>,
     @InjectRepository(Task)
     private readonly tasksRepository: Repository<Task>,
+    @InjectRepository(Project)
+    private readonly projectsRepository: Repository<Project>,
     private readonly projectsService: ProjectsService,
     private readonly tasksService: TasksService,
     private readonly dataSource: DataSource,
@@ -83,12 +89,13 @@ export class BoardCyclesService {
     orgId: string,
     projectId: string,
   ): Promise<CurrentBoardCycleResponse> {
-    await this.projectsService.findOne(userId, orgId, projectId);
-    const cycle = await this.ensureActiveCycle(orgId, projectId);
+    const project = await this.projectsService.findOne(userId, orgId, projectId);
+    const cycle = await this.syncProjectCycles(project);
     const tasks = await this.tasksService.findAll(userId, orgId, projectId);
     return {
       cycle: this.toCycleResponse(cycle),
       tasks,
+      autoClosesOn: cycle.endDate,
     };
   }
 
@@ -97,13 +104,10 @@ export class BoardCyclesService {
     orgId: string,
     projectId: string,
   ): Promise<AdvanceBoardCycleResponse> {
-    await this.projectsService.findOne(userId, orgId, projectId);
+    const project = await this.projectsService.findOne(userId, orgId, projectId);
 
     return this.dataSource.transaction(async (manager) => {
       const cycleRepo = manager.getRepository(BoardCycle);
-      const historyRepo = manager.getRepository(BoardCycleHistoryEntry);
-      const taskRepo = manager.getRepository(Task);
-
       let activeCycle = await cycleRepo.findOne({
         where: {
           projectId,
@@ -113,79 +117,50 @@ export class BoardCyclesService {
       });
 
       if (!activeCycle) {
-        activeCycle = await this.createActiveCycleInTransaction(
-          manager,
-          orgId,
-          projectId,
-        );
+        activeCycle = await this.bootstrapProjectCycles(manager, project);
       }
 
-      const project = await this.projectsService.findOne(
-        userId,
-        orgId,
-        projectId,
+      return this.closeAndAdvanceInTransaction(
+        manager,
+        project,
+        activeCycle,
       );
-      const projectTasks = await taskRepo.find({
-        where: { projectId },
-      });
-      const archivalCandidates = selectTasksForArchival(projectTasks);
-      const archivedAt = new Date();
-
-      for (const task of archivalCandidates) {
-        await historyRepo
-          .createQueryBuilder()
-          .insert()
-          .into(BoardCycleHistoryEntry)
-          .values({
-            cycleId: activeCycle.id,
-            organizationId: orgId,
-            projectId,
-            taskId: task.id,
-            parentTaskId: task.parentTaskId,
-            displayId: formatTaskDisplayId(project.acronym, task.taskNumber),
-            taskNumber: task.taskNumber,
-            title: task.title,
-            status: task.status,
-            completedAt: task.updatedAt,
-            completionTimestampSource:
-              COMPLETION_TIMESTAMP_SOURCE_TASK_UPDATED_AT,
-            archivedAt,
-          })
-          .orIgnore()
-          .execute();
-      }
-
-      if (archivalCandidates.length > 0) {
-        await taskRepo
-          .createQueryBuilder()
-          .update(Task)
-          .set({ archivedInCycleId: activeCycle.id })
-          .where('project_id = :projectId', { projectId })
-          .andWhere('status = :status', { status: TaskStatus.DONE })
-          .andWhere('archived_in_cycle_id IS NULL')
-          .execute();
-      }
-
-      activeCycle.status = BoardCycleStatus.CLOSED;
-      activeCycle.closedAt = archivedAt;
-      await cycleRepo.save(activeCycle);
-
-      const nextBounds = getNextWeekBounds(activeCycle.endDate);
-      const nextCycle = cycleRepo.create({
-        organizationId: orgId,
-        projectId,
-        startDate: nextBounds.startDate,
-        endDate: nextBounds.endDate,
-        status: BoardCycleStatus.ACTIVE,
-      });
-      const savedNextCycle = await cycleRepo.save(nextCycle);
-
-      return {
-        closedCycle: this.toCycleResponse(activeCycle),
-        nextCycle: this.toCycleResponse(savedNextCycle),
-        archivedCount: archivalCandidates.length,
-      };
     });
+  }
+
+  async syncAllOverdueProjects(): Promise<number> {
+    const overdueCycles = await this.cyclesRepository
+      .createQueryBuilder('cycle')
+      .innerJoin(Project, 'project', 'project.id = cycle.project_id')
+      .where('cycle.status = :status', { status: BoardCycleStatus.ACTIVE })
+      .andWhere('cycle.end_date < CURRENT_DATE')
+      .select(['cycle.project_id AS project_id'])
+      .distinct(true)
+      .getRawMany<{ project_id: string }>();
+
+    const projectIds = overdueCycles.map((row) => row.project_id);
+    let advanced = 0;
+
+    for (const projectId of projectIds) {
+      const project = await this.projectsRepository.findOne({
+        where: { id: projectId },
+      });
+      if (!project) {
+        continue;
+      }
+      const before = await this.cyclesRepository.findOne({
+        where: { projectId, status: BoardCycleStatus.ACTIVE },
+      });
+      await this.syncProjectCycles(project);
+      const after = await this.cyclesRepository.findOne({
+        where: { projectId, status: BoardCycleStatus.ACTIVE },
+      });
+      if (before && after && before.id !== after.id) {
+        advanced += 1;
+      }
+    }
+
+    return advanced;
   }
 
   async getHistory(
@@ -193,7 +168,8 @@ export class BoardCyclesService {
     orgId: string,
     projectId: string,
   ): Promise<BoardCycleHistoryResponse> {
-    await this.projectsService.findOne(userId, orgId, projectId);
+    const project = await this.projectsService.findOne(userId, orgId, projectId);
+    await this.syncProjectCycles(project);
 
     const cycles = await this.cyclesRepository.find({
       where: {
@@ -228,51 +204,155 @@ export class BoardCyclesService {
     };
   }
 
-  private async ensureActiveCycle(
-    orgId: string,
-    projectId: string,
-  ): Promise<BoardCycle> {
-    const existing = await this.cyclesRepository.findOne({
-      where: {
-        projectId,
-        status: BoardCycleStatus.ACTIVE,
-      },
-    });
-    if (existing) {
-      return existing;
-    }
-
+  private async syncProjectCycles(project: Project): Promise<BoardCycle> {
     return this.dataSource.transaction(async (manager) => {
       const cycleRepo = manager.getRepository(BoardCycle);
-      const locked = await cycleRepo.findOne({
+      let activeCycle = await cycleRepo.findOne({
         where: {
-          projectId,
+          projectId: project.id,
           status: BoardCycleStatus.ACTIVE,
         },
         lock: { mode: 'pessimistic_write' },
       });
-      if (locked) {
-        return locked;
+
+      if (!activeCycle) {
+        return this.bootstrapProjectCycles(manager, project);
       }
-      return this.createActiveCycleInTransaction(manager, orgId, projectId);
+
+      while (isCyclePeriodEnded(activeCycle.endDate)) {
+        await this.closeAndAdvanceInTransaction(manager, project, activeCycle);
+        activeCycle = await cycleRepo.findOne({
+          where: {
+            projectId: project.id,
+            status: BoardCycleStatus.ACTIVE,
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!activeCycle) {
+          return this.bootstrapProjectCycles(manager, project);
+        }
+      }
+
+      return activeCycle;
     });
   }
 
-  private async createActiveCycleInTransaction(
+  private async bootstrapProjectCycles(
     manager: EntityManager,
-    orgId: string,
-    projectId: string,
+    project: Project,
   ): Promise<BoardCycle> {
     const cycleRepo = manager.getRepository(BoardCycle);
-    const bounds = getWeekBounds(new Date());
-    const cycle = cycleRepo.create({
-      organizationId: orgId,
-      projectId,
-      startDate: bounds.startDate,
-      endDate: bounds.endDate,
+    const currentBounds = getProjectAnchoredCycleBounds(
+      project.createdAt,
+      new Date(),
+    );
+    let bounds = getProjectAnchoredCycleBounds(
+      project.createdAt,
+      project.createdAt,
+    );
+
+    while (compareDateStrings(bounds.endDate, currentBounds.startDate) < 0) {
+      await this.createClosedEmptyCycle(manager, project, bounds);
+      bounds = getNextCycleBounds(bounds.endDate);
+    }
+
+    const activeCycle = cycleRepo.create({
+      organizationId: project.organizationId,
+      projectId: project.id,
+      startDate: currentBounds.startDate,
+      endDate: currentBounds.endDate,
       status: BoardCycleStatus.ACTIVE,
     });
+    return cycleRepo.save(activeCycle);
+  }
+
+  private async createClosedEmptyCycle(
+    manager: EntityManager,
+    project: Project,
+    bounds: { startDate: string; endDate: string },
+  ): Promise<BoardCycle> {
+    const cycleRepo = manager.getRepository(BoardCycle);
+    const closedAt = new Date(`${bounds.endDate}T23:59:59.000Z`);
+    const cycle = cycleRepo.create({
+      organizationId: project.organizationId,
+      projectId: project.id,
+      startDate: bounds.startDate,
+      endDate: bounds.endDate,
+      status: BoardCycleStatus.CLOSED,
+      closedAt,
+    });
     return cycleRepo.save(cycle);
+  }
+
+  private async closeAndAdvanceInTransaction(
+    manager: EntityManager,
+    project: Project,
+    activeCycle: BoardCycle,
+  ): Promise<AdvanceBoardCycleResponse> {
+    const cycleRepo = manager.getRepository(BoardCycle);
+    const historyRepo = manager.getRepository(BoardCycleHistoryEntry);
+    const taskRepo = manager.getRepository(Task);
+
+    const projectTasks = await taskRepo.find({
+      where: { projectId: project.id },
+    });
+    const archivalCandidates = selectTasksForArchival(projectTasks);
+    const archivedAt = new Date();
+
+    for (const task of archivalCandidates) {
+      await historyRepo
+        .createQueryBuilder()
+        .insert()
+        .into(BoardCycleHistoryEntry)
+        .values({
+          cycleId: activeCycle.id,
+          organizationId: project.organizationId,
+          projectId: project.id,
+          taskId: task.id,
+          parentTaskId: task.parentTaskId,
+          displayId: formatTaskDisplayId(project.acronym, task.taskNumber),
+          taskNumber: task.taskNumber,
+          title: task.title,
+          status: task.status,
+          completedAt: task.updatedAt,
+          completionTimestampSource:
+            COMPLETION_TIMESTAMP_SOURCE_TASK_UPDATED_AT,
+          archivedAt,
+        })
+        .orIgnore()
+        .execute();
+    }
+
+    if (archivalCandidates.length > 0) {
+      await taskRepo
+        .createQueryBuilder()
+        .update(Task)
+        .set({ archivedInCycleId: activeCycle.id })
+        .where('project_id = :projectId', { projectId: project.id })
+        .andWhere('status = :status', { status: TaskStatus.DONE })
+        .andWhere('archived_in_cycle_id IS NULL')
+        .execute();
+    }
+
+    activeCycle.status = BoardCycleStatus.CLOSED;
+    activeCycle.closedAt = archivedAt;
+    await cycleRepo.save(activeCycle);
+
+    const nextBounds = getNextCycleBounds(activeCycle.endDate);
+    const nextCycle = cycleRepo.create({
+      organizationId: project.organizationId,
+      projectId: project.id,
+      startDate: nextBounds.startDate,
+      endDate: nextBounds.endDate,
+      status: BoardCycleStatus.ACTIVE,
+    });
+    const savedNextCycle = await cycleRepo.save(nextCycle);
+
+    return {
+      closedCycle: this.toCycleResponse(activeCycle),
+      nextCycle: this.toCycleResponse(savedNextCycle),
+      archivedCount: archivalCandidates.length,
+    };
   }
 
   private toCycleResponse(cycle: BoardCycle): BoardCycleResponse {
