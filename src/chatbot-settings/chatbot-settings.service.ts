@@ -15,6 +15,8 @@ export interface ChatbotSettingsResponse {
   temperature: number;
   enabled: boolean;
   hasApiKey: boolean;
+  maxHistoryMessages: number;
+  maxHistoryTokens: number;
 }
 
 export interface ChatbotRuntimeSettingsResponse extends ChatbotSettingsResponse {
@@ -32,6 +34,8 @@ const DEFAULT_SETTINGS: Omit<
   apiKey: null,
   temperature: 0.2,
   enabled: false,
+  maxHistoryMessages: 50,
+  maxHistoryTokens: 100_000,
 };
 
 @Injectable()
@@ -53,6 +57,8 @@ export class ChatbotSettingsService implements OnModuleInit {
       temperature: setting.temperature,
       enabled: setting.enabled,
       hasApiKey: Boolean(setting.apiKey),
+      maxHistoryMessages: setting.maxHistoryMessages,
+      maxHistoryTokens: setting.maxHistoryTokens,
     };
   }
 
@@ -123,6 +129,12 @@ export class ChatbotSettingsService implements OnModuleInit {
     }
     if (dto.enabled !== undefined) {
       setting.enabled = dto.enabled;
+    }
+    if (dto.maxHistoryMessages !== undefined) {
+      setting.maxHistoryMessages = dto.maxHistoryMessages;
+    }
+    if (dto.maxHistoryTokens !== undefined) {
+      setting.maxHistoryTokens = dto.maxHistoryTokens;
     }
     if (dto.apiKey !== undefined && dto.apiKey.trim().length > 0) {
       setting.apiKey = dto.apiKey.trim();

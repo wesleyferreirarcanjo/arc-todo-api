@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -33,4 +34,16 @@ export class UpdateChatbotSettingsDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(500)
+  maxHistoryMessages?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1024)
+  @Max(200_000)
+  maxHistoryTokens?: number;
 }

@@ -29,6 +29,12 @@ export class ChatbotSetting {
   @Column({ default: false })
   enabled: boolean;
 
+  @Column({ name: 'max_history_messages', default: 50 })
+  maxHistoryMessages: number;
+
+  @Column({ name: 'max_history_tokens', default: 100_000 })
+  maxHistoryTokens: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
