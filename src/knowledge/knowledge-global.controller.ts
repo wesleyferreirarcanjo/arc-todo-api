@@ -49,6 +49,17 @@ export class KnowledgeGlobalController {
     return this.knowledgeService.createGeneral(req.user.id, dto);
   }
 
+  @Get(':knowledgeId/index-metadata')
+  getIndexMetadata(
+    @Param('knowledgeId') knowledgeId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.knowledgeService.getEntryIndexMetadata(
+      req.user.id,
+      knowledgeId,
+    );
+  }
+
   @Get(':knowledgeId')
   findOne(
     @Param('knowledgeId') knowledgeId: string,

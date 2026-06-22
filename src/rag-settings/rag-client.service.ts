@@ -38,6 +38,8 @@ export interface AttachmentIndexMetadata {
   lastIndexError: string | null;
 }
 
+export type KnowledgeIndexMetadata = AttachmentIndexMetadata;
+
 @Injectable()
 export class RagClientService {
   private readonly logger = new Logger(RagClientService.name);
@@ -98,12 +100,35 @@ export class RagClientService {
     return this.requestRag('/index/status');
   }
 
+  async getEntryIndexMetadata(
+    knowledgeEntryId: string,
+  ): Promise<KnowledgeIndexMetadata> {
+    if (!this.getBaseUrl()) {
+      return this.unavailableIndexMetadata();
+    }
+
+    try {
+      const [aggregate, jobs] = await Promise.all([
+        this.aggregateChunks({ knowledgeEntryId, entryTextOnly: true }),
+        this.listIndexJobs(),
+      ]);
+      return this.buildIndexMetadata(
+        knowledgeEntryId,
+        null,
+        aggregate,
+        jobs,
+      );
+    } catch {
+      return this.unavailableIndexMetadata();
+    }
+  }
+
   async getAttachmentIndexMetadata(
     knowledgeEntryId: string,
     attachmentId: string,
   ): Promise<AttachmentIndexMetadata> {
     if (!this.getBaseUrl()) {
-      return this.unavailableAttachmentMetadata();
+      return this.unavailableIndexMetadata();
     }
 
     try {
@@ -111,14 +136,14 @@ export class RagClientService {
         this.aggregateChunks({ knowledgeEntryId, attachmentId }),
         this.listIndexJobs(),
       ]);
-      return this.buildAttachmentMetadata(
+      return this.buildIndexMetadata(
         knowledgeEntryId,
         attachmentId,
         aggregate,
         jobs,
       );
     } catch {
-      return this.unavailableAttachmentMetadata();
+      return this.unavailableIndexMetadata();
     }
   }
 
@@ -133,7 +158,7 @@ export class RagClientService {
 
     if (!this.getBaseUrl()) {
       for (const attachment of attachments) {
-        metadata.set(attachment.id, this.unavailableAttachmentMetadata());
+        metadata.set(attachment.id, this.unavailableIndexMetadata());
       }
       return metadata;
     }
@@ -147,7 +172,7 @@ export class RagClientService {
         });
         metadata.set(
           attachment.id,
-          this.buildAttachmentMetadata(
+          this.buildIndexMetadata(
             knowledgeEntryId,
             attachment.id,
             aggregate,
@@ -188,12 +213,14 @@ export class RagClientService {
   aggregateChunks(query: {
     knowledgeEntryId?: string;
     attachmentId?: string;
+    entryTextOnly?: boolean;
   }): Promise<{ totalChunks: number; totalTokens: number } | null> {
     const params = new URLSearchParams();
     if (query.knowledgeEntryId) {
       params.set('knowledgeEntryId', query.knowledgeEntryId);
     }
     if (query.attachmentId) params.set('attachmentId', query.attachmentId);
+    if (query.entryTextOnly) params.set('entryTextOnly', 'true');
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return this.requestRag<{ totalChunks: number; totalTokens: number }>(
       `/chunks/aggregate${suffix}`,
@@ -207,7 +234,7 @@ export class RagClientService {
     }).catch(() => []);
   }
 
-  private unavailableAttachmentMetadata(): AttachmentIndexMetadata {
+  private unavailableIndexMetadata(): KnowledgeIndexMetadata {
     return {
       indexStatus: 'unavailable',
       indexPipelineStep: null,
@@ -217,19 +244,21 @@ export class RagClientService {
     };
   }
 
-  private buildAttachmentMetadata(
+  private buildIndexMetadata(
     knowledgeEntryId: string,
-    attachmentId: string,
+    attachmentId: string | null,
     aggregate: { totalChunks: number; totalTokens: number } | null,
     jobs: RagIndexJobSummary[],
-  ): AttachmentIndexMetadata {
+  ): KnowledgeIndexMetadata {
     const chunkCount = aggregate?.totalChunks ?? 0;
     const tokenCount = aggregate?.totalTokens ?? 0;
-    const job = jobs.find(
-      (item) =>
-        item.attachmentId === attachmentId &&
-        item.knowledgeEntryId === knowledgeEntryId,
-    );
+    const job = jobs.find((item) => {
+      if (item.knowledgeEntryId !== knowledgeEntryId) return false;
+      if (attachmentId) {
+        return item.attachmentId === attachmentId;
+      }
+      return item.jobType === 'entry' && !item.attachmentId;
+    });
 
     if (!job) {
       if (chunkCount > 0) {
@@ -241,17 +270,17 @@ export class RagClientService {
           lastIndexError: null,
         };
       }
-      return this.unavailableAttachmentMetadata();
+      return this.unavailableIndexMetadata();
     }
 
     const pipelineStep =
       job.pipelineStep >= 0 && job.pipelineStep < job.pipelineSteps.length
         ? (job.pipelineSteps[
             job.pipelineStep
-          ] as AttachmentIndexMetadata['indexPipelineStep'])
+          ] as KnowledgeIndexMetadata['indexPipelineStep'])
         : null;
 
-    let indexStatus: AttachmentIndexMetadata['indexStatus'] = 'unavailable';
+    let indexStatus: KnowledgeIndexMetadata['indexStatus'] = 'unavailable';
     if (job.status === 'queued') indexStatus = 'queued';
     if (job.status === 'processing') indexStatus = 'processing';
     if (job.status === 'completed') indexStatus = 'completed';

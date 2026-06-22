@@ -16,7 +16,7 @@ import { UpdateKnowledgeDto } from './dto/update-knowledge.dto';
 import { KnowledgeEntry } from './knowledge-entry.entity';
 import { KnowledgeScope } from './knowledge-scope.enum';
 import { KnowledgeAttachmentService } from './knowledge-attachment.service';
-import { RagClientService } from '../rag-settings/rag-client.service';
+import { RagClientService, KnowledgeIndexMetadata } from '../rag-settings/rag-client.service';
 
 export interface KnowledgeEntryResponse {
   id: string;
@@ -521,6 +521,56 @@ export class KnowledgeService {
     );
     await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
     await this.knowledgeRepository.remove(entry);
+  }
+
+  async getEntryIndexMetadata(
+    userId: string,
+    knowledgeId: string,
+  ): Promise<KnowledgeIndexMetadata> {
+    await this.findAccessibleEntry(userId, knowledgeId);
+    return this.ragClientService.getEntryIndexMetadata(knowledgeId);
+  }
+
+  private async findAccessibleEntry(
+    userId: string,
+    knowledgeId: string,
+  ): Promise<KnowledgeEntry> {
+    const entry = await this.knowledgeRepository
+      .createQueryBuilder('knowledge')
+      .where('knowledge.id = :knowledgeId', { knowledgeId })
+      .andWhere(
+        new Brackets((where) => {
+          where
+            .where(
+              'knowledge.scope = :generalScope AND knowledge.createdById = :userId',
+              { generalScope: KnowledgeScope.GENERAL, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :personScope AND knowledge.organizationId IS NULL AND knowledge.createdById = :userId`,
+              { personScope: KnowledgeScope.PERSON, userId },
+            )
+            .orWhere(
+              `knowledge.scope IN (:...orgScopes) AND knowledge.organizationId IN (
+                SELECT om.organization_id FROM organization_members om WHERE om.user_id = :userId
+              )`,
+              {
+                orgScopes: [
+                  KnowledgeScope.ORGANIZATION,
+                  KnowledgeScope.PROJECT,
+                  KnowledgeScope.PERSON,
+                ],
+                userId,
+              },
+            );
+        }),
+      )
+      .getOne();
+
+    if (!entry) {
+      throw new NotFoundException('Knowledge entry not found');
+    }
+
+    return entry;
   }
 
   private async applyUpdate(
