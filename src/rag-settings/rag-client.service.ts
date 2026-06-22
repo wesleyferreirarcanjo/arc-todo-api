@@ -109,12 +109,11 @@ export class RagClientService {
 
     try {
       const [aggregate, jobs] = await Promise.all([
-        this.aggregateChunks({ knowledgeEntryId, entryTextOnly: true }),
+        this.aggregateChunks({ knowledgeEntryId }),
         this.listIndexJobs(),
       ]);
-      return this.buildIndexMetadata(
+      return this.buildCombinedEntryIndexMetadata(
         knowledgeEntryId,
-        null,
         aggregate,
         jobs,
       );
@@ -252,6 +251,86 @@ export class RagClientService {
       tokenCount: 0,
       lastIndexError: null,
     };
+  }
+
+  private buildCombinedEntryIndexMetadata(
+    knowledgeEntryId: string,
+    aggregate: { totalChunks: number; totalTokens: number } | null,
+    jobs: RagIndexJobSummary[],
+  ): KnowledgeIndexMetadata {
+    const chunkCount = aggregate?.totalChunks ?? 0;
+    const tokenCount = aggregate?.totalTokens ?? 0;
+    const entryJobs = jobs.filter(
+      (item) => item.knowledgeEntryId === knowledgeEntryId,
+    );
+
+    if (entryJobs.length === 0) {
+      if (chunkCount > 0) {
+        return {
+          indexStatus: 'completed',
+          indexPipelineStep: 'indexed',
+          chunkCount,
+          tokenCount,
+          lastIndexError: null,
+        };
+      }
+      return this.unavailableIndexMetadata();
+    }
+
+    const failedJob = entryJobs.find((item) => item.status === 'failed');
+    if (failedJob) {
+      return {
+        indexStatus: 'failed',
+        indexPipelineStep: null,
+        chunkCount,
+        tokenCount,
+        lastIndexError: failedJob.lastError,
+      };
+    }
+
+    const processingJob = entryJobs.find((item) => item.status === 'processing');
+    if (processingJob) {
+      const pipelineStep =
+        processingJob.pipelineStep >= 0 &&
+        processingJob.pipelineStep < processingJob.pipelineSteps.length
+          ? (processingJob.pipelineSteps[
+              processingJob.pipelineStep
+            ] as KnowledgeIndexMetadata['indexPipelineStep'])
+          : null;
+      return {
+        indexStatus: 'processing',
+        indexPipelineStep: pipelineStep,
+        chunkCount: Math.max(
+          chunkCount,
+          ...entryJobs.map((item) => item.chunkCount ?? 0),
+        ),
+        tokenCount,
+        lastIndexError: null,
+      };
+    }
+
+    const queuedJob = entryJobs.find((item) => item.status === 'queued');
+    if (queuedJob) {
+      return {
+        indexStatus: 'queued',
+        indexPipelineStep: 'queued',
+        chunkCount,
+        tokenCount,
+        lastIndexError: null,
+      };
+    }
+
+    if (chunkCount > 0) {
+      return {
+        indexStatus: 'completed',
+        indexPipelineStep: 'indexed',
+        chunkCount,
+        tokenCount,
+        lastIndexError: null,
+      };
+    }
+
+    return this.unavailableIndexMetadata();
   }
 
   private buildIndexMetadata(
