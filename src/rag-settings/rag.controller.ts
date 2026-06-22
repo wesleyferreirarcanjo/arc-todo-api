@@ -42,6 +42,29 @@ export class RagController {
     return this.ragClientService.getIndexStatus();
   }
 
+  @Get('chunks/aggregate')
+  aggregateChunks(
+    @Query('scope') scope?: string,
+    @Query('organizationId') organizationId?: string,
+    @Query('projectId') projectId?: string,
+    @Query('personId') personId?: string,
+    @Query('knowledgeEntryId') knowledgeEntryId?: string,
+    @Query('attachmentId') attachmentId?: string,
+    @Query('mimeType') mimeType?: string,
+    @Query('entryTextOnly') entryTextOnly?: string,
+  ) {
+    return this.ragClientService.aggregateChunks({
+      scope,
+      organizationId,
+      projectId,
+      personId,
+      knowledgeEntryId,
+      attachmentId,
+      mimeType,
+      entryTextOnly: entryTextOnly === 'true',
+    });
+  }
+
   @Get('chunks')
   listChunks(
     @Query('limit') limit?: string,

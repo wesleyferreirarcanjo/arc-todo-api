@@ -211,15 +211,25 @@ export class RagClientService {
   }
 
   aggregateChunks(query: {
+    scope?: string;
+    organizationId?: string;
+    projectId?: string;
+    personId?: string;
     knowledgeEntryId?: string;
     attachmentId?: string;
+    mimeType?: string;
     entryTextOnly?: boolean;
   }): Promise<{ totalChunks: number; totalTokens: number } | null> {
     const params = new URLSearchParams();
+    if (query.scope) params.set('scope', query.scope);
+    if (query.organizationId) params.set('organizationId', query.organizationId);
+    if (query.projectId) params.set('projectId', query.projectId);
+    if (query.personId) params.set('personId', query.personId);
     if (query.knowledgeEntryId) {
       params.set('knowledgeEntryId', query.knowledgeEntryId);
     }
     if (query.attachmentId) params.set('attachmentId', query.attachmentId);
+    if (query.mimeType) params.set('mimeType', query.mimeType);
     if (query.entryTextOnly) params.set('entryTextOnly', 'true');
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return this.requestRag<{ totalChunks: number; totalTokens: number }>(
