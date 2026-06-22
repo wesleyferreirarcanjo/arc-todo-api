@@ -15,6 +15,8 @@ import { OrganizationMember } from './organization-member.entity';
 import { OrganizationRole } from './organization-role.enum';
 import { Organization } from './organization.entity';
 
+const DEFAULT_ORGANIZATION_COLOR = '#737373';
+
 @Injectable()
 export class OrganizationsService {
   constructor(
@@ -47,6 +49,7 @@ export class OrganizationsService {
     const organization = this.organizationsRepository.create({
       name: dto.name,
       slug,
+      color: dto.color ?? DEFAULT_ORGANIZATION_COLOR,
     });
     const saved = await this.organizationsRepository.save(organization);
 
@@ -91,6 +94,10 @@ export class OrganizationsService {
         throw new ConflictException('Slug already in use');
       }
       organization.slug = dto.slug;
+    }
+
+    if (dto.color !== undefined) {
+      organization.color = dto.color;
     }
 
     return this.organizationsRepository.save(organization);

@@ -20,6 +20,9 @@ export class Organization {
   @Column({ unique: true })
   slug: string;
 
+  @Column({ type: 'varchar', length: 7, default: '#737373' })
+  color: string;
+
   @OneToMany(() => OrganizationMember, (member) => member.organization)
   members: OrganizationMember[];
 

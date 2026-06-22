@@ -33,6 +33,7 @@ export interface KnowledgeEntryResponse {
     id: string;
     name: string;
     slug: string;
+    color: string;
   } | null;
   project?: {
     id: string;
@@ -607,6 +608,7 @@ export class KnowledgeService {
             id: entry.organization.id,
             name: entry.organization.name,
             slug: entry.organization.slug,
+            color: entry.organization.color,
           }
         : null,
       project: entry.project
