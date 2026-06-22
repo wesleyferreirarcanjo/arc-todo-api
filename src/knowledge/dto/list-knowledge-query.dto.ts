@@ -4,6 +4,11 @@ import { KnowledgeScope } from '../knowledge-scope.enum';
 
 export class ListKnowledgeQueryDto {
   @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  all?: boolean;
+
+  @IsOptional()
   @IsEnum(KnowledgeScope)
   scope?: KnowledgeScope;
 

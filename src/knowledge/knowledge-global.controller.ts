@@ -29,10 +29,14 @@ export class KnowledgeGlobalController {
   @Get()
   findAll(@Query() query: ListKnowledgeQueryDto, @Req() req: AuthRequest) {
     if (
+      query.all ||
       query.scope ||
       query.organizationId ||
       query.projectId ||
-      query.personId
+      query.personId ||
+      query.fileName?.trim() ||
+      query.mimeType?.trim() ||
+      query.hasAttachments === true
     ) {
       return this.knowledgeService.findAllForUser(req.user.id, query);
     }

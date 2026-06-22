@@ -12,6 +12,32 @@ import type {
   RagTokenEstimateDto,
 } from './dto/rag-retrieve.dto';
 
+export interface RagIndexJobSummary {
+  id: string;
+  jobType: string;
+  knowledgeEntryId: string | null;
+  attachmentId: string | null;
+  status: string;
+  lastError: string | null;
+  pipelineStep: number;
+  pipelineSteps: string[];
+  chunkCount: number;
+}
+
+export interface AttachmentIndexMetadata {
+  indexStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'unavailable';
+  indexPipelineStep:
+    | 'queued'
+    | 'extracting'
+    | 'chunking'
+    | 'embedding'
+    | 'indexed'
+    | null;
+  chunkCount: number;
+  tokenCount: number;
+  lastIndexError: string | null;
+}
+
 @Injectable()
 export class RagClientService {
   private readonly logger = new Logger(RagClientService.name);
@@ -24,6 +50,10 @@ export class RagClientService {
   private getBaseUrl(): string | null {
     const configured = this.configService.get<string>('ARC_TODO_RAG_BASE_URL');
     return configured?.trim() || null;
+  }
+
+  isConfigured(): boolean {
+    return Boolean(this.getBaseUrl());
   }
 
   async enqueueEntryIndex(knowledgeEntryId: string): Promise<void> {
@@ -68,6 +98,68 @@ export class RagClientService {
     return this.requestRag('/index/status');
   }
 
+  async getAttachmentIndexMetadata(
+    knowledgeEntryId: string,
+    attachmentId: string,
+  ): Promise<AttachmentIndexMetadata> {
+    if (!this.getBaseUrl()) {
+      return this.unavailableAttachmentMetadata();
+    }
+
+    try {
+      const [aggregate, jobs] = await Promise.all([
+        this.aggregateChunks({ knowledgeEntryId, attachmentId }),
+        this.listIndexJobs(),
+      ]);
+      return this.buildAttachmentMetadata(
+        knowledgeEntryId,
+        attachmentId,
+        aggregate,
+        jobs,
+      );
+    } catch {
+      return this.unavailableAttachmentMetadata();
+    }
+  }
+
+  async enrichAttachmentResponses(
+    knowledgeEntryId: string,
+    attachments: Array<{ id: string }>,
+  ): Promise<Map<string, AttachmentIndexMetadata>> {
+    const metadata = new Map<string, AttachmentIndexMetadata>();
+    if (attachments.length === 0) {
+      return metadata;
+    }
+
+    if (!this.getBaseUrl()) {
+      for (const attachment of attachments) {
+        metadata.set(attachment.id, this.unavailableAttachmentMetadata());
+      }
+      return metadata;
+    }
+
+    const jobs = await this.listIndexJobs();
+    await Promise.all(
+      attachments.map(async (attachment) => {
+        const aggregate = await this.aggregateChunks({
+          knowledgeEntryId,
+          attachmentId: attachment.id,
+        });
+        metadata.set(
+          attachment.id,
+          this.buildAttachmentMetadata(
+            knowledgeEntryId,
+            attachment.id,
+            aggregate,
+            jobs,
+          ),
+        );
+      }),
+    );
+
+    return metadata;
+  }
+
   listChunks(query: {
     limit?: number;
     offset?: number;
@@ -91,6 +183,87 @@ export class RagClientService {
     if (query.mimeType) params.set('mimeType', query.mimeType);
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return this.requestRag(`/chunks${suffix}`);
+  }
+
+  aggregateChunks(query: {
+    knowledgeEntryId?: string;
+    attachmentId?: string;
+  }): Promise<{ totalChunks: number; totalTokens: number } | null> {
+    const params = new URLSearchParams();
+    if (query.knowledgeEntryId) {
+      params.set('knowledgeEntryId', query.knowledgeEntryId);
+    }
+    if (query.attachmentId) params.set('attachmentId', query.attachmentId);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return this.requestRag<{ totalChunks: number; totalTokens: number }>(
+      `/chunks/aggregate${suffix}`,
+      { throwOnError: false },
+    ).catch(() => null);
+  }
+
+  listIndexJobs(): Promise<RagIndexJobSummary[]> {
+    return this.requestRag<RagIndexJobSummary[]>('/index/jobs', {
+      throwOnError: false,
+    }).catch(() => []);
+  }
+
+  private unavailableAttachmentMetadata(): AttachmentIndexMetadata {
+    return {
+      indexStatus: 'unavailable',
+      indexPipelineStep: null,
+      chunkCount: 0,
+      tokenCount: 0,
+      lastIndexError: null,
+    };
+  }
+
+  private buildAttachmentMetadata(
+    knowledgeEntryId: string,
+    attachmentId: string,
+    aggregate: { totalChunks: number; totalTokens: number } | null,
+    jobs: RagIndexJobSummary[],
+  ): AttachmentIndexMetadata {
+    const chunkCount = aggregate?.totalChunks ?? 0;
+    const tokenCount = aggregate?.totalTokens ?? 0;
+    const job = jobs.find(
+      (item) =>
+        item.attachmentId === attachmentId &&
+        item.knowledgeEntryId === knowledgeEntryId,
+    );
+
+    if (!job) {
+      if (chunkCount > 0) {
+        return {
+          indexStatus: 'completed',
+          indexPipelineStep: 'indexed',
+          chunkCount,
+          tokenCount,
+          lastIndexError: null,
+        };
+      }
+      return this.unavailableAttachmentMetadata();
+    }
+
+    const pipelineStep =
+      job.pipelineStep >= 0 && job.pipelineStep < job.pipelineSteps.length
+        ? (job.pipelineSteps[
+            job.pipelineStep
+          ] as AttachmentIndexMetadata['indexPipelineStep'])
+        : null;
+
+    let indexStatus: AttachmentIndexMetadata['indexStatus'] = 'unavailable';
+    if (job.status === 'queued') indexStatus = 'queued';
+    if (job.status === 'processing') indexStatus = 'processing';
+    if (job.status === 'completed') indexStatus = 'completed';
+    if (job.status === 'failed') indexStatus = 'failed';
+
+    return {
+      indexStatus,
+      indexPipelineStep: pipelineStep,
+      chunkCount: Math.max(chunkCount, job.chunkCount ?? 0),
+      tokenCount,
+      lastIndexError: job.lastError,
+    };
   }
 
   private async enqueueJob(input: {

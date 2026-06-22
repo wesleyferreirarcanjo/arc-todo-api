@@ -32,6 +32,17 @@ export interface KnowledgeAttachmentResponse {
   tags: string[];
   uploadedById: string;
   createdAt: string;
+  indexStatus: 'queued' | 'processing' | 'completed' | 'failed' | 'unavailable';
+  indexPipelineStep:
+    | 'queued'
+    | 'extracting'
+    | 'chunking'
+    | 'embedding'
+    | 'indexed'
+    | null;
+  chunkCount: number;
+  tokenCount: number;
+  lastIndexError: string | null;
 }
 
 interface UploadedFilePayload {
@@ -350,7 +361,16 @@ export class KnowledgeAttachmentService {
       try {
         const saved = await this.attachmentRepository.save(attachment);
         await this.ragClientService.enqueueAttachmentIndex(entry.id, saved.id);
-        return this.toResponse(saved);
+        const [response] = await this.toResponses(entry.id, [saved]);
+        if (this.ragClientService.isConfigured()) {
+          return {
+            ...response,
+            indexStatus: 'queued',
+            indexPipelineStep: 'queued',
+            lastIndexError: null,
+          };
+        }
+        return response;
       } catch (error) {
         await this.storageService.deleteObject(objectKey);
         throw error;
@@ -387,7 +407,7 @@ export class KnowledgeAttachmentService {
       }
 
       const attachments = await qb.getMany();
-      return attachments.map((attachment) => this.toResponse(attachment));
+      return this.toResponses(entry.id, attachments);
     };
   }
 
@@ -451,17 +471,33 @@ export class KnowledgeAttachmentService {
     }
   }
 
-  private toResponse(attachment: KnowledgeAttachment): KnowledgeAttachmentResponse {
-    return {
-      id: attachment.id,
-      knowledgeEntryId: attachment.knowledgeEntryId,
-      originalFilename: attachment.originalFilename,
-      mimeType: attachment.mimeType,
-      sizeBytes: Number(attachment.sizeBytes),
-      description: attachment.description,
-      tags: attachment.tags ?? [],
-      uploadedById: attachment.uploadedById,
-      createdAt: attachment.createdAt.toISOString(),
-    };
+  private async toResponses(
+    knowledgeEntryId: string,
+    attachments: KnowledgeAttachment[],
+  ): Promise<KnowledgeAttachmentResponse[]> {
+    const metadata = await this.ragClientService.enrichAttachmentResponses(
+      knowledgeEntryId,
+      attachments,
+    );
+
+    return attachments.map((attachment) => {
+      const index = metadata.get(attachment.id);
+      return {
+        id: attachment.id,
+        knowledgeEntryId: attachment.knowledgeEntryId,
+        originalFilename: attachment.originalFilename,
+        mimeType: attachment.mimeType,
+        sizeBytes: Number(attachment.sizeBytes),
+        description: attachment.description,
+        tags: attachment.tags ?? [],
+        uploadedById: attachment.uploadedById,
+        createdAt: attachment.createdAt.toISOString(),
+        indexStatus: index?.indexStatus ?? 'unavailable',
+        indexPipelineStep: index?.indexPipelineStep ?? null,
+        chunkCount: index?.chunkCount ?? 0,
+        tokenCount: index?.tokenCount ?? 0,
+        lastIndexError: index?.lastIndexError ?? null,
+      };
+    });
   }
 }
