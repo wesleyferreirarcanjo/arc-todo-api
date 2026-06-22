@@ -52,6 +52,9 @@ export class Task {
   @Column({ name: 'task_number', type: 'int' })
   taskNumber: number;
 
+  @Column({ name: 'archived_in_cycle_id', type: 'uuid', nullable: true })
+  archivedInCycleId: string | null;
+
   @ManyToOne(() => Task, (task) => task.subtasks, {
     onDelete: 'CASCADE',
     nullable: true,

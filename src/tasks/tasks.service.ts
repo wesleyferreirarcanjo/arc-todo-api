@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 import {
   formatTaskDisplayId,
   parseTaskDisplayId,
@@ -88,7 +88,7 @@ export class TasksService {
   ): Promise<TaskResponse[]> {
     await this.projectsService.findOne(userId, orgId, projectId);
     const tasks = await this.tasksRepository.find({
-      where: { projectId },
+      where: { projectId, archivedInCycleId: IsNull() },
       order: { createdAt: 'DESC' },
     });
     return this.enrichTaskResponses(tasks);
@@ -103,7 +103,8 @@ export class TasksService {
       .innerJoinAndSelect('task.project', 'project')
       .innerJoinAndSelect('project.organization', 'organization')
       .innerJoin('organization.members', 'member')
-      .where('member.userId = :userId', { userId });
+      .where('member.userId = :userId', { userId })
+      .andWhere('task.archivedInCycleId IS NULL');
 
     if (query.organizationId) {
       qb.andWhere('organization.id = :organizationId', {

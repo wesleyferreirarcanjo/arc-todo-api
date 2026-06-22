@@ -17,6 +17,7 @@
     "test:scope": "npm run build && node dist/scope-resolver/scope-match.util.js",
     "test:task-history": "npm run build && node dist/tasks/task-history.util.js",
     "test:task-hierarchy": "npm run build && node dist/tasks/task-hierarchy.util.js",
+    "test:board-cycle": "npm run build && node dist/board-cycles/board-cycle.util.js",
     "test:acronym": "npm run build && node dist/common/utils/acronym.util.js"
   },
   "dependencies": {

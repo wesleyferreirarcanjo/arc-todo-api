@@ -1,5 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { DataSourceOptions } from 'typeorm';
+import { BoardCycle } from '../board-cycles/board-cycle.entity';
+import { BoardCycleHistoryEntry } from '../board-cycles/board-cycle-history-entry.entity';
 import { Conversation } from '../conversations/conversation.entity';
 import { ConversationMessage } from '../conversations/conversation-message.entity';
 import { ConversationTaskContext } from '../conversations/conversation-task-context.entity';
@@ -25,6 +27,8 @@ export const entities = [
   Task,
   TaskComment,
   TaskHistoryEntry,
+  BoardCycle,
+  BoardCycleHistoryEntry,
   Person,
   KnowledgeEntry,
   KnowledgeAttachment,
