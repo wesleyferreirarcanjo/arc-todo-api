@@ -18,7 +18,8 @@
     "test:task-history": "npm run build && node dist/tasks/task-history.util.js",
     "test:task-hierarchy": "npm run build && node dist/tasks/task-hierarchy.util.js",
     "test:board-cycle": "npm run build && node dist/board-cycles/board-cycle.util.js",
-    "test:acronym": "npm run build && node dist/common/utils/acronym.util.js"
+    "test:acronym": "npm run build && node dist/common/utils/acronym.util.js",
+    "test:rag-cleanup": "npm run build && node dist/rag-settings/rag-cleanup.util.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

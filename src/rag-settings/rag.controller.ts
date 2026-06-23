@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
   RagProjectRetrieveDto,
@@ -88,5 +88,10 @@ export class RagController {
       attachmentId,
       mimeType,
     });
+  }
+
+  @Delete('chunks/:chunkId')
+  deleteChunk(@Param('chunkId') chunkId: string) {
+    return this.ragClientService.deleteChunk(chunkId);
   }
 }

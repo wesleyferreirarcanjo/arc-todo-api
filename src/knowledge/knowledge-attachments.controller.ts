@@ -82,6 +82,19 @@ export class GlobalKnowledgeAttachmentsController {
       attachmentId,
     );
   }
+
+  @Post(':attachmentId/resync')
+  resync(
+    @Param('knowledgeId') knowledgeId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.attachmentService.resyncGeneral(
+      req.user.id,
+      knowledgeId,
+      attachmentId,
+    );
+  }
 }
 
 @Controller('organizations/:orgId/knowledge/:knowledgeId/attachments')
@@ -149,6 +162,21 @@ export class OrganizationKnowledgeAttachmentsController {
     @Req() req: AuthRequest,
   ) {
     return this.attachmentService.deleteOrganization(
+      req.user.id,
+      orgId,
+      knowledgeId,
+      attachmentId,
+    );
+  }
+
+  @Post(':attachmentId/resync')
+  resync(
+    @Param('orgId') orgId: string,
+    @Param('knowledgeId') knowledgeId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.attachmentService.resyncOrganization(
       req.user.id,
       orgId,
       knowledgeId,
@@ -229,6 +257,23 @@ export class ProjectKnowledgeAttachmentsController {
     @Req() req: AuthRequest,
   ) {
     return this.attachmentService.deleteProject(
+      req.user.id,
+      orgId,
+      projectId,
+      knowledgeId,
+      attachmentId,
+    );
+  }
+
+  @Post(':attachmentId/resync')
+  resync(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('knowledgeId') knowledgeId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.attachmentService.resyncProject(
       req.user.id,
       orgId,
       projectId,
@@ -317,6 +362,23 @@ export class PersonKnowledgeAttachmentsController {
       attachmentId,
     );
   }
+
+  @Post(':attachmentId/resync')
+  resync(
+    @Param('orgId') orgId: string,
+    @Param('personId') personId: string,
+    @Param('knowledgeId') knowledgeId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.attachmentService.resyncPerson(
+      req.user.id,
+      orgId,
+      personId,
+      knowledgeId,
+      attachmentId,
+    );
+  }
 }
 
 @Controller('persons/:personId/knowledge/:knowledgeId/attachments')
@@ -384,6 +446,21 @@ export class GeneralPersonKnowledgeAttachmentsController {
     @Req() req: AuthRequest,
   ) {
     return this.attachmentService.deleteGeneralPerson(
+      req.user.id,
+      personId,
+      knowledgeId,
+      attachmentId,
+    );
+  }
+
+  @Post(':attachmentId/resync')
+  resync(
+    @Param('personId') personId: string,
+    @Param('knowledgeId') knowledgeId: string,
+    @Param('attachmentId') attachmentId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.attachmentService.resyncGeneralPerson(
       req.user.id,
       personId,
       knowledgeId,

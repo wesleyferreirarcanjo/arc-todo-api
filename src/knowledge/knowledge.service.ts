@@ -469,8 +469,7 @@ export class KnowledgeService {
 
   async removeGeneral(userId: string, knowledgeId: string): Promise<void> {
     const entry = await this.findOneGeneral(userId, knowledgeId);
-    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
-    await this.knowledgeRepository.remove(entry);
+    await this.removeEntry(entry);
   }
 
   async removeOrganization(
@@ -479,8 +478,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<void> {
     const entry = await this.findOneOrganization(userId, orgId, knowledgeId);
-    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
-    await this.knowledgeRepository.remove(entry);
+    await this.removeEntry(entry);
   }
 
   async removeProject(
@@ -495,8 +493,7 @@ export class KnowledgeService {
       projectId,
       knowledgeId,
     );
-    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
-    await this.knowledgeRepository.remove(entry);
+    await this.removeEntry(entry);
   }
 
   async removePerson(
@@ -506,8 +503,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<void> {
     const entry = await this.findOnePerson(userId, orgId, personId, knowledgeId);
-    await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
-    await this.knowledgeRepository.remove(entry);
+    await this.removeEntry(entry);
   }
 
   async removeGeneralPerson(
@@ -519,6 +515,13 @@ export class KnowledgeService {
       userId,
       personId,
       knowledgeId,
+    );
+    await this.removeEntry(entry);
+  }
+
+  private async removeEntry(entry: KnowledgeEntry): Promise<void> {
+    await this.ragClientService.requireCleanup(() =>
+      this.ragClientService.deleteEntryChunks(entry.id),
     );
     await this.attachmentService.cleanupForKnowledgeEntry(entry.id);
     await this.knowledgeRepository.remove(entry);

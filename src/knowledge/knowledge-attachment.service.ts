@@ -310,6 +310,62 @@ export class KnowledgeAttachmentService {
     )(attachmentId);
   }
 
+  resyncGeneral(
+    userId: string,
+    knowledgeId: string,
+    attachmentId: string,
+  ) {
+    return this.resyncWithAccess(async () =>
+      this.knowledgeService.findOneGeneral(userId, knowledgeId),
+    )(attachmentId);
+  }
+
+  resyncOrganization(
+    userId: string,
+    orgId: string,
+    knowledgeId: string,
+    attachmentId: string,
+  ) {
+    return this.resyncWithAccess(async () =>
+      this.knowledgeService.findOneOrganization(userId, orgId, knowledgeId),
+    )(attachmentId);
+  }
+
+  resyncProject(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    knowledgeId: string,
+    attachmentId: string,
+  ) {
+    return this.resyncWithAccess(async () =>
+      this.knowledgeService.findOneProject(userId, orgId, projectId, knowledgeId),
+    )(attachmentId);
+  }
+
+  resyncPerson(
+    userId: string,
+    orgId: string,
+    personId: string,
+    knowledgeId: string,
+    attachmentId: string,
+  ) {
+    return this.resyncWithAccess(async () =>
+      this.knowledgeService.findOnePerson(userId, orgId, personId, knowledgeId),
+    )(attachmentId);
+  }
+
+  resyncGeneralPerson(
+    userId: string,
+    personId: string,
+    knowledgeId: string,
+    attachmentId: string,
+  ) {
+    return this.resyncWithAccess(async () =>
+      this.knowledgeService.findOneGeneralPerson(userId, personId, knowledgeId),
+    )(attachmentId);
+  }
+
   async cleanupForKnowledgeEntry(knowledgeEntryId: string): Promise<void> {
     const attachments = await this.attachmentRepository.find({
       where: { knowledgeEntryId },
@@ -422,8 +478,42 @@ export class KnowledgeAttachmentService {
         throw new NotFoundException('Attachment not found');
       }
 
+      await this.ragClientService.requireCleanup(() =>
+        this.ragClientService.deleteAttachmentChunks(entry.id, attachment.id),
+      );
       await this.attachmentRepository.remove(attachment);
       await this.storageService.deleteObject(attachment.objectKey);
+    };
+  }
+
+  resyncWithAccess(getEntry: () => Promise<KnowledgeEntry>) {
+    return async (attachmentId: string) => {
+      const entry = await getEntry();
+      const attachment = await this.attachmentRepository.findOne({
+        where: { id: attachmentId, knowledgeEntryId: entry.id },
+      });
+
+      if (!attachment) {
+        throw new NotFoundException('Attachment not found');
+      }
+
+      if (!this.ragClientService.isConfigured()) {
+        throw new BadRequestException('RAG indexing is not configured');
+      }
+
+      const job = await this.ragClientService.resyncAttachment(
+        entry.id,
+        attachment.id,
+      );
+      const [response] = await this.toResponses(entry.id, [attachment]);
+      return {
+        ...response,
+        indexStatus: 'queued' as const,
+        indexPipelineStep: 'queued' as const,
+        lastIndexError: null,
+        jobId: job.id,
+        jobStatus: job.status,
+      };
     };
   }
 

@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/auth.service';
+import {
+  buildChunkCleanupQuery,
+  buildChunkDeletePath,
+} from './rag-cleanup.util';
 import type {
   RagProjectRetrieveDto,
   RagRetrieveDto,
@@ -39,6 +43,14 @@ export interface AttachmentIndexMetadata {
 }
 
 export type KnowledgeIndexMetadata = AttachmentIndexMetadata;
+
+export interface RagCleanupSummary {
+  deletedChunks: number;
+  cancelledJobs: number;
+  chunkId?: string | null;
+  knowledgeEntryId?: string | null;
+  attachmentId?: string | null;
+}
 
 @Injectable()
 export class RagClientService {
@@ -74,6 +86,52 @@ export class RagClientService {
       knowledgeEntryId,
       attachmentId,
     });
+  }
+
+  async resyncAttachment(
+    knowledgeEntryId: string,
+    attachmentId: string,
+  ): Promise<{ id: string; status: string }> {
+    return this.requestRag<{ id: string; status: string }>('/index/jobs', {
+      method: 'POST',
+      body: {
+        jobType: 'attachment',
+        knowledgeEntryId,
+        attachmentId,
+      },
+    });
+  }
+
+  deleteChunk(chunkId: string): Promise<RagCleanupSummary> {
+    return this.requestRag<RagCleanupSummary>(buildChunkDeletePath(chunkId), {
+      method: 'DELETE',
+    });
+  }
+
+  deleteAttachmentChunks(
+    knowledgeEntryId: string,
+    attachmentId: string,
+  ): Promise<RagCleanupSummary> {
+    return this.requestRag<RagCleanupSummary>(
+      buildChunkCleanupQuery({ knowledgeEntryId, attachmentId }),
+      { method: 'DELETE' },
+    );
+  }
+
+  deleteEntryChunks(knowledgeEntryId: string): Promise<RagCleanupSummary> {
+    return this.requestRag<RagCleanupSummary>(
+      buildChunkCleanupQuery({ knowledgeEntryId }),
+      { method: 'DELETE' },
+    );
+  }
+
+  async requireCleanup(
+    action: () => Promise<RagCleanupSummary>,
+  ): Promise<RagCleanupSummary | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+    return action();
   }
 
   retrieveGeneral(dto: RagRetrieveDto): Promise<unknown> {
