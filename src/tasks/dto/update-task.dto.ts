@@ -1,6 +1,7 @@
 import {
   IsDateString,
   IsEnum,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -35,4 +36,12 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsUUID()
   parentTaskId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, unknown>;
 }

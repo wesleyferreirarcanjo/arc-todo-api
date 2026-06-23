@@ -55,6 +55,12 @@ export class Task {
   @Column({ name: 'archived_in_cycle_id', type: 'uuid', nullable: true })
   archivedInCycleId: string | null;
 
+  @Column({ type: 'varchar', length: 32, default: 'other' })
+  category: string;
+
+  @Column({ type: 'jsonb', default: {} })
+  metadata: Record<string, unknown>;
+
   @ManyToOne(() => Task, (task) => task.subtasks, {
     onDelete: 'CASCADE',
     nullable: true,

@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { TaskCriticity, TaskStatus } from '../task.enums';
 
 export class ListTasksQueryDto {
@@ -21,4 +21,8 @@ export class ListTasksQueryDto {
   @IsOptional()
   @IsUUID()
   parentTaskId?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 }

@@ -16,7 +16,12 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task } from './task.entity';
+import { DEFAULT_TASK_CATEGORY } from './task-category.enum';
 import { TaskCriticity, TaskStatus } from './task.enums';
+import {
+  assertTaskCategory,
+  normalizeTaskMetadata,
+} from './task-metadata.util';
 import { TaskHistoryEntry } from './task-history-entry.entity';
 import { buildTaskHistoryDrafts } from './task-history.util';
 import {
@@ -38,6 +43,8 @@ export interface TaskResponse {
   parentTaskId: string | null;
   taskNumber: number;
   displayId: string;
+  category: string;
+  metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
   subtaskProgress?: SubtaskProgress | null;
@@ -130,6 +137,10 @@ export class TasksService {
       });
     }
 
+    if (query.category) {
+      qb.andWhere('task.category = :category', { category: query.category });
+    }
+
     qb.orderBy('task.updatedAt', 'DESC');
 
     const tasks = await qb.getMany();
@@ -164,6 +175,10 @@ export class TasksService {
       await this.validateParentTask(dto.parentTaskId, projectId);
     }
 
+    const category = dto.category ?? DEFAULT_TASK_CATEGORY;
+    assertTaskCategory(category);
+    const metadata = normalizeTaskMetadata(category, dto.metadata);
+
     const { saved, acronym } = await this.dataSource.transaction(
       async (manager) => {
         const project = await manager.findOne(Project, {
@@ -188,6 +203,8 @@ export class TasksService {
           createdById: userId,
           parentTaskId: dto.parentTaskId ?? null,
           taskNumber,
+          category,
+          metadata,
         });
 
         const savedTask = await manager.save(task);
@@ -290,6 +307,22 @@ export class TasksService {
     if (dto.criticity !== undefined) task.criticity = dto.criticity;
     if (dto.dueDate !== undefined) {
       task.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    }
+
+    const nextCategory =
+      dto.category ?? task.category ?? DEFAULT_TASK_CATEGORY;
+    if (dto.category !== undefined) {
+      assertTaskCategory(dto.category);
+    }
+    assertTaskCategory(nextCategory);
+    if (dto.metadata !== undefined || dto.category !== undefined) {
+      task.metadata = normalizeTaskMetadata(
+        nextCategory,
+        dto.metadata !== undefined ? dto.metadata : task.metadata,
+      );
+    }
+    if (dto.category !== undefined) {
+      task.category = dto.category;
     }
 
     if (dto.parentTaskId !== undefined) {
@@ -476,6 +509,8 @@ export class TasksService {
       parentTaskId: task.parentTaskId,
       taskNumber: task.taskNumber,
       displayId: formatTaskDisplayId(projectAcronym, task.taskNumber),
+      category: task.category ?? DEFAULT_TASK_CATEGORY,
+      metadata: task.metadata ?? {},
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
