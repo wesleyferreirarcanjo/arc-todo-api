@@ -18,6 +18,18 @@ export class UpdateTaskDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  businessDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  planCodeDescription?: string;
+
+  @IsOptional()
+  @IsString()
+  testDescription?: string;
+
+  @IsOptional()
   @IsEnum(TaskStatus)
   status?: TaskStatus;
 

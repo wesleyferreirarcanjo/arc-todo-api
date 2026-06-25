@@ -23,6 +23,15 @@ export class Task {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Column({ name: 'business_description', type: 'text', nullable: true })
+  businessDescription: string | null;
+
+  @Column({ name: 'plan_code_description', type: 'text', nullable: true })
+  planCodeDescription: string | null;
+
+  @Column({ name: 'test_description', type: 'text', nullable: true })
+  testDescription: string | null;
+
   @Column({
     type: 'enum',
     enum: TaskStatus,

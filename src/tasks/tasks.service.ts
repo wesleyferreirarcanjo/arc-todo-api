@@ -30,11 +30,18 @@ import {
   shouldReopenParent,
   SubtaskProgress,
 } from './task-hierarchy.util';
+import {
+  resolveDescriptionFields,
+  toDescriptionResponse,
+} from './task-descriptions.util';
 
 export interface TaskResponse {
   id: string;
   title: string;
   description: string | null;
+  businessDescription: string | null;
+  planCodeDescription: string | null;
+  testDescription: string | null;
   status: TaskStatus;
   criticity: TaskCriticity;
   dueDate: string | null;
@@ -193,9 +200,19 @@ export class TasksService {
         project.nextTaskNumber = taskNumber + 1;
         await manager.save(project);
 
+        const descriptions = resolveDescriptionFields(dto, {
+          description: null,
+          businessDescription: null,
+          planCodeDescription: null,
+          testDescription: null,
+        });
+
         const task = manager.create(Task, {
           title: dto.title,
-          description: dto.description ?? null,
+          description: descriptions.description,
+          businessDescription: descriptions.businessDescription,
+          planCodeDescription: descriptions.planCodeDescription,
+          testDescription: descriptions.testDescription,
           status: dto.status ?? TaskStatus.TODO,
           criticity: dto.criticity ?? TaskCriticity.MEDIUM,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
@@ -289,21 +306,44 @@ export class TasksService {
     const task = await this.findTaskEntity(userId, orgId, projectId, taskId);
     const previousStatus = task.status;
 
+    const nextDescriptions = resolveDescriptionFields(dto, {
+      description: task.description,
+      businessDescription: task.businessDescription ?? task.description,
+      planCodeDescription: task.planCodeDescription,
+      testDescription: task.testDescription,
+    });
+
     const historyDrafts = buildTaskHistoryDrafts(
       {
         title: task.title,
-        description: task.description,
+        description: task.businessDescription ?? task.description,
         dueDate: task.dueDate,
       },
       {
         title: dto.title,
-        description: dto.description,
+        description:
+          dto.description !== undefined ||
+          dto.businessDescription !== undefined ||
+          dto.planCodeDescription !== undefined ||
+          dto.testDescription !== undefined
+            ? nextDescriptions.businessDescription ?? undefined
+            : undefined,
         dueDate: dto.dueDate,
       },
     );
 
     if (dto.title !== undefined) task.title = dto.title;
-    if (dto.description !== undefined) task.description = dto.description;
+    if (
+      dto.description !== undefined ||
+      dto.businessDescription !== undefined ||
+      dto.planCodeDescription !== undefined ||
+      dto.testDescription !== undefined
+    ) {
+      task.description = nextDescriptions.description;
+      task.businessDescription = nextDescriptions.businessDescription;
+      task.planCodeDescription = nextDescriptions.planCodeDescription;
+      task.testDescription = nextDescriptions.testDescription;
+    }
     if (dto.criticity !== undefined) task.criticity = dto.criticity;
     if (dto.dueDate !== undefined) {
       task.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
@@ -497,10 +537,14 @@ export class TasksService {
   }
 
   private toTaskResponse(task: Task, projectAcronym: string): TaskResponse {
+    const descriptions = toDescriptionResponse(task);
     return {
       id: task.id,
       title: task.title,
-      description: task.description,
+      description: descriptions.description,
+      businessDescription: descriptions.businessDescription,
+      planCodeDescription: descriptions.planCodeDescription,
+      testDescription: descriptions.testDescription,
       status: task.status,
       criticity: task.criticity,
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
