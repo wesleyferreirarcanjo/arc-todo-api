@@ -5,6 +5,7 @@ import { PersonsModule } from '../persons/persons.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { RagSettingsModule } from '../rag-settings/rag-settings.module';
 import { StorageModule } from '../storage/storage.module';
+import { UserActivityModule } from '../user-activity/user-activity.module';
 import { KnowledgeAttachment } from './knowledge-attachment.entity';
 import { KnowledgeAttachmentService } from './knowledge-attachment.service';
 import {
@@ -30,6 +31,7 @@ import { KnowledgeService } from './knowledge.service';
     ProjectsModule,
     PersonsModule,
     RagSettingsModule,
+    UserActivityModule,
   ],
   controllers: [
     KnowledgeGlobalController,

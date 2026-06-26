@@ -13,6 +13,8 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { MinioStorageService } from '../storage/minio-storage.service';
+import { UserActivityAction } from '../user-activity/user-activity-action.enum';
+import { UserActivityService } from '../user-activity/user-activity.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -110,6 +112,7 @@ export class TasksService {
     private readonly organizationsService: OrganizationsService,
     private readonly dataSource: DataSource,
     private readonly storageService: MinioStorageService,
+    private readonly userActivityService: UserActivityService,
   ) {}
 
   async findAll(
@@ -167,6 +170,10 @@ export class TasksService {
 
     if (query.isBug !== undefined) {
       qb.andWhere('task.isBug = :isBug', { isBug: query.isBug });
+    }
+
+    if (query.createdByMe) {
+      qb.andWhere('task.createdById = :userId', { userId });
     }
 
     qb.orderBy('task.updatedAt', 'DESC');
@@ -249,6 +256,19 @@ export class TasksService {
         return { saved: savedTask, acronym: project.acronym };
       },
     );
+
+    this.userActivityService.record({
+      organizationId: orgId,
+      actorUserId: userId,
+      action: UserActivityAction.TASK_CREATED,
+      entityType: 'task',
+      entityId: saved.id,
+      summary: `Created task "${saved.title}"`,
+      metadata: {
+        displayId: formatTaskDisplayId(acronym, saved.taskNumber),
+        projectId,
+      },
+    });
 
     return this.toTaskResponse(saved, acronym);
   }
@@ -471,6 +491,42 @@ export class TasksService {
     const [enriched] = await this.enrichTaskResponses([saved], {
       includeSubtasks: !saved.parentTaskId,
     });
+
+    if (dto.status !== undefined && dto.status !== previousStatus) {
+      this.userActivityService.record({
+        organizationId: orgId,
+        actorUserId: userId,
+        action: UserActivityAction.TASK_STATUS_CHANGED,
+        entityType: 'task',
+        entityId: taskId,
+        summary: `Moved task "${saved.title}" (${enriched.displayId}) from ${previousStatus} to ${dto.status}`,
+        metadata: {
+          displayId: enriched.displayId,
+          previousStatus,
+          status: dto.status,
+          projectId,
+        },
+      });
+    } else if (
+      dto.title !== undefined ||
+      dto.description !== undefined ||
+      dto.businessDescription !== undefined ||
+      dto.criticity !== undefined ||
+      dto.dueDate !== undefined ||
+      dto.category !== undefined ||
+      dto.isBug !== undefined
+    ) {
+      this.userActivityService.record({
+        organizationId: orgId,
+        actorUserId: userId,
+        action: UserActivityAction.TASK_UPDATED,
+        entityType: 'task',
+        entityId: taskId,
+        summary: `Updated task "${saved.title}" (${enriched.displayId})`,
+        metadata: { displayId: enriched.displayId, projectId },
+      });
+    }
+
     return enriched;
   }
 
@@ -481,6 +537,9 @@ export class TasksService {
     taskId: string,
   ): Promise<void> {
     const task = await this.findTaskEntity(userId, orgId, projectId, taskId);
+    const project = await this.projectsService.findOne(userId, orgId, projectId);
+    const displayId = formatTaskDisplayId(project.acronym, task.taskNumber);
+
     const subtasks = await this.tasksRepository.find({
       where: { parentTaskId: taskId },
     });
@@ -489,6 +548,16 @@ export class TasksService {
     }
     await this.cleanupTaskEvidence(taskId);
     await this.tasksRepository.remove(task);
+
+    this.userActivityService.record({
+      organizationId: orgId,
+      actorUserId: userId,
+      action: UserActivityAction.TASK_DELETED,
+      entityType: 'task',
+      entityId: taskId,
+      summary: `Deleted task "${task.title}" (${displayId})`,
+      metadata: { displayId, projectId },
+    });
   }
 
   private async cleanupTaskEvidence(taskId: string): Promise<void> {

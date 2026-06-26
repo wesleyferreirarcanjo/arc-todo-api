@@ -16,6 +16,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { ScopeResolverModule } from './scope-resolver/scope-resolver.module';
 import { StorageModule } from './storage/storage.module';
 import { TasksModule } from './tasks/tasks.module';
+import { UserActivityModule } from './user-activity/user-activity.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
     ChatbotSettingsModule,
     RagSettingsModule,
     ConversationsModule,
+    UserActivityModule,
   ],
 })
 export class AppModule {}

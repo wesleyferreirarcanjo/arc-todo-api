@@ -17,6 +17,8 @@ import { KnowledgeEntry } from './knowledge-entry.entity';
 import { KnowledgeScope } from './knowledge-scope.enum';
 import { KnowledgeAttachmentService } from './knowledge-attachment.service';
 import { RagClientService, KnowledgeIndexMetadata } from '../rag-settings/rag-client.service';
+import { UserActivityAction } from '../user-activity/user-activity-action.enum';
+import { UserActivityService } from '../user-activity/user-activity.service';
 
 export interface KnowledgeEntryResponse {
   id: string;
@@ -59,6 +61,7 @@ export class KnowledgeService {
     @Inject(forwardRef(() => KnowledgeAttachmentService))
     private readonly attachmentService: KnowledgeAttachmentService,
     private readonly ragClientService: RagClientService,
+    private readonly userActivityService: UserActivityService,
   ) {}
 
   async findAllGeneral(userId: string): Promise<KnowledgeEntry[]> {
@@ -242,7 +245,9 @@ export class KnowledgeService {
       personId: null,
     });
 
-    return this.saveAndIndexEntry(entry);
+    const saved = await this.saveAndIndexEntry(entry);
+    this.recordOrgKnowledgeActivity(userId, saved, UserActivityAction.KNOWLEDGE_CREATED);
+    return saved;
   }
 
   async createProject(
@@ -263,7 +268,9 @@ export class KnowledgeService {
       personId: null,
     });
 
-    return this.saveAndIndexEntry(entry);
+    const saved = await this.saveAndIndexEntry(entry);
+    this.recordOrgKnowledgeActivity(userId, saved, UserActivityAction.KNOWLEDGE_CREATED);
+    return saved;
   }
 
   async createPerson(
@@ -284,7 +291,9 @@ export class KnowledgeService {
       personId,
     });
 
-    return this.saveAndIndexEntry(entry);
+    const saved = await this.saveAndIndexEntry(entry);
+    this.recordOrgKnowledgeActivity(userId, saved, UserActivityAction.KNOWLEDGE_CREATED);
+    return saved;
   }
 
   async createGeneralPerson(
@@ -413,7 +422,7 @@ export class KnowledgeService {
     dto: UpdateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
     const entry = await this.findOneGeneral(userId, knowledgeId);
-    return this.applyUpdate(entry, dto);
+    return this.applyUpdate(userId, entry, dto);
   }
 
   async updateOrganization(
@@ -423,7 +432,7 @@ export class KnowledgeService {
     dto: UpdateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
     const entry = await this.findOneOrganization(userId, orgId, knowledgeId);
-    return this.applyUpdate(entry, dto);
+    return this.applyUpdate(userId, entry, dto);
   }
 
   async updateProject(
@@ -439,7 +448,7 @@ export class KnowledgeService {
       projectId,
       knowledgeId,
     );
-    return this.applyUpdate(entry, dto);
+    return this.applyUpdate(userId, entry, dto);
   }
 
   async updatePerson(
@@ -450,7 +459,7 @@ export class KnowledgeService {
     dto: UpdateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
     const entry = await this.findOnePerson(userId, orgId, personId, knowledgeId);
-    return this.applyUpdate(entry, dto);
+    return this.applyUpdate(userId, entry, dto);
   }
 
   async updateGeneralPerson(
@@ -464,12 +473,12 @@ export class KnowledgeService {
       personId,
       knowledgeId,
     );
-    return this.applyUpdate(entry, dto);
+    return this.applyUpdate(userId, entry, dto);
   }
 
   async removeGeneral(userId: string, knowledgeId: string): Promise<void> {
     const entry = await this.findOneGeneral(userId, knowledgeId);
-    await this.removeEntry(entry);
+    await this.removeEntry(userId, entry);
   }
 
   async removeOrganization(
@@ -478,7 +487,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<void> {
     const entry = await this.findOneOrganization(userId, orgId, knowledgeId);
-    await this.removeEntry(entry);
+    await this.removeEntry(userId, entry);
   }
 
   async removeProject(
@@ -493,7 +502,7 @@ export class KnowledgeService {
       projectId,
       knowledgeId,
     );
-    await this.removeEntry(entry);
+    await this.removeEntry(userId, entry);
   }
 
   async removePerson(
@@ -503,7 +512,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<void> {
     const entry = await this.findOnePerson(userId, orgId, personId, knowledgeId);
-    await this.removeEntry(entry);
+    await this.removeEntry(userId, entry);
   }
 
   async removeGeneralPerson(
@@ -516,10 +525,15 @@ export class KnowledgeService {
       personId,
       knowledgeId,
     );
-    await this.removeEntry(entry);
+    await this.removeEntry(userId, entry);
   }
 
-  private async removeEntry(entry: KnowledgeEntry): Promise<void> {
+  private async removeEntry(userId: string, entry: KnowledgeEntry): Promise<void> {
+    this.recordOrgKnowledgeActivity(
+      userId,
+      entry,
+      UserActivityAction.KNOWLEDGE_DELETED,
+    );
     await this.ragClientService.requireCleanup(() =>
       this.ragClientService.deleteEntryChunks(entry.id),
     );
@@ -578,6 +592,7 @@ export class KnowledgeService {
   }
 
   private async applyUpdate(
+    userId: string,
     entry: KnowledgeEntry,
     dto: UpdateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
@@ -585,6 +600,11 @@ export class KnowledgeService {
     if (dto.content !== undefined) entry.content = dto.content;
     const saved = await this.knowledgeRepository.save(entry);
     await this.ragClientService.enqueueEntryIndex(saved.id);
+    this.recordOrgKnowledgeActivity(
+      userId,
+      saved,
+      UserActivityAction.KNOWLEDGE_UPDATED,
+    );
     return saved;
   }
 
@@ -592,6 +612,37 @@ export class KnowledgeService {
     const saved = await this.knowledgeRepository.save(entry);
     await this.ragClientService.enqueueEntryIndex(saved.id);
     return saved;
+  }
+
+  private recordOrgKnowledgeActivity(
+    userId: string,
+    entry: KnowledgeEntry,
+    action: UserActivityAction,
+  ): void {
+    if (!entry.organizationId) {
+      return;
+    }
+
+    const verb =
+      action === UserActivityAction.KNOWLEDGE_CREATED
+        ? 'Created'
+        : action === UserActivityAction.KNOWLEDGE_UPDATED
+          ? 'Updated'
+          : 'Deleted';
+
+    this.userActivityService.record({
+      organizationId: entry.organizationId,
+      actorUserId: userId,
+      action,
+      entityType: 'knowledge',
+      entityId: entry.id,
+      summary: `${verb} knowledge "${entry.title}"`,
+      metadata: {
+        scope: entry.scope,
+        projectId: entry.projectId,
+        personId: entry.personId,
+      },
+    });
   }
 
   private toResponse(entry: KnowledgeEntry): KnowledgeEntryResponse {

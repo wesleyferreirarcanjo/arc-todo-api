@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { ProjectsModule } from '../projects/projects.module';
+import { UserActivityModule } from '../user-activity/user-activity.module';
 import { TaskComment } from './task-comment.entity';
 import { TaskEvidence } from './task-evidence.entity';
 import { TaskEvidenceController } from './task-evidence.controller';
@@ -23,6 +24,7 @@ import { TasksService } from './tasks.service';
     ]),
     OrganizationsModule,
     ProjectsModule,
+    UserActivityModule,
   ],
   controllers: [
     TasksController,

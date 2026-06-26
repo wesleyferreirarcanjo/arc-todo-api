@@ -41,12 +41,36 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 11,
   },
   {
+    key: 'list_organization_members',
+    group: 'context',
+    displayName: 'List organization members',
+    description: 'List login members of an organization with roles.',
+    defaultEnabled: true,
+    sortOrder: 12,
+  },
+  {
+    key: 'create_organization_user',
+    group: 'context',
+    displayName: 'Create organization user',
+    description: 'Create a login user and add them to an organization.',
+    defaultEnabled: true,
+    sortOrder: 13,
+  },
+  {
+    key: 'add_organization_member',
+    group: 'context',
+    displayName: 'Add organization member',
+    description: 'Add an existing login user to an organization by username.',
+    defaultEnabled: true,
+    sortOrder: 14,
+  },
+  {
     key: 'list_projects',
     group: 'context',
     displayName: 'List projects',
     description: 'List projects in an organization.',
     defaultEnabled: true,
-    sortOrder: 12,
+    sortOrder: 16,
   },
   {
     key: 'create_project',
@@ -54,7 +78,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     displayName: 'Create project',
     description: 'Create a project in an organization.',
     defaultEnabled: true,
-    sortOrder: 13,
+    sortOrder: 17,
   },
   {
     key: 'get_project',
@@ -62,7 +86,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     displayName: 'Get project',
     description: 'Fetch one project by organization and project ID.',
     defaultEnabled: true,
-    sortOrder: 14,
+    sortOrder: 18,
   },
   {
     key: 'list_persons',
@@ -70,7 +94,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     displayName: 'List persons',
     description: 'List persons globally or within an organization.',
     defaultEnabled: true,
-    sortOrder: 15,
+    sortOrder: 20,
   },
   {
     key: 'get_person',
@@ -78,7 +102,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     displayName: 'Get person',
     description: 'Fetch one person globally or within an organization.',
     defaultEnabled: true,
-    sortOrder: 16,
+    sortOrder: 21,
   },
   {
     key: 'list_tasks',
@@ -127,6 +151,14 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     description: 'Delete a task from a project.',
     defaultEnabled: true,
     sortOrder: 25,
+  },
+  {
+    key: 'list_organization_activity',
+    group: 'activity',
+    displayName: 'List organization activity',
+    description: 'List recent user activity for an organization.',
+    defaultEnabled: true,
+    sortOrder: 30,
   },
   {
     key: 'list_knowledge',

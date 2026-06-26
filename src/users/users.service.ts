@@ -1,4 +1,8 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  OnModuleInit,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -23,6 +27,17 @@ export class UsersService implements OnModuleInit {
 
   async findById(id: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id } });
+  }
+
+  async create(username: string, password: string): Promise<User> {
+    const existing = await this.findByUsername(username);
+    if (existing) {
+      throw new ConflictException('Username already taken');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = this.usersRepository.create({ username, passwordHash });
+    return this.usersRepository.save(user);
   }
 
   private async seedAdminUser() {

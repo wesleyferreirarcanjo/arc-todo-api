@@ -31,4 +31,9 @@ export class ListTasksQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isBug?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  createdByMe?: boolean;
 }

@@ -19,6 +19,7 @@ import { TaskEvidence } from '../tasks/task-evidence.entity';
 import { TaskHistoryEntry } from '../tasks/task-history-entry.entity';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
+import { UserActivity } from '../user-activity/user-activity.entity';
 
 export const entities = [
   User,
@@ -40,6 +41,7 @@ export const entities = [
   Conversation,
   ConversationMessage,
   ConversationTaskContext,
+  UserActivity,
 ];
 
 export function getDatabaseConfig(
