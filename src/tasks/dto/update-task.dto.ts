@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsObject,
@@ -7,6 +8,7 @@ import {
   IsUUID,
 } from 'class-validator';
 import { TaskCriticity, TaskStatus } from '../task.enums';
+import { UpdateQaChecklistStateDto } from './update-qa-checklist-state.dto';
 
 export class UpdateTaskDto {
   @IsOptional()
@@ -56,4 +58,16 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsBoolean()
+  isBug?: boolean;
+
+  @IsOptional()
+  @IsString()
+  bugReason?: string | null;
+
+  @IsOptional()
+  @IsObject()
+  qaChecklistState?: UpdateQaChecklistStateDto;
 }

@@ -3,6 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { TaskComment } from './task-comment.entity';
+import { TaskEvidence } from './task-evidence.entity';
+import { TaskEvidenceController } from './task-evidence.controller';
+import { TaskEvidenceService } from './task-evidence.service';
 import { TaskHistoryEntry } from './task-history-entry.entity';
 import { Task } from './task.entity';
 import { TaskActivityService } from './task-activity.service';
@@ -12,12 +15,21 @@ import { TasksService } from './tasks.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Task, TaskComment, TaskHistoryEntry]),
+    TypeOrmModule.forFeature([
+      Task,
+      TaskComment,
+      TaskHistoryEntry,
+      TaskEvidence,
+    ]),
     OrganizationsModule,
     ProjectsModule,
   ],
-  controllers: [TasksController, TasksGlobalController],
-  providers: [TasksService, TaskActivityService],
-  exports: [TasksService, TaskActivityService],
+  controllers: [
+    TasksController,
+    TasksGlobalController,
+    TaskEvidenceController,
+  ],
+  providers: [TasksService, TaskActivityService, TaskEvidenceService],
+  exports: [TasksService, TaskActivityService, TaskEvidenceService],
 })
 export class TasksModule {}

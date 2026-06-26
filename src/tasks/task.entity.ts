@@ -70,6 +70,21 @@ export class Task {
   @Column({ type: 'jsonb', default: {} })
   metadata: Record<string, unknown>;
 
+  @Column({ name: 'is_bug', default: false })
+  isBug: boolean;
+
+  @Column({ name: 'bug_reason', type: 'text', nullable: true })
+  bugReason: string | null;
+
+  @Column({ name: 'bugged_at', type: 'timestamptz', nullable: true })
+  buggedAt: Date | null;
+
+  @Column({ name: 'bugged_by_id', nullable: true })
+  buggedById: string | null;
+
+  @Column({ name: 'qa_checklist_state', type: 'jsonb', default: {} })
+  qaChecklistState: Record<string, unknown>;
+
   @ManyToOne(() => Task, (task) => task.subtasks, {
     onDelete: 'CASCADE',
     nullable: true,

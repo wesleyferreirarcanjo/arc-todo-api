@@ -1,4 +1,5 @@
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { TaskCriticity, TaskStatus } from '../task.enums';
 
 export class ListTasksQueryDto {
@@ -25,4 +26,9 @@ export class ListTasksQueryDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  isBug?: boolean;
 }

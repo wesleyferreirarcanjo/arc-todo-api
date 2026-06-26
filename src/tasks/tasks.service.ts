@@ -12,10 +12,12 @@ import {
 import { OrganizationsService } from '../organizations/organizations.service';
 import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
+import { MinioStorageService } from '../storage/minio-storage.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task } from './task.entity';
+import { TaskEvidence } from './task-evidence.entity';
 import { DEFAULT_TASK_CATEGORY } from './task-category.enum';
 import { TaskCriticity, TaskStatus } from './task.enums';
 import {
@@ -30,6 +32,12 @@ import {
   shouldReopenParent,
   SubtaskProgress,
 } from './task-hierarchy.util';
+import {
+  computeQaChecklistProgress,
+  normalizeQaChecklistState,
+  type QaChecklistProgress,
+  type QaChecklistState,
+} from './task-qa-checklist.util';
 import {
   resolveDescriptionFields,
   toDescriptionResponse,
@@ -52,6 +60,12 @@ export interface TaskResponse {
   displayId: string;
   category: string;
   metadata: Record<string, unknown>;
+  isBug: boolean;
+  bugReason: string | null;
+  buggedAt: string | null;
+  buggedById: string | null;
+  qaChecklistState: QaChecklistState;
+  qaChecklistProgress: QaChecklistProgress | null;
   createdAt: string;
   updatedAt: string;
   subtaskProgress?: SubtaskProgress | null;
@@ -90,9 +104,12 @@ export class TasksService {
     private readonly tasksRepository: Repository<Task>,
     @InjectRepository(TaskHistoryEntry)
     private readonly historyRepository: Repository<TaskHistoryEntry>,
+    @InjectRepository(TaskEvidence)
+    private readonly evidenceRepository: Repository<TaskEvidence>,
     private readonly projectsService: ProjectsService,
     private readonly organizationsService: OrganizationsService,
     private readonly dataSource: DataSource,
+    private readonly storageService: MinioStorageService,
   ) {}
 
   async findAll(
@@ -146,6 +163,10 @@ export class TasksService {
 
     if (query.category) {
       qb.andWhere('task.category = :category', { category: query.category });
+    }
+
+    if (query.isBug !== undefined) {
+      qb.andWhere('task.isBug = :isBug', { isBug: query.isBug });
     }
 
     qb.orderBy('task.updatedAt', 'DESC');
@@ -392,6 +413,31 @@ export class TasksService {
       task.status = dto.status;
     }
 
+    if (dto.isBug !== undefined) {
+      if (dto.isBug) {
+        task.isBug = true;
+        task.status = TaskStatus.TODO;
+        task.buggedAt = new Date();
+        task.buggedById = userId;
+        if (dto.bugReason !== undefined) {
+          task.bugReason = dto.bugReason?.trim() || null;
+        }
+      } else {
+        task.isBug = false;
+        task.bugReason = null;
+        task.buggedAt = null;
+        task.buggedById = null;
+      }
+    } else if (dto.bugReason !== undefined && task.isBug) {
+      task.bugReason = dto.bugReason?.trim() || null;
+    }
+
+    if (dto.qaChecklistState !== undefined) {
+      task.qaChecklistState = normalizeQaChecklistState(
+        dto.qaChecklistState,
+      ) as unknown as Record<string, unknown>;
+    }
+
     const saved = await this.tasksRepository.save(task);
 
     if (historyDrafts.length > 0) {
@@ -438,7 +484,18 @@ export class TasksService {
     if (subtasks.length > 0) {
       await this.tasksRepository.remove(subtasks);
     }
+    await this.cleanupTaskEvidence(taskId);
     await this.tasksRepository.remove(task);
+  }
+
+  private async cleanupTaskEvidence(taskId: string): Promise<void> {
+    const rows = await this.evidenceRepository.find({ where: { taskId } });
+    if (rows.length === 0) {
+      return;
+    }
+
+    await this.storageService.deleteObjects(rows.map((row) => row.objectKey));
+    await this.evidenceRepository.remove(rows);
   }
 
   private async findTaskEntity(
@@ -555,6 +612,15 @@ export class TasksService {
       displayId: formatTaskDisplayId(projectAcronym, task.taskNumber),
       category: task.category ?? DEFAULT_TASK_CATEGORY,
       metadata: task.metadata ?? {},
+      isBug: task.isBug ?? false,
+      bugReason: task.bugReason ?? null,
+      buggedAt: task.buggedAt ? task.buggedAt.toISOString() : null,
+      buggedById: task.buggedById ?? null,
+      qaChecklistState: normalizeQaChecklistState(task.qaChecklistState),
+      qaChecklistProgress: computeQaChecklistProgress(
+        task.testDescription,
+        normalizeQaChecklistState(task.qaChecklistState),
+      ),
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };

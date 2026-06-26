@@ -15,6 +15,15 @@ export function buildKnowledgeObjectKey(
   return `knowledge/${knowledgeId}/${attachmentId}/${safeName}`;
 }
 
+export function buildTaskEvidenceObjectKey(
+  taskId: string,
+  evidenceId: string,
+  originalFilename: string,
+): string {
+  const safeName = sanitizeFilename(originalFilename);
+  return `tasks/${taskId}/evidence/${evidenceId}/${safeName}`;
+}
+
 export function newAttachmentId(): string {
   return randomUUID();
 }
