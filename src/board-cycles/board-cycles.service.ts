@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { formatTaskDisplayId } from '../common/utils/acronym.util';
 import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
+import { TaskEvidenceService } from '../tasks/task-evidence.service';
 import { Task } from '../tasks/task.entity';
 import { TaskStatus } from '../tasks/task.enums';
 import { TaskResponse, TasksService } from '../tasks/tasks.service';
@@ -70,6 +71,8 @@ export interface BoardCycleHistoryResponse {
 
 @Injectable()
 export class BoardCyclesService {
+  private readonly logger = new Logger(BoardCyclesService.name);
+
   constructor(
     @InjectRepository(BoardCycle)
     private readonly cyclesRepository: Repository<BoardCycle>,
@@ -81,6 +84,7 @@ export class BoardCyclesService {
     private readonly projectsRepository: Repository<Project>,
     private readonly projectsService: ProjectsService,
     private readonly tasksService: TasksService,
+    private readonly evidenceService: TaskEvidenceService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -106,7 +110,8 @@ export class BoardCyclesService {
   ): Promise<AdvanceBoardCycleResponse> {
     const project = await this.projectsService.findOne(userId, orgId, projectId);
 
-    return this.dataSource.transaction(async (manager) => {
+    const archivedTaskIds: string[] = [];
+    const result = await this.dataSource.transaction(async (manager) => {
       const cycleRepo = manager.getRepository(BoardCycle);
       let activeCycle = await cycleRepo.findOne({
         where: {
@@ -120,12 +125,17 @@ export class BoardCyclesService {
         activeCycle = await this.bootstrapProjectCycles(manager, project);
       }
 
-      return this.closeAndAdvanceInTransaction(
+      const closed = await this.closeAndAdvanceInTransaction(
         manager,
         project,
         activeCycle,
       );
+      archivedTaskIds.push(...closed.archivedTaskIds);
+      return closed.response;
     });
+
+    await this.purgeArchivedTaskEvidence(archivedTaskIds);
+    return result;
   }
 
   async syncAllOverdueProjects(): Promise<number> {
@@ -205,7 +215,8 @@ export class BoardCyclesService {
   }
 
   private async syncProjectCycles(project: Project): Promise<BoardCycle> {
-    return this.dataSource.transaction(async (manager) => {
+    const archivedTaskIds: string[] = [];
+    const activeCycle = await this.dataSource.transaction(async (manager) => {
       const cycleRepo = manager.getRepository(BoardCycle);
       let activeCycle = await cycleRepo.findOne({
         where: {
@@ -220,7 +231,12 @@ export class BoardCyclesService {
       }
 
       while (isCyclePeriodEnded(activeCycle.endDate)) {
-        await this.closeAndAdvanceInTransaction(manager, project, activeCycle);
+        const closed = await this.closeAndAdvanceInTransaction(
+          manager,
+          project,
+          activeCycle,
+        );
+        archivedTaskIds.push(...closed.archivedTaskIds);
         activeCycle = await cycleRepo.findOne({
           where: {
             projectId: project.id,
@@ -235,6 +251,9 @@ export class BoardCyclesService {
 
       return activeCycle;
     });
+
+    await this.purgeArchivedTaskEvidence(archivedTaskIds);
+    return activeCycle;
   }
 
   private async bootstrapProjectCycles(
@@ -288,7 +307,10 @@ export class BoardCyclesService {
     manager: EntityManager,
     project: Project,
     activeCycle: BoardCycle,
-  ): Promise<AdvanceBoardCycleResponse> {
+  ): Promise<{
+    response: AdvanceBoardCycleResponse;
+    archivedTaskIds: string[];
+  }> {
     const cycleRepo = manager.getRepository(BoardCycle);
     const historyRepo = manager.getRepository(BoardCycleHistoryEntry);
     const taskRepo = manager.getRepository(Task);
@@ -349,10 +371,26 @@ export class BoardCyclesService {
     const savedNextCycle = await cycleRepo.save(nextCycle);
 
     return {
-      closedCycle: this.toCycleResponse(activeCycle),
-      nextCycle: this.toCycleResponse(savedNextCycle),
-      archivedCount: archivalCandidates.length,
+      response: {
+        closedCycle: this.toCycleResponse(activeCycle),
+        nextCycle: this.toCycleResponse(savedNextCycle),
+        archivedCount: archivalCandidates.length,
+      },
+      archivedTaskIds: archivalCandidates.map((task) => task.id),
     };
+  }
+
+  private async purgeArchivedTaskEvidence(taskIds: string[]): Promise<void> {
+    const uniqueTaskIds = [...new Set(taskIds)];
+    for (const taskId of uniqueTaskIds) {
+      try {
+        await this.evidenceService.cleanupForTask(taskId);
+      } catch (error) {
+        this.logger.warn(
+          `Failed to purge QA evidence for archived task ${taskId}: ${String(error)}`,
+        );
+      }
+    }
   }
 
   private toCycleResponse(cycle: BoardCycle): BoardCycleResponse {

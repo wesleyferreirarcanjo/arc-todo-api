@@ -15,6 +15,7 @@ import { Organization } from '../organizations/organization.entity';
 import { Person } from '../persons/person.entity';
 import { Project } from '../projects/project.entity';
 import { TaskComment } from '../tasks/task-comment.entity';
+import { TaskEvidence } from '../tasks/task-evidence.entity';
 import { TaskHistoryEntry } from '../tasks/task-history-entry.entity';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
@@ -26,6 +27,7 @@ export const entities = [
   Project,
   Task,
   TaskComment,
+  TaskEvidence,
   TaskHistoryEntry,
   BoardCycle,
   BoardCycleHistoryEntry,

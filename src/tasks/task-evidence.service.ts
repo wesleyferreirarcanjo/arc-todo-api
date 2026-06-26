@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'express';
@@ -79,7 +80,11 @@ export class TaskEvidenceService {
       objectKey,
       file.buffer,
       file.mimetype || 'application/octet-stream',
-    );
+    ).catch(() => {
+      throw new ServiceUnavailableException(
+        'Unable to store evidence file. Check MinIO storage configuration.',
+      );
+    });
 
     const evidence = this.evidenceRepository.create({
       id: evidenceId,
