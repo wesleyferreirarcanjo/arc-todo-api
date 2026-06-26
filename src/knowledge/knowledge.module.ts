@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProjectAccessModule } from '../projects/project-access.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { PersonsModule } from '../persons/persons.module';
 import { ProjectsModule } from '../projects/projects.module';
@@ -28,6 +29,7 @@ import { KnowledgeService } from './knowledge.service';
     TypeOrmModule.forFeature([KnowledgeEntry, KnowledgeAttachment]),
     StorageModule,
     OrganizationsModule,
+    ProjectAccessModule,
     ProjectsModule,
     PersonsModule,
     RagSettingsModule,

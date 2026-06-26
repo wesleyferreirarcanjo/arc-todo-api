@@ -31,7 +31,21 @@ export class AuthService {
       user: {
         id: user.id,
         username: user.username,
+        isAdmin: user.isAdmin,
       },
+    };
+  }
+
+  async me(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      isAdmin: user.isAdmin,
     };
   }
 }

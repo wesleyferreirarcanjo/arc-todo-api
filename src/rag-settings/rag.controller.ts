@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AdminGuard } from '../projects/admin.guard';
 import {
   RagProjectRetrieveDto,
   RagRetrieveDto,
@@ -8,7 +9,7 @@ import {
 import { RagClientService } from './rag-client.service';
 
 @Controller('rag')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminGuard)
 export class RagController {
   constructor(private readonly ragClientService: RagClientService) {}
 

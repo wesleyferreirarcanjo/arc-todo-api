@@ -5,7 +5,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ensureUniqueProjectAcronym } from '../common/utils/acronym.util';
-import { OrganizationsService } from '../organizations/organizations.service';
+import { ProjectAccessService } from './project-access.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { Project } from './project.entity';
@@ -17,15 +17,16 @@ export class ProjectsService {
   constructor(
     @InjectRepository(Project)
     private readonly projectsRepository: Repository<Project>,
-    private readonly organizationsService: OrganizationsService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
   async findAll(userId: string, orgId: string): Promise<Project[]> {
-    await this.organizationsService.assertMember(userId, orgId);
-    return this.projectsRepository.find({
-      where: { organizationId: orgId },
-      order: { createdAt: 'DESC' },
-    });
+    await this.projectAccessService.assertOrgAccess(userId, orgId);
+    const projects = await this.projectAccessService.listAccessibleProjects(
+      userId,
+      orgId,
+    );
+    return projects.filter((project) => project.organizationId === orgId);
   }
 
   async create(
@@ -33,7 +34,7 @@ export class ProjectsService {
     orgId: string,
     dto: CreateProjectDto,
   ): Promise<Project> {
-    await this.organizationsService.assertAdmin(userId, orgId);
+    await this.projectAccessService.assertAdmin(userId);
 
     const acronym = await ensureUniqueProjectAcronym(dto.name, async (candidate) => {
       const existing = await this.projectsRepository.findOne({
@@ -59,12 +60,12 @@ export class ProjectsService {
     orgId: string,
     projectId: string,
   ): Promise<Project> {
-    await this.organizationsService.assertMember(userId, orgId);
+    const project = await this.projectAccessService.assertProjectAccess(
+      userId,
+      projectId,
+    );
 
-    const project = await this.projectsRepository.findOne({
-      where: { id: projectId, organizationId: orgId },
-    });
-    if (!project) {
+    if (project.organizationId !== orgId) {
       throw new NotFoundException('Project not found');
     }
 
@@ -77,7 +78,7 @@ export class ProjectsService {
     projectId: string,
     dto: UpdateProjectDto,
   ): Promise<Project> {
-    await this.organizationsService.assertAdmin(userId, orgId);
+    await this.projectAccessService.assertAdmin(userId);
     const project = await this.findOne(userId, orgId, projectId);
 
     if (dto.name !== undefined) project.name = dto.name;
@@ -88,7 +89,7 @@ export class ProjectsService {
   }
 
   async remove(userId: string, orgId: string, projectId: string): Promise<void> {
-    await this.organizationsService.assertAdmin(userId, orgId);
+    await this.projectAccessService.assertAdmin(userId);
     const project = await this.findOne(userId, orgId, projectId);
     await this.projectsRepository.remove(project);
   }

@@ -64,7 +64,7 @@ export class PersonsService {
   }
 
   async findAll(userId: string, orgId: string): Promise<Person[]> {
-    await this.organizationsService.assertMember(userId, orgId);
+    await this.organizationsService.assertOrgAccess(userId, orgId);
     return this.personsRepository.find({
       where: { organizationId: orgId },
       order: { name: 'ASC' },
@@ -76,7 +76,7 @@ export class PersonsService {
     orgId: string,
     dto: CreatePersonDto,
   ): Promise<Person> {
-    await this.organizationsService.assertMember(userId, orgId);
+    await this.organizationsService.assertOrgAccess(userId, orgId);
 
     const person = this.personsRepository.create({
       organizationId: orgId,
@@ -95,7 +95,7 @@ export class PersonsService {
     orgId: string,
     personId: string,
   ): Promise<Person> {
-    await this.organizationsService.assertMember(userId, orgId);
+    await this.organizationsService.assertOrgAccess(userId, orgId);
 
     const person = await this.personsRepository.findOne({
       where: { id: personId, organizationId: orgId },

@@ -13,6 +13,7 @@ import { McpToolSetting } from '../mcp-tools/mcp-tool-setting.entity';
 import { OrganizationMember } from '../organizations/organization-member.entity';
 import { Organization } from '../organizations/organization.entity';
 import { Person } from '../persons/person.entity';
+import { ProjectMember } from '../projects/project-member.entity';
 import { Project } from '../projects/project.entity';
 import { TaskComment } from '../tasks/task-comment.entity';
 import { TaskEvidence } from '../tasks/task-evidence.entity';
@@ -26,6 +27,7 @@ export const entities = [
   Organization,
   OrganizationMember,
   Project,
+  ProjectMember,
   Task,
   TaskComment,
   TaskEvidence,

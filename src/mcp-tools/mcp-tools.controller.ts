@@ -6,13 +6,14 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
+import { AdminGuard } from '../projects/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateMcpToolSettingDto } from './dto/update-mcp-tool-setting.dto';
 import { UpdateMcpToolSettingsDto } from './dto/update-mcp-tool-settings.dto';
 import { McpToolsService } from './mcp-tools.service';
 
 @Controller('mcp-tools')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminGuard)
 export class McpToolsController {
   constructor(private readonly mcpToolsService: McpToolsService) {}
 

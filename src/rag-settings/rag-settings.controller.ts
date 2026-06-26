@@ -1,10 +1,11 @@
 import { Body, Controller, Get, Put, UseGuards } from '@nestjs/common';
+import { AdminGuard } from '../projects/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateRagSettingsDto } from './dto/update-rag-settings.dto';
 import { RagSettingsService } from './rag-settings.service';
 
 @Controller('rag-settings')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, AdminGuard)
 export class RagSettingsController {
   constructor(private readonly ragSettingsService: RagSettingsService) {}
 

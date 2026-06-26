@@ -9,7 +9,7 @@ import {
   formatTaskDisplayId,
   parseTaskDisplayId,
 } from '../common/utils/acronym.util';
-import { OrganizationsService } from '../organizations/organizations.service';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { MinioStorageService } from '../storage/minio-storage.service';
@@ -109,7 +109,7 @@ export class TasksService {
     @InjectRepository(TaskEvidence)
     private readonly evidenceRepository: Repository<TaskEvidence>,
     private readonly projectsService: ProjectsService,
-    private readonly organizationsService: OrganizationsService,
+    private readonly projectAccessService: ProjectAccessService,
     private readonly dataSource: DataSource,
     private readonly storageService: MinioStorageService,
     private readonly userActivityService: UserActivityService,
@@ -136,9 +136,17 @@ export class TasksService {
       .createQueryBuilder('task')
       .innerJoinAndSelect('task.project', 'project')
       .innerJoinAndSelect('project.organization', 'organization')
-      .innerJoin('organization.members', 'member')
-      .where('member.userId = :userId', { userId })
-      .andWhere('task.archivedInCycleId IS NULL');
+      .where('task.archivedInCycleId IS NULL');
+
+    const isAdmin = await this.projectAccessService.isAdmin(userId);
+    if (!isAdmin) {
+      qb.innerJoin(
+        'project_members',
+        'projectMember',
+        'projectMember.project_id = project.id AND projectMember.user_id = :userId',
+        { userId },
+      );
+    }
 
     if (query.organizationId) {
       qb.andWhere('organization.id = :organizationId', {
@@ -289,7 +297,7 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    await this.organizationsService.assertMember(userId, project.organizationId);
+    await this.projectAccessService.assertProjectAccess(userId, project.id);
 
     const task = await this.tasksRepository.findOne({
       where: {

@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, IsNull, Repository } from 'typeorm';
 import { OrganizationsService } from '../organizations/organizations.service';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { PersonsService } from '../persons/persons.service';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateKnowledgeDto } from './dto/create-knowledge.dto';
@@ -56,6 +57,7 @@ export class KnowledgeService {
     @InjectRepository(KnowledgeEntry)
     private readonly knowledgeRepository: Repository<KnowledgeEntry>,
     private readonly organizationsService: OrganizationsService,
+    private readonly projectAccessService: ProjectAccessService,
     private readonly projectsService: ProjectsService,
     private readonly personsService: PersonsService,
     @Inject(forwardRef(() => KnowledgeAttachmentService))
@@ -75,12 +77,37 @@ export class KnowledgeService {
     userId: string,
     query: ListKnowledgeQueryDto,
   ): Promise<KnowledgeEntryResponse[]> {
+    const isAdmin = await this.projectAccessService.isAdmin(userId);
+
     const qb = this.knowledgeRepository
       .createQueryBuilder('knowledge')
       .leftJoinAndSelect('knowledge.organization', 'organization')
       .leftJoinAndSelect('knowledge.project', 'project')
-      .leftJoinAndSelect('knowledge.person', 'person')
-      .where(
+      .leftJoinAndSelect('knowledge.person', 'person');
+
+    if (isAdmin) {
+      qb.where(
+        new Brackets((where) => {
+          where
+            .where(
+              'knowledge.scope = :generalScope AND knowledge.createdById = :userId',
+              { generalScope: KnowledgeScope.GENERAL, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :personScope AND knowledge.organizationId IS NULL AND knowledge.createdById = :userId`,
+              { personScope: KnowledgeScope.PERSON, userId },
+            )
+            .orWhere('knowledge.scope IN (:...orgScopes)', {
+              orgScopes: [
+                KnowledgeScope.ORGANIZATION,
+                KnowledgeScope.PROJECT,
+                KnowledgeScope.PERSON,
+              ],
+            });
+        }),
+      );
+    } else {
+      qb.where(
         new Brackets((where) => {
           where
             .where(
@@ -92,20 +119,32 @@ export class KnowledgeService {
               { personScope: KnowledgeScope.PERSON, userId },
             )
             .orWhere(
-              `knowledge.scope IN (:...orgScopes) AND knowledge.organizationId IN (
-                SELECT om.organization_id FROM organization_members om WHERE om.user_id = :userId
+              `knowledge.scope = :orgScope AND knowledge.organizationId IN (
+                SELECT DISTINCT p.organization_id
+                FROM project_members pm
+                INNER JOIN projects p ON p.id = pm.project_id
+                WHERE pm.user_id = :userId
               )`,
-              {
-                orgScopes: [
-                  KnowledgeScope.ORGANIZATION,
-                  KnowledgeScope.PROJECT,
-                  KnowledgeScope.PERSON,
-                ],
-                userId,
-              },
+              { orgScope: KnowledgeScope.ORGANIZATION, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :projectScope AND knowledge.projectId IN (
+                SELECT pm.project_id FROM project_members pm WHERE pm.user_id = :userId
+              )`,
+              { projectScope: KnowledgeScope.PROJECT, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :personScope AND knowledge.organizationId IS NOT NULL AND knowledge.organizationId IN (
+                SELECT DISTINCT p.organization_id
+                FROM project_members pm
+                INNER JOIN projects p ON p.id = pm.project_id
+                WHERE pm.user_id = :userId
+              )`,
+              { personScope: KnowledgeScope.PERSON, userId },
             );
         }),
       );
+    }
 
     if (query.scope) {
       qb.andWhere('knowledge.scope = :scope', { scope: query.scope });
@@ -164,7 +203,7 @@ export class KnowledgeService {
     userId: string,
     orgId: string,
   ): Promise<KnowledgeEntry[]> {
-    await this.organizationsService.assertMember(userId, orgId);
+    await this.organizationsService.assertOrgAccess(userId, orgId);
     return this.knowledgeRepository.find({
       where: { scope: KnowledgeScope.ORGANIZATION, organizationId: orgId },
       order: { updatedAt: 'DESC' },
@@ -233,7 +272,7 @@ export class KnowledgeService {
     orgId: string,
     dto: CreateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
-    await this.organizationsService.assertMember(userId, orgId);
+    await this.organizationsService.assertOrgAccess(userId, orgId);
 
     const entry = this.knowledgeRepository.create({
       scope: KnowledgeScope.ORGANIZATION,
@@ -337,7 +376,7 @@ export class KnowledgeService {
     orgId: string,
     knowledgeId: string,
   ): Promise<KnowledgeEntry> {
-    await this.organizationsService.assertMember(userId, orgId);
+    await this.organizationsService.assertOrgAccess(userId, orgId);
 
     const entry = await this.knowledgeRepository.findOne({
       where: {

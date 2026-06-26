@@ -7,6 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { OrganizationMember } from '../organizations/organization-member.entity';
+import { ProjectMember } from '../projects/project-member.entity';
 import { Task } from '../tasks/task.entity';
 
 @Entity('users')
@@ -20,8 +21,14 @@ export class User {
   @Column({ name: 'password_hash' })
   passwordHash: string;
 
+  @Column({ name: 'is_admin', default: false })
+  isAdmin: boolean;
+
   @OneToMany(() => OrganizationMember, (member) => member.user)
   organizationMemberships: OrganizationMember[];
+
+  @OneToMany(() => ProjectMember, (member) => member.user)
+  projectMemberships: ProjectMember[];
 
   @OneToMany(() => Task, (task) => task.createdBy)
   createdTasks: Task[];

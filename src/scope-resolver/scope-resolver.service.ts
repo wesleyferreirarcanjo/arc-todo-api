@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { Organization } from '../organizations/organization.entity';
-import { OrganizationsService } from '../organizations/organizations.service';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { Project } from '../projects/project.entity';
 import {
   matchProjectFromMessage,
@@ -46,11 +44,7 @@ interface ProjectScopeItem extends ScopeMatchItem {
 
 @Injectable()
 export class ScopeResolverService {
-  constructor(
-    @InjectRepository(Project)
-    private readonly projectsRepository: Repository<Project>,
-    private readonly organizationsService: OrganizationsService,
-  ) {}
+  constructor(private readonly projectAccessService: ProjectAccessService) {}
 
   async resolveForUser(
     userId: string,
@@ -60,7 +54,8 @@ export class ScopeResolverService {
       message?: string;
     },
   ): Promise<ScopeResolveResponse> {
-    const organizations = await this.organizationsService.findForUser(userId);
+    const organizations =
+      await this.projectAccessService.listAccessibleOrganizations(userId);
     const orgItems = organizations.map((organization) => ({
       id: organization.id,
       labels: [organization.name, organization.slug],
@@ -72,10 +67,15 @@ export class ScopeResolverService {
     );
 
     const scopedOrgId = resolvedOrgItem?.organization.id;
-    const accessibleProjects = await this.loadAccessibleProjects(userId, scopedOrgId);
+    const accessibleProjects = await this.loadAccessibleProjects(
+      userId,
+      scopedOrgId,
+    );
     const projectHints = [
       ...projectHintVariants(query.projectHint),
-      ...(query.organizationHint && !resolvedOrgItem ? [query.organizationHint] : []),
+      ...(query.organizationHint && !resolvedOrgItem
+        ? [query.organizationHint]
+        : []),
     ];
 
     const projectCandidates = this.collectProjectCandidates(
@@ -107,17 +107,11 @@ export class ScopeResolverService {
     userId: string,
     organizationId?: string,
   ): Promise<ProjectScopeItem[]> {
-    const qb = this.projectsRepository
-      .createQueryBuilder('project')
-      .innerJoinAndSelect('project.organization', 'organization')
-      .innerJoin('organization.members', 'member')
-      .where('member.userId = :userId', { userId });
+    const projects = await this.projectAccessService.listAccessibleProjects(
+      userId,
+      organizationId,
+    );
 
-    if (organizationId) {
-      qb.andWhere('organization.id = :organizationId', { organizationId });
-    }
-
-    const projects = await qb.orderBy('project.createdAt', 'DESC').getMany();
     return projects.map((project) => ({
       id: project.id,
       project,
