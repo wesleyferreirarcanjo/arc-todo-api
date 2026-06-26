@@ -422,6 +422,9 @@ export class TasksService {
         if (dto.bugReason !== undefined) {
           task.bugReason = dto.bugReason?.trim() || null;
         }
+        if (!task.parentTaskId) {
+          await this.moveSubtasksToTodoWithParent(taskId);
+        }
       } else {
         task.isBug = false;
         task.bugReason = null;
@@ -542,6 +545,22 @@ export class TasksService {
       { parentTaskId },
       { projectId },
     );
+  }
+
+  private async moveSubtasksToTodoWithParent(parentTaskId: string): Promise<void> {
+    const subtasks = await this.tasksRepository.find({
+      where: { parentTaskId },
+    });
+    if (subtasks.length === 0) {
+      return;
+    }
+
+    for (const subtask of subtasks) {
+      if (subtask.status !== TaskStatus.TODO) {
+        subtask.status = TaskStatus.TODO;
+      }
+    }
+    await this.tasksRepository.save(subtasks);
   }
 
   private async completeAllSubtasks(parentTaskId: string): Promise<void> {

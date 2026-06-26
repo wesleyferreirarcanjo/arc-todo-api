@@ -1,5 +1,6 @@
 export interface QaChecklistState {
   checkedItemIds: string[];
+  buggedItemIds: string[];
 }
 
 export interface QaChecklistItem {
@@ -12,7 +13,7 @@ export interface QaChecklistProgress {
   total: number;
 }
 
-const EMPTY_STATE: QaChecklistState = { checkedItemIds: [] };
+const EMPTY_STATE: QaChecklistState = { checkedItemIds: [], buggedItemIds: [] };
 
 export function normalizeQaChecklistState(
   value: unknown,
@@ -21,17 +22,23 @@ export function normalizeQaChecklistState(
     return { ...EMPTY_STATE };
   }
 
-  const raw = value as { checkedItemIds?: unknown };
-  if (!Array.isArray(raw.checkedItemIds)) {
-    return { ...EMPTY_STATE };
-  }
+  const raw = value as { checkedItemIds?: unknown; buggedItemIds?: unknown };
 
-  const checkedItemIds = raw.checkedItemIds
-    .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
-    .map((id) => id.trim())
-    .slice(0, 500);
+  const checkedItemIds = Array.isArray(raw.checkedItemIds)
+    ? raw.checkedItemIds
+        .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        .map((id) => id.trim())
+        .slice(0, 500)
+    : [];
 
-  return { checkedItemIds };
+  const buggedItemIds = Array.isArray(raw.buggedItemIds)
+    ? raw.buggedItemIds
+        .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+        .map((id) => id.trim())
+        .slice(0, 500)
+    : [];
+
+  return { checkedItemIds, buggedItemIds };
 }
 
 export function parseQaChecklistItems(
@@ -88,6 +95,7 @@ if (require.main === module) {
   console.assert(items.length === 2, 'expected two checklist items');
   const progress = computeQaChecklistProgress('- [ ] A\n- [ ] B', {
     checkedItemIds: ['item-1'],
+    buggedItemIds: [],
   });
   console.assert(
     progress?.done === 1 && progress?.total === 2,

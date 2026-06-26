@@ -4,4 +4,8 @@ export class UpdateQaChecklistStateDto {
   @IsOptional()
   @IsString({ each: true })
   checkedItemIds?: string[];
+
+  @IsOptional()
+  @IsString({ each: true })
+  buggedItemIds?: string[];
 }
