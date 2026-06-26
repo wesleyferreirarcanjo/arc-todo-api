@@ -79,7 +79,7 @@ export class Task {
   @Column({ name: 'bugged_at', type: 'timestamptz', nullable: true })
   buggedAt: Date | null;
 
-  @Column({ name: 'bugged_by_id', nullable: true })
+  @Column({ name: 'bugged_by_id', type: 'uuid', nullable: true })
   buggedById: string | null;
 
   @Column({ name: 'qa_checklist_state', type: 'jsonb', default: {} })
