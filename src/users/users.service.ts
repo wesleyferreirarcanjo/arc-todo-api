@@ -8,7 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { DataSource, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -30,7 +30,6 @@ export class UsersService implements OnModuleInit {
     private readonly usersRepository: Repository<User>,
     private readonly configService: ConfigService,
     private readonly projectAccessService: ProjectAccessService,
-    private readonly dataSource: DataSource,
   ) {}
 
   async onModuleInit() {
@@ -61,25 +60,22 @@ export class UsersService implements OnModuleInit {
       throw new ConflictException('Username already taken');
     }
 
-    return this.dataSource.transaction(async (manager) => {
-      const usersRepo = manager.getRepository(User);
-      const passwordHash = await bcrypt.hash(dto.password, 10);
-      const user = usersRepo.create({
-        username: dto.username,
-        passwordHash,
-        isAdmin: dto.isAdmin ?? false,
-      });
-      const saved = await usersRepo.save(user);
-
-      if (dto.projectIds?.length) {
-        await this.projectAccessService.setProjectAssignments(
-          saved.id,
-          dto.projectIds,
-        );
-      }
-
-      return this.toResponse(saved);
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = this.usersRepository.create({
+      username: dto.username,
+      passwordHash,
+      isAdmin: dto.isAdmin ?? false,
     });
+    const saved = await this.usersRepository.save(user);
+
+    if (dto.projectIds?.length) {
+      await this.projectAccessService.setProjectAssignments(
+        saved.id,
+        dto.projectIds,
+      );
+    }
+
+    return this.toResponse(saved);
   }
 
   async updateManagedUser(
