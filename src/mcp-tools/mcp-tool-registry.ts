@@ -153,6 +153,41 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 25,
   },
   {
+    key: 'list_task_comments',
+    group: 'tasks',
+    displayName: 'List task comments',
+    description:
+      'List comments on a task (QA notes, discussion). Supports friendly task IDs.',
+    defaultEnabled: true,
+    sortOrder: 26,
+  },
+  {
+    key: 'add_task_comment',
+    group: 'tasks',
+    displayName: 'Add task comment',
+    description: 'Post a comment on a task. Supports friendly task IDs.',
+    defaultEnabled: true,
+    sortOrder: 27,
+  },
+  {
+    key: 'list_task_evidence',
+    group: 'tasks',
+    displayName: 'List task evidence',
+    description:
+      'List image/video evidence attachments on a task. Supports friendly task IDs.',
+    defaultEnabled: true,
+    sortOrder: 28,
+  },
+  {
+    key: 'download_task_evidence',
+    group: 'tasks',
+    displayName: 'Download task evidence',
+    description:
+      'Download one task evidence file. Images return as MCP image content for vision; non-images include base64.',
+    defaultEnabled: true,
+    sortOrder: 29,
+  },
+  {
     key: 'list_organization_activity',
     group: 'activity',
     displayName: 'List organization activity',

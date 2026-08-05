@@ -1433,5 +1433,117 @@
     "title": "RetrieveKnowledgeInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "list_task_comments": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id"
+    ],
+    "title": "GetTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_task_evidence": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id"
+    ],
+    "title": "GetTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "add_task_comment": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "body": {
+        "description": "Comment text to post on the task",
+        "title": "Body",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id",
+      "body"
+    ],
+    "title": "AddTaskCommentInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "download_task_evidence": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "evidence_id": {
+        "description": "Task evidence (image/video) UUID",
+        "title": "Evidence Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id",
+      "evidence_id"
+    ],
+    "title": "DownloadTaskEvidenceInput",
+    "type": "object",
+    "additionalProperties": false
   }
 }
