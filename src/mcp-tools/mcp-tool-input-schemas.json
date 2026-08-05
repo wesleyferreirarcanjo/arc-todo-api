@@ -1,4 +1,4 @@
-﻿{
+{
   "check_arc_todo_api_health": {
     "properties": {},
     "title": "EmptyInput",
@@ -29,6 +29,93 @@
       "organization_id"
     ],
     "title": "GetOrganizationInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_organization_members": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id"
+    ],
+    "title": "ListOrganizationMembersInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_organization_user": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "username": {
+        "title": "Username",
+        "type": "string"
+      },
+      "password": {
+        "minLength": 6,
+        "title": "Password",
+        "type": "string"
+      },
+      "role": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "owner | admin | member",
+        "title": "Role"
+      }
+    },
+    "required": [
+      "organization_id",
+      "username",
+      "password"
+    ],
+    "title": "CreateOrganizationUserInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "add_organization_member": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "username": {
+        "title": "Username",
+        "type": "string"
+      },
+      "role": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "owner | admin | member",
+        "title": "Role"
+      }
+    },
+    "required": [
+      "organization_id",
+      "username"
+    ],
+    "title": "AddOrganizationMemberInput",
     "type": "object",
     "additionalProperties": false
   },
@@ -463,6 +550,173 @@
       "task_id"
     ],
     "title": "GetTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_task_comments": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id"
+    ],
+    "title": "GetTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "add_task_comment": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "body": {
+        "description": "Comment text to post on the task",
+        "title": "Body",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id",
+      "body"
+    ],
+    "title": "AddTaskCommentInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_task_evidence": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id"
+    ],
+    "title": "GetTaskInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "download_task_evidence": {
+    "properties": {
+      "organization_id": {
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "title": "Project Id",
+        "type": "string"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "evidence_id": {
+        "description": "Task evidence (image/video) UUID",
+        "title": "Evidence Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "task_id",
+      "evidence_id"
+    ],
+    "title": "DownloadTaskEvidenceInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_organization_activity": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "user_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter by actor user UUID",
+        "title": "User Id"
+      },
+      "limit": {
+        "anyOf": [
+          {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Limit"
+      },
+      "offset": {
+        "anyOf": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Offset"
+      }
+    },
+    "required": [
+      "organization_id"
+    ],
+    "title": "ListOrganizationActivityInput",
     "type": "object",
     "additionalProperties": false
   },
@@ -1431,118 +1685,6 @@
       "question"
     ],
     "title": "RetrieveKnowledgeInput",
-    "type": "object",
-    "additionalProperties": false
-  },
-  "list_task_comments": {
-    "properties": {
-      "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "title": "Project Id",
-        "type": "string"
-      },
-      "task_id": {
-        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
-        "title": "Task Id",
-        "type": "string"
-      }
-    },
-    "required": [
-      "organization_id",
-      "project_id",
-      "task_id"
-    ],
-    "title": "GetTaskInput",
-    "type": "object",
-    "additionalProperties": false
-  },
-  "list_task_evidence": {
-    "properties": {
-      "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "title": "Project Id",
-        "type": "string"
-      },
-      "task_id": {
-        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
-        "title": "Task Id",
-        "type": "string"
-      }
-    },
-    "required": [
-      "organization_id",
-      "project_id",
-      "task_id"
-    ],
-    "title": "GetTaskInput",
-    "type": "object",
-    "additionalProperties": false
-  },
-  "add_task_comment": {
-    "properties": {
-      "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "title": "Project Id",
-        "type": "string"
-      },
-      "task_id": {
-        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
-        "title": "Task Id",
-        "type": "string"
-      },
-      "body": {
-        "description": "Comment text to post on the task",
-        "title": "Body",
-        "type": "string"
-      }
-    },
-    "required": [
-      "organization_id",
-      "project_id",
-      "task_id",
-      "body"
-    ],
-    "title": "AddTaskCommentInput",
-    "type": "object",
-    "additionalProperties": false
-  },
-  "download_task_evidence": {
-    "properties": {
-      "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "title": "Project Id",
-        "type": "string"
-      },
-      "task_id": {
-        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
-        "title": "Task Id",
-        "type": "string"
-      },
-      "evidence_id": {
-        "description": "Task evidence (image/video) UUID",
-        "title": "Evidence Id",
-        "type": "string"
-      }
-    },
-    "required": [
-      "organization_id",
-      "project_id",
-      "task_id",
-      "evidence_id"
-    ],
-    "title": "DownloadTaskEvidenceInput",
     "type": "object",
     "additionalProperties": false
   }

@@ -17,8 +17,10 @@ export interface McpToolTokenEstimate {
 
 export function getMcpToolInputSchema(key: string): JsonSchema {
   const schema = schemasByKey[key];
+  // ponytail: empty schema keeps /mcp-tools admin UI up if registry/schema drift;
+  // prefer fixing mcp-tool-input-schemas.json — estimate will undercount execution tokens
   if (!schema) {
-    throw new Error(`Missing MCP input schema for tool '${key}'`);
+    return { type: 'object', properties: {}, additionalProperties: false };
   }
   return schema;
 }
