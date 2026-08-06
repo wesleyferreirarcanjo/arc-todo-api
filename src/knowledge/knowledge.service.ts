@@ -592,10 +592,37 @@ export class KnowledgeService {
     userId: string,
     knowledgeId: string,
   ): Promise<KnowledgeEntry> {
-    const entry = await this.knowledgeRepository
+    // BR-ACL-01: admins bypass org membership (same shape as findAllForUser).
+    // General / global-person entries stay owner-scoped even for admins.
+    const isAdmin = await this.projectAccessService.isAdmin(userId);
+
+    const qb = this.knowledgeRepository
       .createQueryBuilder('knowledge')
-      .where('knowledge.id = :knowledgeId', { knowledgeId })
-      .andWhere(
+      .where('knowledge.id = :knowledgeId', { knowledgeId });
+
+    if (isAdmin) {
+      qb.andWhere(
+        new Brackets((where) => {
+          where
+            .where(
+              'knowledge.scope = :generalScope AND knowledge.createdById = :userId',
+              { generalScope: KnowledgeScope.GENERAL, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :personScope AND knowledge.organizationId IS NULL AND knowledge.createdById = :userId`,
+              { personScope: KnowledgeScope.PERSON, userId },
+            )
+            .orWhere('knowledge.scope IN (:...orgScopes)', {
+              orgScopes: [
+                KnowledgeScope.ORGANIZATION,
+                KnowledgeScope.PROJECT,
+                KnowledgeScope.PERSON,
+              ],
+            });
+        }),
+      );
+    } else {
+      qb.andWhere(
         new Brackets((where) => {
           where
             .where(
@@ -620,8 +647,10 @@ export class KnowledgeService {
               },
             );
         }),
-      )
-      .getOne();
+      );
+    }
+
+    const entry = await qb.getOne();
 
     if (!entry) {
       throw new NotFoundException('Knowledge entry not found');
