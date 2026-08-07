@@ -15,6 +15,19 @@ export interface QaChecklistProgress {
 
 const EMPTY_STATE: QaChecklistState = { checkedItemIds: [], buggedItemIds: [] };
 
+const CHECKLIST_SECTION_TITLE = 'o que verificar';
+
+const KNOWN_PLAIN_SECTION_TITLES = new Set([
+  'onde testar',
+  'o que verificar',
+  'resultado esperado',
+]);
+
+interface ParsedSection {
+  title: string | null;
+  lines: string[];
+}
+
 export function normalizeQaChecklistState(
   value: unknown,
 ): QaChecklistState {
@@ -41,6 +54,84 @@ export function normalizeQaChecklistState(
   return { checkedItemIds, buggedItemIds };
 }
 
+function normalizeHeadingTitle(title: string): string {
+  return title.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function matchSectionHeading(line: string): string | null {
+  const markdownMatch = line.match(/^#{1,6}\s+(.+)$/);
+  if (markdownMatch) {
+    const title = markdownMatch[1].trim();
+    return title || null;
+  }
+
+  const trimmed = line.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (KNOWN_PLAIN_SECTION_TITLES.has(normalizeHeadingTitle(trimmed))) {
+    return trimmed;
+  }
+
+  return null;
+}
+
+function parseBulletLabel(line: string): string | null {
+  const checkboxMatch = line.match(/^\s*-\s*\[[ xX]\]\s*(.+)$/);
+  if (checkboxMatch) {
+    const label = checkboxMatch[1].trim();
+    return label || null;
+  }
+
+  const bulletMatch = line.match(/^\s*-\s+(.+)$/);
+  if (bulletMatch) {
+    const label = bulletMatch[1].trim();
+    return label || null;
+  }
+
+  return null;
+}
+
+function collectChecklistItems(lines: string[]): QaChecklistItem[] {
+  const items: QaChecklistItem[] = [];
+  let index = 0;
+
+  for (const line of lines) {
+    const label = parseBulletLabel(line);
+    if (!label) {
+      continue;
+    }
+    items.push({ id: `item-${index}`, label });
+    index += 1;
+  }
+
+  return items;
+}
+
+function splitIntoSections(testDescription: string): ParsedSection[] {
+  const sections: ParsedSection[] = [];
+  let current: ParsedSection = { title: null, lines: [] };
+
+  for (const line of testDescription.split('\n')) {
+    const heading = matchSectionHeading(line);
+    if (heading !== null) {
+      if (current.title !== null || current.lines.some((entry) => entry.trim())) {
+        sections.push(current);
+      }
+      current = { title: heading, lines: [] };
+      continue;
+    }
+    current.lines.push(line);
+  }
+
+  if (current.title !== null || current.lines.some((entry) => entry.trim())) {
+    sections.push(current);
+  }
+
+  return sections;
+}
+
 export function parseQaChecklistItems(
   testDescription: string | null | undefined,
 ): QaChecklistItem[] {
@@ -48,31 +139,18 @@ export function parseQaChecklistItems(
     return [];
   }
 
-  const items: QaChecklistItem[] = [];
-  let index = 0;
+  const sections = splitIntoSections(testDescription);
+  const checklistSection = sections.find(
+    (section) =>
+      section.title !== null &&
+      normalizeHeadingTitle(section.title) === CHECKLIST_SECTION_TITLE,
+  );
 
-  for (const line of testDescription.split('\n')) {
-    const checkboxMatch = line.match(/^\s*-\s*\[[ xX]\]\s*(.+)$/);
-    if (checkboxMatch) {
-      const label = checkboxMatch[1].trim();
-      if (label) {
-        items.push({ id: `item-${index}`, label });
-        index += 1;
-      }
-      continue;
-    }
-
-    const bulletMatch = line.match(/^\s*-\s+(.+)$/);
-    if (bulletMatch) {
-      const label = bulletMatch[1].trim();
-      if (label) {
-        items.push({ id: `item-${index}`, label });
-        index += 1;
-      }
-    }
+  if (!checklistSection) {
+    return collectChecklistItems(testDescription.split('\n'));
   }
 
-  return items;
+  return collectChecklistItems(checklistSection.lines);
 }
 
 export function computeQaChecklistProgress(
@@ -91,9 +169,24 @@ export function computeQaChecklistProgress(
 
 // ponytail: runnable self-check via npm run test:task-qa-checklist
 if (require.main === module) {
-  const items = parseQaChecklistItems('- [ ] A\n- [ ] B');
-  console.assert(items.length === 2, 'expected two checklist items');
-  const progress = computeQaChecklistProgress('- [ ] A\n- [ ] B', {
+  const structured = `## Onde testar
+- Context bullet
+
+## O que verificar
+- [ ] A
+- [ ] B
+
+## Resultado esperado
+All good.`;
+  const items = parseQaChecklistItems(structured);
+  console.assert(items.length === 2, 'expected two checklist items from O que verificar');
+  console.assert(
+    items[0]?.label === 'A' && items[1]?.label === 'B',
+    'expected labels A and B',
+  );
+  const legacy = parseQaChecklistItems('- [ ] A\n- [ ] B');
+  console.assert(legacy.length === 2, 'expected legacy two checklist items');
+  const progress = computeQaChecklistProgress(structured, {
     checkedItemIds: ['item-1'],
     buggedItemIds: [],
   });
