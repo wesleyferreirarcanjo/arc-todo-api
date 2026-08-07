@@ -20,6 +20,7 @@ const CHECKLIST_SECTION_TITLE = 'o que verificar';
 const KNOWN_PLAIN_SECTION_TITLES = new Set([
   'onde testar',
   'o que verificar',
+  'como executar',
   'resultado esperado',
 ]);
 
