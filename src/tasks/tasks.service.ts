@@ -27,7 +27,11 @@ import {
   normalizeTaskMetadata,
 } from './task-metadata.util';
 import { TaskHistoryEntry } from './task-history-entry.entity';
-import { buildTaskHistoryDrafts } from './task-history.util';
+import { TaskHistoryField } from './task-history-field.enum';
+import {
+  buildBugHistoryDrafts,
+  buildTaskHistoryDrafts,
+} from './task-history.util';
 import {
   computeSubtaskProgress,
   shouldCompleteParent,
@@ -66,6 +70,8 @@ export interface TaskResponse {
   bugReason: string | null;
   buggedAt: string | null;
   buggedById: string | null;
+  bugReportCount: number;
+  bugResolveCount: number;
   qaChecklistState: QaChecklistState;
   qaChecklistProgress: QaChecklistProgress | null;
   createdAt: string;
@@ -362,24 +368,36 @@ export class TasksService {
       testDescription: task.testDescription,
     });
 
-    const historyDrafts = buildTaskHistoryDrafts(
-      {
-        title: task.title,
-        description: task.businessDescription ?? task.description,
-        dueDate: task.dueDate,
-      },
-      {
-        title: dto.title,
-        description:
-          dto.description !== undefined ||
-          dto.businessDescription !== undefined ||
-          dto.planCodeDescription !== undefined ||
-          dto.testDescription !== undefined
-            ? nextDescriptions.businessDescription ?? undefined
-            : undefined,
-        dueDate: dto.dueDate,
-      },
-    );
+    const historyDrafts = [
+      ...buildTaskHistoryDrafts(
+        {
+          title: task.title,
+          description: task.businessDescription ?? task.description,
+          dueDate: task.dueDate,
+        },
+        {
+          title: dto.title,
+          description:
+            dto.description !== undefined ||
+            dto.businessDescription !== undefined ||
+            dto.planCodeDescription !== undefined ||
+            dto.testDescription !== undefined
+              ? nextDescriptions.businessDescription ?? undefined
+              : undefined,
+          dueDate: dto.dueDate,
+        },
+      ),
+      ...buildBugHistoryDrafts(
+        {
+          isBug: task.isBug ?? false,
+          bugReason: task.bugReason ?? null,
+        },
+        {
+          isBug: dto.isBug,
+          bugReason: dto.bugReason,
+        },
+      ),
+    ];
 
     if (dto.title !== undefined) task.title = dto.title;
     if (
@@ -712,6 +730,8 @@ export class TasksService {
       bugReason: task.bugReason ?? null,
       buggedAt: task.buggedAt ? task.buggedAt.toISOString() : null,
       buggedById: task.buggedById ?? null,
+      bugReportCount: 0,
+      bugResolveCount: 0,
       qaChecklistState: normalizeQaChecklistState(task.qaChecklistState),
       qaChecklistProgress: computeQaChecklistProgress(
         task.testDescription,
@@ -720,6 +740,62 @@ export class TasksService {
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
     };
+  }
+
+  private async loadBugCycleCounts(
+    taskIds: string[],
+  ): Promise<Map<string, { bugReportCount: number; bugResolveCount: number }>> {
+    const countsByTaskId = new Map<
+      string,
+      { bugReportCount: number; bugResolveCount: number }
+    >();
+    if (taskIds.length === 0) {
+      return countsByTaskId;
+    }
+
+    const rows: Array<{
+      taskId: string;
+      newValue: string | null;
+      count: string;
+    }> = await this.historyRepository
+      .createQueryBuilder('history')
+      .select('history.task_id', 'taskId')
+      .addSelect('history.new_value', 'newValue')
+      .addSelect('COUNT(*)', 'count')
+      .where('history.task_id IN (:...taskIds)', { taskIds })
+      .andWhere('history.field = :field', { field: TaskHistoryField.IS_BUG })
+      .groupBy('history.task_id')
+      .addGroupBy('history.new_value')
+      .getRawMany();
+
+    for (const row of rows) {
+      const current = countsByTaskId.get(row.taskId) ?? {
+        bugReportCount: 0,
+        bugResolveCount: 0,
+      };
+      const n = Number(row.count) || 0;
+      if (row.newValue === 'true') {
+        current.bugReportCount = n;
+      } else if (row.newValue === 'false') {
+        current.bugResolveCount = n;
+      }
+      countsByTaskId.set(row.taskId, current);
+    }
+
+    return countsByTaskId;
+  }
+
+  private applyBugCycleCounts(
+    response: TaskResponse,
+    countsByTaskId: Map<
+      string,
+      { bugReportCount: number; bugResolveCount: number }
+    >,
+  ): TaskResponse {
+    const counts = countsByTaskId.get(response.id);
+    response.bugReportCount = counts?.bugReportCount ?? 0;
+    response.bugResolveCount = counts?.bugResolveCount ?? 0;
+    return response;
   }
 
   private async enrichTaskResponses(
@@ -758,13 +834,24 @@ export class TasksService {
     const acronymsByProjectId =
       await this.projectsService.findAcronymsByIds(projectIds);
 
+    const allTaskIds = [
+      ...new Set([
+        ...tasks.map((task) => task.id),
+        ...allSubtasks.map((subtask) => subtask.id),
+      ]),
+    ];
+    const bugCountsByTaskId = await this.loadBugCycleCounts(allTaskIds);
+
     return tasks.map((task) => {
       const acronym = acronymsByProjectId.get(task.projectId);
       if (!acronym) {
         throw new NotFoundException('Project not found for task');
       }
 
-      const response = this.toTaskResponse(task, acronym);
+      const response = this.applyBugCycleCounts(
+        this.toTaskResponse(task, acronym),
+        bugCountsByTaskId,
+      );
       if (task.parentTaskId) {
         return response;
       }
@@ -781,7 +868,10 @@ export class TasksService {
           if (!childAcronym) {
             throw new NotFoundException('Project not found for task');
           }
-          return this.toTaskResponse(child, childAcronym);
+          return this.applyBugCycleCounts(
+            this.toTaskResponse(child, childAcronym),
+            bugCountsByTaskId,
+          );
         });
       }
       return response;

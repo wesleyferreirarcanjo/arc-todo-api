@@ -188,6 +188,15 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 29,
   },
   {
+    key: 'list_task_history',
+    group: 'tasks',
+    displayName: 'List task history',
+    description:
+      'List field-change history for a task (title, description, dueDate, isBug, bugReason). Supports friendly task IDs.',
+    defaultEnabled: true,
+    sortOrder: 30,
+  },
+  {
     key: 'list_organization_activity',
     group: 'activity',
     displayName: 'List organization activity',
