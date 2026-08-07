@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -11,6 +12,7 @@ import { OrganizationsService } from '../organizations/organizations.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { PersonsService } from '../persons/persons.service';
 import { ProjectsService } from '../projects/projects.service';
+import { Task } from '../tasks/task.entity';
 import { CreateKnowledgeDto } from './dto/create-knowledge.dto';
 import { ListKnowledgeQueryDto } from './dto/list-knowledge-query.dto';
 import { UpdateKnowledgeDto } from './dto/update-knowledge.dto';
@@ -31,6 +33,7 @@ export interface KnowledgeEntryResponse {
   organizationId: string | null;
   projectId: string | null;
   personId: string | null;
+  taskId: string | null;
   createdAt: string;
   updatedAt: string;
   organization?: {
@@ -57,6 +60,8 @@ export class KnowledgeService {
   constructor(
     @InjectRepository(KnowledgeEntry)
     private readonly knowledgeRepository: Repository<KnowledgeEntry>,
+    @InjectRepository(Task)
+    private readonly taskRepository: Repository<Task>,
     private readonly organizationsService: OrganizationsService,
     private readonly projectAccessService: ProjectAccessService,
     private readonly knowledgeAccessService: KnowledgeAccessService,
@@ -170,6 +175,12 @@ export class KnowledgeService {
       });
     }
 
+    if (query.taskId) {
+      qb.andWhere('knowledge.taskId = :taskId', {
+        taskId: query.taskId,
+      });
+    }
+
     const hasAttachmentFilters =
       query.fileName?.trim() ||
       query.mimeType?.trim() ||
@@ -278,6 +289,7 @@ export class KnowledgeService {
       organizationId: null,
       projectId: null,
       personId: null,
+      taskId: null,
     });
 
     return this.saveAndIndexEntry(entry);
@@ -299,6 +311,7 @@ export class KnowledgeService {
       organizationId: orgId,
       projectId: null,
       personId: null,
+      taskId: null,
     });
 
     const saved = await this.saveAndIndexEntry(entry);
@@ -318,6 +331,8 @@ export class KnowledgeService {
       projectId,
     );
 
+    const taskId = await this.resolveTaskIdForProject(projectId, dto.taskId);
+
     const entry = this.knowledgeRepository.create({
       scope: KnowledgeScope.PROJECT,
       title: dto.title,
@@ -326,6 +341,7 @@ export class KnowledgeService {
       organizationId: orgId,
       projectId,
       personId: null,
+      taskId,
     });
 
     const saved = await this.saveAndIndexEntry(entry);
@@ -350,6 +366,7 @@ export class KnowledgeService {
       organizationId: orgId,
       projectId: null,
       personId,
+      taskId: null,
     });
 
     const saved = await this.saveAndIndexEntry(entry);
@@ -372,6 +389,7 @@ export class KnowledgeService {
       organizationId: null,
       projectId: null,
       personId,
+      taskId: null,
     });
 
     return this.saveAndIndexEntry(entry);
@@ -705,6 +723,21 @@ export class KnowledgeService {
   ): Promise<KnowledgeEntry> {
     if (dto.title !== undefined) entry.title = dto.title;
     if (dto.content !== undefined) entry.content = dto.content;
+    if (dto.taskId !== undefined) {
+      if (entry.scope !== KnowledgeScope.PROJECT || !entry.projectId) {
+        if (dto.taskId !== null) {
+          throw new BadRequestException(
+            'taskId can only be set on project-scoped knowledge entries',
+          );
+        }
+        entry.taskId = null;
+      } else {
+        entry.taskId = await this.resolveTaskIdForProject(
+          entry.projectId,
+          dto.taskId,
+        );
+      }
+    }
     const saved = await this.knowledgeRepository.save(entry);
     await this.ragClientService.enqueueEntryIndex(saved.id);
     this.recordOrgKnowledgeActivity(
@@ -713,6 +746,25 @@ export class KnowledgeService {
       UserActivityAction.KNOWLEDGE_UPDATED,
     );
     return saved;
+  }
+
+  private async resolveTaskIdForProject(
+    projectId: string,
+    taskId: string | null | undefined,
+  ): Promise<string | null> {
+    if (taskId === undefined || taskId === null || taskId === '') {
+      return null;
+    }
+    const task = await this.taskRepository.findOne({ where: { id: taskId } });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+    if (task.projectId !== projectId) {
+      throw new BadRequestException(
+        'taskId must belong to the same project as the knowledge entry',
+      );
+    }
+    return task.id;
   }
 
   private async saveAndIndexEntry(entry: KnowledgeEntry): Promise<KnowledgeEntry> {
@@ -748,6 +800,7 @@ export class KnowledgeService {
         scope: entry.scope,
         projectId: entry.projectId,
         personId: entry.personId,
+        taskId: entry.taskId,
       },
     });
   }
@@ -762,6 +815,7 @@ export class KnowledgeService {
       organizationId: entry.organizationId,
       projectId: entry.projectId,
       personId: entry.personId,
+      taskId: entry.taskId,
       createdAt: entry.createdAt.toISOString(),
       updatedAt: entry.updatedAt.toISOString(),
       organization: entry.organization

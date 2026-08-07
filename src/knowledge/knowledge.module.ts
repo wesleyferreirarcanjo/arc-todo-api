@@ -10,6 +10,7 @@ import { UserActivityModule } from '../user-activity/user-activity.module';
 import { Organization } from '../organizations/organization.entity';
 import { ProjectMember } from '../projects/project-member.entity';
 import { Project } from '../projects/project.entity';
+import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
 import { KnowledgeAccessGrant } from './knowledge-access-grant.entity';
 import { KnowledgeAccessService } from './knowledge-access.service';
@@ -46,6 +47,7 @@ import { KnowledgeService } from './knowledge.service';
       Organization,
       Project,
       ProjectMember,
+      Task,
     ]),
     StorageModule,
     OrganizationsModule,

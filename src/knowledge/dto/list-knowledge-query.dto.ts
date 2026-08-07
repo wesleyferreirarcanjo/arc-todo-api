@@ -25,6 +25,10 @@ export class ListKnowledgeQueryDto {
   personId?: string;
 
   @IsOptional()
+  @IsUUID()
+  taskId?: string;
+
+  @IsOptional()
   @IsString()
   fileName?: string;
 

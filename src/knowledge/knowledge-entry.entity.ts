@@ -12,6 +12,7 @@ import { KnowledgeAttachment } from './knowledge-attachment.entity';
 import { Organization } from '../organizations/organization.entity';
 import { Person } from '../persons/person.entity';
 import { Project } from '../projects/project.entity';
+import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
 import { KnowledgeScope } from './knowledge-scope.enum';
 
@@ -44,6 +45,9 @@ export class KnowledgeEntry {
   @Column({ name: 'person_id', nullable: true })
   personId: string | null;
 
+  @Column({ name: 'task_id', nullable: true })
+  taskId: string | null;
+
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'created_by_id' })
   createdBy: User;
@@ -59,6 +63,10 @@ export class KnowledgeEntry {
   @ManyToOne(() => Person, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'person_id' })
   person: Person | null;
+
+  @ManyToOne(() => Task, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'task_id' })
+  task: Task | null;
 
   @OneToMany(() => KnowledgeAttachment, (attachment) => attachment.knowledgeEntry)
   attachments: KnowledgeAttachment[];

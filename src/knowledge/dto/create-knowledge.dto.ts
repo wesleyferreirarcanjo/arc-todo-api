@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateKnowledgeDto {
   @IsString()
@@ -8,4 +8,9 @@ export class CreateKnowledgeDto {
   @IsString()
   @IsNotEmpty()
   content: string;
+
+  /** Optional link to a task (project-scoped knowledge only). */
+  @IsOptional()
+  @IsUUID()
+  taskId?: string | null;
 }
