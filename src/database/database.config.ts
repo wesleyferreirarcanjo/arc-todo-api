@@ -9,6 +9,7 @@ import { ChatbotSetting } from '../chatbot-settings/chatbot-setting.entity';
 import { RagSetting } from '../rag-settings/rag-setting.entity';
 import { KnowledgeEntry } from '../knowledge/knowledge-entry.entity';
 import { KnowledgeAttachment } from '../knowledge/knowledge-attachment.entity';
+import { KnowledgeAccessGrant } from '../knowledge/knowledge-access-grant.entity';
 import { McpToolSetting } from '../mcp-tools/mcp-tool-setting.entity';
 import { OrganizationMember } from '../organizations/organization-member.entity';
 import { Organization } from '../organizations/organization.entity';
@@ -37,6 +38,7 @@ export const entities = [
   Person,
   KnowledgeEntry,
   KnowledgeAttachment,
+  KnowledgeAccessGrant,
   McpToolSetting,
   ChatbotSetting,
   RagSetting,

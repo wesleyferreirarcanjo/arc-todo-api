@@ -16,6 +16,7 @@ import { ListKnowledgeQueryDto } from './dto/list-knowledge-query.dto';
 import { UpdateKnowledgeDto } from './dto/update-knowledge.dto';
 import { KnowledgeEntry } from './knowledge-entry.entity';
 import { KnowledgeScope } from './knowledge-scope.enum';
+import { KnowledgeAccessService } from './knowledge-access.service';
 import { KnowledgeAttachmentService } from './knowledge-attachment.service';
 import { RagClientService, KnowledgeIndexMetadata } from '../rag-settings/rag-client.service';
 import { UserActivityAction } from '../user-activity/user-activity-action.enum';
@@ -58,6 +59,7 @@ export class KnowledgeService {
     private readonly knowledgeRepository: Repository<KnowledgeEntry>,
     private readonly organizationsService: OrganizationsService,
     private readonly projectAccessService: ProjectAccessService,
+    private readonly knowledgeAccessService: KnowledgeAccessService,
     private readonly projectsService: ProjectsService,
     private readonly personsService: PersonsService,
     @Inject(forwardRef(() => KnowledgeAttachmentService))
@@ -120,25 +122,25 @@ export class KnowledgeService {
             )
             .orWhere(
               `knowledge.scope = :orgScope AND knowledge.organizationId IN (
-                SELECT DISTINCT p.organization_id
-                FROM project_members pm
-                INNER JOIN projects p ON p.id = pm.project_id
-                WHERE pm.user_id = :userId
+                SELECT kag.organization_id
+                FROM knowledge_access_grants kag
+                WHERE kag.user_id = :userId AND kag.organization_id IS NOT NULL
               )`,
               { orgScope: KnowledgeScope.ORGANIZATION, userId },
             )
             .orWhere(
               `knowledge.scope = :projectScope AND knowledge.projectId IN (
-                SELECT pm.project_id FROM project_members pm WHERE pm.user_id = :userId
+                SELECT kag.project_id
+                FROM knowledge_access_grants kag
+                WHERE kag.user_id = :userId AND kag.project_id IS NOT NULL
               )`,
               { projectScope: KnowledgeScope.PROJECT, userId },
             )
             .orWhere(
               `knowledge.scope = :personScope AND knowledge.organizationId IS NOT NULL AND knowledge.organizationId IN (
-                SELECT DISTINCT p.organization_id
-                FROM project_members pm
-                INNER JOIN projects p ON p.id = pm.project_id
-                WHERE pm.user_id = :userId
+                SELECT kag.organization_id
+                FROM knowledge_access_grants kag
+                WHERE kag.user_id = :userId AND kag.organization_id IS NOT NULL
               )`,
               { personScope: KnowledgeScope.PERSON, userId },
             );
@@ -204,6 +206,9 @@ export class KnowledgeService {
     orgId: string,
   ): Promise<KnowledgeEntry[]> {
     await this.organizationsService.assertOrgAccess(userId, orgId);
+    if (!(await this.knowledgeAccessService.hasOrgKnowledgeAccess(userId, orgId))) {
+      return [];
+    }
     return this.knowledgeRepository.find({
       where: { scope: KnowledgeScope.ORGANIZATION, organizationId: orgId },
       order: { updatedAt: 'DESC' },
@@ -216,6 +221,14 @@ export class KnowledgeService {
     projectId: string,
   ): Promise<KnowledgeEntry[]> {
     await this.projectsService.findOne(userId, orgId, projectId);
+    if (
+      !(await this.knowledgeAccessService.hasProjectKnowledgeAccess(
+        userId,
+        projectId,
+      ))
+    ) {
+      return [];
+    }
     return this.knowledgeRepository.find({
       where: { scope: KnowledgeScope.PROJECT, projectId },
       order: { updatedAt: 'DESC' },
@@ -228,6 +241,9 @@ export class KnowledgeService {
     personId: string,
   ): Promise<KnowledgeEntry[]> {
     await this.personsService.findOne(userId, orgId, personId);
+    if (!(await this.knowledgeAccessService.hasOrgKnowledgeAccess(userId, orgId))) {
+      return [];
+    }
     return this.knowledgeRepository.find({
       where: { scope: KnowledgeScope.PERSON, personId },
       order: { updatedAt: 'DESC' },
@@ -273,6 +289,7 @@ export class KnowledgeService {
     dto: CreateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
     await this.organizationsService.assertOrgAccess(userId, orgId);
+    await this.knowledgeAccessService.assertOrgKnowledgeAccess(userId, orgId);
 
     const entry = this.knowledgeRepository.create({
       scope: KnowledgeScope.ORGANIZATION,
@@ -296,6 +313,10 @@ export class KnowledgeService {
     dto: CreateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
     await this.projectsService.findOne(userId, orgId, projectId);
+    await this.knowledgeAccessService.assertProjectKnowledgeAccess(
+      userId,
+      projectId,
+    );
 
     const entry = this.knowledgeRepository.create({
       scope: KnowledgeScope.PROJECT,
@@ -319,6 +340,7 @@ export class KnowledgeService {
     dto: CreateKnowledgeDto,
   ): Promise<KnowledgeEntry> {
     await this.personsService.findOne(userId, orgId, personId);
+    await this.knowledgeAccessService.assertOrgKnowledgeAccess(userId, orgId);
 
     const entry = this.knowledgeRepository.create({
       scope: KnowledgeScope.PERSON,
@@ -377,6 +399,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<KnowledgeEntry> {
     await this.organizationsService.assertOrgAccess(userId, orgId);
+    await this.knowledgeAccessService.assertOrgKnowledgeAccess(userId, orgId);
 
     const entry = await this.knowledgeRepository.findOne({
       where: {
@@ -398,6 +421,10 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<KnowledgeEntry> {
     await this.projectsService.findOne(userId, orgId, projectId);
+    await this.knowledgeAccessService.assertProjectKnowledgeAccess(
+      userId,
+      projectId,
+    );
 
     const entry = await this.knowledgeRepository.findOne({
       where: {
@@ -419,6 +446,7 @@ export class KnowledgeService {
     knowledgeId: string,
   ): Promise<KnowledgeEntry> {
     await this.personsService.findOne(userId, orgId, personId);
+    await this.knowledgeAccessService.assertOrgKnowledgeAccess(userId, orgId);
 
     const entry = await this.knowledgeRepository.findOne({
       where: {
@@ -592,8 +620,8 @@ export class KnowledgeService {
     userId: string,
     knowledgeId: string,
   ): Promise<KnowledgeEntry> {
-    // BR-ACL-01: admins bypass org membership (same shape as findAllForUser).
-    // General / global-person entries stay owner-scoped even for admins.
+    // BR-ACL-01 + BR-ACL-10: admins bypass; non-admins need knowledge grants
+    // for org/project/org-person scopes. General / global-person stay owner-scoped.
     const isAdmin = await this.projectAccessService.isAdmin(userId);
 
     const qb = this.knowledgeRepository
@@ -634,17 +662,28 @@ export class KnowledgeService {
               { personScope: KnowledgeScope.PERSON, userId },
             )
             .orWhere(
-              `knowledge.scope IN (:...orgScopes) AND knowledge.organizationId IN (
-                SELECT om.organization_id FROM organization_members om WHERE om.user_id = :userId
+              `knowledge.scope = :orgScope AND knowledge.organizationId IN (
+                SELECT kag.organization_id
+                FROM knowledge_access_grants kag
+                WHERE kag.user_id = :userId AND kag.organization_id IS NOT NULL
               )`,
-              {
-                orgScopes: [
-                  KnowledgeScope.ORGANIZATION,
-                  KnowledgeScope.PROJECT,
-                  KnowledgeScope.PERSON,
-                ],
-                userId,
-              },
+              { orgScope: KnowledgeScope.ORGANIZATION, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :projectScope AND knowledge.projectId IN (
+                SELECT kag.project_id
+                FROM knowledge_access_grants kag
+                WHERE kag.user_id = :userId AND kag.project_id IS NOT NULL
+              )`,
+              { projectScope: KnowledgeScope.PROJECT, userId },
+            )
+            .orWhere(
+              `knowledge.scope = :personScope AND knowledge.organizationId IS NOT NULL AND knowledge.organizationId IN (
+                SELECT kag.organization_id
+                FROM knowledge_access_grants kag
+                WHERE kag.user_id = :userId AND kag.organization_id IS NOT NULL
+              )`,
+              { personScope: KnowledgeScope.PERSON, userId },
             );
         }),
       );

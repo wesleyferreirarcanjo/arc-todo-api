@@ -7,6 +7,18 @@ import { ProjectsModule } from '../projects/projects.module';
 import { RagSettingsModule } from '../rag-settings/rag-settings.module';
 import { StorageModule } from '../storage/storage.module';
 import { UserActivityModule } from '../user-activity/user-activity.module';
+import { Organization } from '../organizations/organization.entity';
+import { ProjectMember } from '../projects/project-member.entity';
+import { Project } from '../projects/project.entity';
+import { User } from '../users/user.entity';
+import { KnowledgeAccessGrant } from './knowledge-access-grant.entity';
+import { KnowledgeAccessService } from './knowledge-access.service';
+import {
+  OrganizationKnowledgeAccessController,
+  OrganizationKnowledgeGrantsController,
+  ProjectKnowledgeAccessController,
+  ProjectKnowledgeGrantsController,
+} from './knowledge-access.controller';
 import { KnowledgeAttachment } from './knowledge-attachment.entity';
 import { KnowledgeAttachmentService } from './knowledge-attachment.service';
 import {
@@ -26,7 +38,15 @@ import { KnowledgeService } from './knowledge.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([KnowledgeEntry, KnowledgeAttachment]),
+    TypeOrmModule.forFeature([
+      KnowledgeEntry,
+      KnowledgeAttachment,
+      KnowledgeAccessGrant,
+      User,
+      Organization,
+      Project,
+      ProjectMember,
+    ]),
     StorageModule,
     OrganizationsModule,
     ProjectAccessModule,
@@ -41,12 +61,21 @@ import { KnowledgeService } from './knowledge.service';
     OrganizationKnowledgeController,
     ProjectKnowledgeController,
     PersonKnowledgeController,
+    OrganizationKnowledgeAccessController,
+    OrganizationKnowledgeGrantsController,
+    ProjectKnowledgeAccessController,
+    ProjectKnowledgeGrantsController,
     GlobalKnowledgeAttachmentsController,
     GeneralPersonKnowledgeAttachmentsController,
     OrganizationKnowledgeAttachmentsController,
     ProjectKnowledgeAttachmentsController,
     PersonKnowledgeAttachmentsController,
   ],
-  providers: [KnowledgeService, KnowledgeAttachmentService],
+  providers: [
+    KnowledgeService,
+    KnowledgeAttachmentService,
+    KnowledgeAccessService,
+  ],
+  exports: [KnowledgeAccessService],
 })
 export class KnowledgeModule {}
