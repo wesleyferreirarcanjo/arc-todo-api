@@ -142,10 +142,12 @@ export class UsersService implements OnModuleInit {
 
   private async seedAdminUser() {
     const username = this.configService.get<string>('ADMIN_USERNAME', 'admin');
-    const password = this.configService.get<string>(
-      'ADMIN_PASSWORD',
-      'admin123',
-    );
+    const password = this.configService.get<string>('ADMIN_PASSWORD');
+    if (!password) {
+      throw new Error(
+        'ADMIN_PASSWORD must be set to seed the admin user (do not commit the real value)',
+      );
+    }
 
     const existing = await this.findByUsername(username);
     if (existing) {

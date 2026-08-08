@@ -55,7 +55,7 @@ The API runs at `http://localhost:3000`.
 | `JWT_SECRET` | JWT signing secret | `change-me-in-production` |
 | `JWT_EXPIRES_IN` | Token expiry | `7d` |
 | `ADMIN_USERNAME` | Seeded admin username | `admin` |
-| `ADMIN_PASSWORD` | Seeded admin password | `admin123` |
+| `ADMIN_PASSWORD` | Seeded admin password (**required**; set locally / in Coolify — never commit the real value) | — |
 | `CORS_ORIGIN` | Allowed web origin | `http://localhost:5173` |
 
 On first startup, the API seeds the admin user if it does not exist.
