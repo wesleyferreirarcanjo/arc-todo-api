@@ -1,7 +1,8 @@
 export interface QaChecklistState {
   checkedItemIds: string[];
   buggedItemIds: string[];
-  buggedItemNotes: Record<string, string>;
+  /** Per-item bug notes keyed by checklist item id — one or more reasons each. */
+  buggedItemNotes: Record<string, string[]>;
 }
 
 export interface QaChecklistItem {
@@ -61,16 +62,27 @@ export function normalizeQaChecklistState(
         .slice(0, 500)
     : [];
 
-  const buggedItemNotes: Record<string, string> = {};
+  const buggedItemNotes: Record<string, string[]> = {};
   if (raw.buggedItemNotes && typeof raw.buggedItemNotes === 'object') {
     for (const [key, note] of Object.entries(
       raw.buggedItemNotes as Record<string, unknown>,
     )) {
       if (typeof key !== 'string' || !key.trim()) continue;
-      if (typeof note !== 'string') continue;
-      const trimmed = note.trim();
-      if (!trimmed) continue;
-      buggedItemNotes[key.trim()] = trimmed;
+      const id = key.trim();
+      const list: string[] = [];
+      if (typeof note === 'string') {
+        const trimmed = note.trim();
+        if (trimmed) list.push(trimmed);
+      } else if (Array.isArray(note)) {
+        for (const entry of note) {
+          if (typeof entry !== 'string') continue;
+          const trimmed = entry.trim();
+          if (trimmed) list.push(trimmed);
+        }
+      }
+      if (list.length > 0) {
+        buggedItemNotes[id] = list.slice(0, 50);
+      }
     }
   }
 

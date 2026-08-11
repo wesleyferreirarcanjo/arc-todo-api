@@ -9,8 +9,8 @@ export class UpdateQaChecklistStateDto {
   @IsString({ each: true })
   buggedItemIds?: string[];
 
-  /** Per-item bug notes keyed by checklist item id (e.g. item-0). */
+  /** Per-item bug notes keyed by checklist item id — string or string[] (legacy string accepted). */
   @IsOptional()
   @IsObject()
-  buggedItemNotes?: Record<string, string>;
+  buggedItemNotes?: Record<string, string | string[]>;
 }
