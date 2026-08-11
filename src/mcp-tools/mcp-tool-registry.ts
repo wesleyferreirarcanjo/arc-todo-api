@@ -285,8 +285,57 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     defaultEnabled: true,
     sortOrder: 40,
   },
+  {
+    key: 'list_project_diagrams',
+    group: 'diagrams',
+    displayName: 'List project diagrams',
+    description:
+      'List Excalidraw diagrams for a project (id, title, thumbnail, timestamps).',
+    defaultEnabled: true,
+    sortOrder: 50,
+  },
+  {
+    key: 'get_project_diagram',
+    group: 'diagrams',
+    displayName: 'Get project diagram',
+    description: 'Fetch one project diagram including Excalidraw scene_json.',
+    defaultEnabled: true,
+    sortOrder: 51,
+  },
+  {
+    key: 'create_project_diagram',
+    group: 'diagrams',
+    displayName: 'Create project diagram',
+    description:
+      'Create a project Excalidraw diagram with a title and optional scene_json.',
+    defaultEnabled: true,
+    sortOrder: 52,
+  },
+  {
+    key: 'update_project_diagram',
+    group: 'diagrams',
+    displayName: 'Update project diagram',
+    description: 'Update a project diagram title and/or Excalidraw scene_json.',
+    defaultEnabled: true,
+    sortOrder: 53,
+  },
+  {
+    key: 'delete_project_diagram',
+    group: 'diagrams',
+    displayName: 'Delete project diagram',
+    description: 'Delete a project Excalidraw diagram.',
+    defaultEnabled: true,
+    sortOrder: 54,
+  },
 ];
 
-export const MCP_TOOL_GROUPS = ['system', 'context', 'tasks', 'knowledge', 'rag'] as const;
+export const MCP_TOOL_GROUPS = [
+  'system',
+  'context',
+  'tasks',
+  'knowledge',
+  'rag',
+  'diagrams',
+] as const;
 
 export type McpToolGroup = (typeof MCP_TOOL_GROUPS)[number];

@@ -1687,5 +1687,182 @@
     "title": "RetrieveKnowledgeInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "list_project_diagrams": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": ["organization_id", "project_id"],
+    "title": "ListProjectDiagramsInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_project_diagram": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "diagram_id": {
+        "description": "Project diagram UUID",
+        "title": "Diagram Id",
+        "type": "string"
+      }
+    },
+    "required": ["organization_id", "project_id", "diagram_id"],
+    "title": "GetProjectDiagramInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_project_diagram": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "title": {
+        "description": "Diagram title (required, non-empty)",
+        "title": "Title",
+        "type": "string"
+      },
+      "scene_json": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Excalidraw scene JSON (elements, appState, files)",
+        "title": "Scene Json"
+      },
+      "thumbnail": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional base64 data-URL thumbnail for list cards",
+        "title": "Thumbnail"
+      }
+    },
+    "required": ["organization_id", "project_id", "title"],
+    "title": "CreateProjectDiagramInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_project_diagram": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "diagram_id": {
+        "description": "Project diagram UUID",
+        "title": "Diagram Id",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "New diagram title",
+        "title": "Title"
+      },
+      "scene_json": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Excalidraw scene JSON (elements, appState, files)",
+        "title": "Scene Json"
+      },
+      "thumbnail": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional base64 data-URL thumbnail for list cards",
+        "title": "Thumbnail"
+      }
+    },
+    "required": ["organization_id", "project_id", "diagram_id"],
+    "title": "UpdateProjectDiagramInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "delete_project_diagram": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "diagram_id": {
+        "description": "Project diagram UUID",
+        "title": "Diagram Id",
+        "type": "string"
+      }
+    },
+    "required": ["organization_id", "project_id", "diagram_id"],
+    "title": "GetProjectDiagramInput",
+    "type": "object",
+    "additionalProperties": false
   }
 }

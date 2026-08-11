@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './database/database.config';
 import { BoardCyclesModule } from './board-cycles/board-cycles.module';
+import { DiagramsModule } from './diagrams/diagrams.module';
 import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { ConversationsModule } from './conversations/conversations.module';
@@ -39,6 +40,7 @@ import { UsersModule } from './users/users.module';
     PersonsModule,
     StorageModule,
     KnowledgeModule,
+    DiagramsModule,
     McpToolsModule,
     ChatbotSettingsModule,
     RagSettingsModule,

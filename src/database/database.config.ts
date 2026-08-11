@@ -6,6 +6,7 @@ import { Conversation } from '../conversations/conversation.entity';
 import { ConversationMessage } from '../conversations/conversation-message.entity';
 import { ConversationTaskContext } from '../conversations/conversation-task-context.entity';
 import { ChatbotSetting } from '../chatbot-settings/chatbot-setting.entity';
+import { ProjectDiagram } from '../diagrams/project-diagram.entity';
 import { RagSetting } from '../rag-settings/rag-setting.entity';
 import { KnowledgeEntry } from '../knowledge/knowledge-entry.entity';
 import { KnowledgeAttachment } from '../knowledge/knowledge-attachment.entity';
@@ -39,6 +40,7 @@ export const entities = [
   KnowledgeEntry,
   KnowledgeAttachment,
   KnowledgeAccessGrant,
+  ProjectDiagram,
   McpToolSetting,
   ChatbotSetting,
   RagSetting,
