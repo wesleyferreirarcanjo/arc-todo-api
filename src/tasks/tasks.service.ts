@@ -461,13 +461,20 @@ export class TasksService {
 
     if (dto.isBug !== undefined) {
       if (dto.isBug) {
+        const effectiveReason =
+          dto.bugReason !== undefined
+            ? dto.bugReason?.trim() || null
+            : task.bugReason?.trim() || null;
+        if (!effectiveReason) {
+          throw new BadRequestException(
+            'bugReason is required to mark a task as bug',
+          );
+        }
         task.isBug = true;
         task.status = TaskStatus.TODO;
         task.buggedAt = new Date();
         task.buggedById = userId;
-        if (dto.bugReason !== undefined) {
-          task.bugReason = dto.bugReason?.trim() || null;
-        }
+        task.bugReason = effectiveReason;
         if (!task.parentTaskId) {
           await this.moveSubtasksToTodoWithParent(taskId);
         }

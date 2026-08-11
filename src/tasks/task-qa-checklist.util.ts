@@ -1,6 +1,7 @@
 export interface QaChecklistState {
   checkedItemIds: string[];
   buggedItemIds: string[];
+  buggedItemNotes: Record<string, string>;
 }
 
 export interface QaChecklistItem {
@@ -13,7 +14,11 @@ export interface QaChecklistProgress {
   total: number;
 }
 
-const EMPTY_STATE: QaChecklistState = { checkedItemIds: [], buggedItemIds: [] };
+const EMPTY_STATE: QaChecklistState = {
+  checkedItemIds: [],
+  buggedItemIds: [],
+  buggedItemNotes: {},
+};
 
 const CHECKLIST_SECTION_TITLE = 'o que verificar';
 
@@ -33,10 +38,14 @@ export function normalizeQaChecklistState(
   value: unknown,
 ): QaChecklistState {
   if (!value || typeof value !== 'object') {
-    return { ...EMPTY_STATE };
+    return { ...EMPTY_STATE, buggedItemNotes: {} };
   }
 
-  const raw = value as { checkedItemIds?: unknown; buggedItemIds?: unknown };
+  const raw = value as {
+    checkedItemIds?: unknown;
+    buggedItemIds?: unknown;
+    buggedItemNotes?: unknown;
+  };
 
   const checkedItemIds = Array.isArray(raw.checkedItemIds)
     ? raw.checkedItemIds
@@ -52,7 +61,28 @@ export function normalizeQaChecklistState(
         .slice(0, 500)
     : [];
 
-  return { checkedItemIds, buggedItemIds };
+  const buggedItemNotes: Record<string, string> = {};
+  if (raw.buggedItemNotes && typeof raw.buggedItemNotes === 'object') {
+    for (const [key, note] of Object.entries(
+      raw.buggedItemNotes as Record<string, unknown>,
+    )) {
+      if (typeof key !== 'string' || !key.trim()) continue;
+      if (typeof note !== 'string') continue;
+      const trimmed = note.trim();
+      if (!trimmed) continue;
+      buggedItemNotes[key.trim()] = trimmed;
+    }
+  }
+
+  // Drop notes for ids that are no longer bugged.
+  const buggedSet = new Set(buggedItemIds);
+  for (const key of Object.keys(buggedItemNotes)) {
+    if (!buggedSet.has(key)) {
+      delete buggedItemNotes[key];
+    }
+  }
+
+  return { checkedItemIds, buggedItemIds, buggedItemNotes };
 }
 
 function normalizeHeadingTitle(title: string): string {
@@ -190,6 +220,7 @@ All good.`;
   const progress = computeQaChecklistProgress(structured, {
     checkedItemIds: ['item-1'],
     buggedItemIds: [],
+    buggedItemNotes: {},
   });
   console.assert(
     progress?.done === 1 && progress?.total === 2,

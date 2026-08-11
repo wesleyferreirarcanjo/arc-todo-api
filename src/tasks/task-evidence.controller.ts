@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -46,6 +47,7 @@ export class TaskEvidenceController {
     @Param('projectId') projectId: string,
     @Param('taskId') taskId: string,
     @UploadedFile() file: Express.Multer.File,
+    @Body('checklistItemId') checklistItemId: string | undefined,
     @Req() req: AuthRequest,
   ) {
     return this.evidenceService.upload(
@@ -54,6 +56,7 @@ export class TaskEvidenceController {
       projectId,
       taskId,
       file,
+      checklistItemId,
     );
   }
 

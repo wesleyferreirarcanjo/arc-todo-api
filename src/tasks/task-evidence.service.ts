@@ -25,6 +25,7 @@ export interface TaskEvidenceResponse {
   mimeType: string;
   sizeBytes: number;
   uploadedById: string;
+  checklistItemId: string | null;
   createdAt: string;
 }
 
@@ -64,9 +65,14 @@ export class TaskEvidenceService {
     projectId: string,
     taskId: string,
     file: UploadedFilePayload,
+    checklistItemId?: string | null,
   ): Promise<TaskEvidenceResponse> {
     await this.tasksService.findOne(userId, orgId, projectId, taskId);
     this.validateFile(file);
+
+    const normalizedChecklistItemId = this.normalizeChecklistItemId(
+      checklistItemId,
+    );
 
     const evidenceId = newAttachmentId();
     const objectKey = buildTaskEvidenceObjectKey(
@@ -95,6 +101,7 @@ export class TaskEvidenceService {
       mimeType: file.mimetype || 'application/octet-stream',
       sizeBytes: String(file.size),
       uploadedById: userId,
+      checklistItemId: normalizedChecklistItemId,
     });
 
     try {
@@ -188,6 +195,24 @@ export class TaskEvidenceService {
     }
   }
 
+  private normalizeChecklistItemId(
+    value: string | null | undefined,
+  ): string | null {
+    if (value === undefined || value === null) {
+      return null;
+    }
+    const trimmed = String(value).trim();
+    if (!trimmed) {
+      return null;
+    }
+    if (trimmed.length > 64) {
+      throw new BadRequestException(
+        'checklistItemId must be at most 64 characters',
+      );
+    }
+    return trimmed;
+  }
+
   private toResponse(evidence: TaskEvidence): TaskEvidenceResponse {
     return {
       id: evidence.id,
@@ -196,6 +221,7 @@ export class TaskEvidenceService {
       mimeType: evidence.mimeType,
       sizeBytes: Number(evidence.sizeBytes),
       uploadedById: evidence.uploadedById,
+      checklistItemId: evidence.checklistItemId ?? null,
       createdAt: evidence.createdAt.toISOString(),
     };
   }

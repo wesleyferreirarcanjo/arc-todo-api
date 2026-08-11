@@ -35,6 +35,10 @@ export class TaskEvidence {
   @Column({ name: 'uploaded_by_id' })
   uploadedById: string;
 
+  /** Optional QA checklist item id (e.g. item-3); null = task-level evidence. */
+  @Column({ name: 'checklist_item_id', type: 'varchar', length: 64, nullable: true })
+  checklistItemId: string | null;
+
   @ManyToOne(() => Task, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'task_id' })
   task: Task;
