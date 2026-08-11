@@ -1,8 +1,18 @@
+/** Snapshot of a task created from a Melhoria QA action. */
+export interface QaImprovementTaskRef {
+  id: string;
+  displayId: string;
+}
+
 export interface QaChecklistState {
   checkedItemIds: string[];
   buggedItemIds: string[];
   /** Per-item bug notes keyed by checklist item id — one or more reasons each. */
   buggedItemNotes: Record<string, string[]>;
+  /** Task-level Melhoria generations (standalone sibling tasks). */
+  improvementTasks: QaImprovementTaskRef[];
+  /** Per-checklist-item Melhoria generations keyed by item id. */
+  improvementItemTasks: Record<string, QaImprovementTaskRef[]>;
 }
 
 export interface QaChecklistItem {
@@ -19,7 +29,11 @@ const EMPTY_STATE: QaChecklistState = {
   checkedItemIds: [],
   buggedItemIds: [],
   buggedItemNotes: {},
+  improvementTasks: [],
+  improvementItemTasks: {},
 };
+
+const MAX_IMPROVEMENT_REFS = 50;
 
 const CHECKLIST_SECTION_TITLE = 'o que verificar';
 
@@ -35,17 +49,43 @@ interface ParsedSection {
   lines: string[];
 }
 
+function normalizeImprovementTaskRef(
+  value: unknown,
+): QaImprovementTaskRef | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as { id?: unknown; displayId?: unknown };
+  if (typeof raw.id !== 'string' || !raw.id.trim()) return null;
+  if (typeof raw.displayId !== 'string' || !raw.displayId.trim()) return null;
+  return { id: raw.id.trim(), displayId: raw.displayId.trim() };
+}
+
+function normalizeImprovementTaskRefs(value: unknown): QaImprovementTaskRef[] {
+  if (!Array.isArray(value)) return [];
+  const refs: QaImprovementTaskRef[] = [];
+  for (const entry of value) {
+    const ref = normalizeImprovementTaskRef(entry);
+    if (ref) refs.push(ref);
+  }
+  return refs.slice(0, MAX_IMPROVEMENT_REFS);
+}
+
 export function normalizeQaChecklistState(
   value: unknown,
 ): QaChecklistState {
   if (!value || typeof value !== 'object') {
-    return { ...EMPTY_STATE, buggedItemNotes: {} };
+    return {
+      ...EMPTY_STATE,
+      buggedItemNotes: {},
+      improvementItemTasks: {},
+    };
   }
 
   const raw = value as {
     checkedItemIds?: unknown;
     buggedItemIds?: unknown;
     buggedItemNotes?: unknown;
+    improvementTasks?: unknown;
+    improvementItemTasks?: unknown;
   };
 
   const checkedItemIds = Array.isArray(raw.checkedItemIds)
@@ -94,7 +134,28 @@ export function normalizeQaChecklistState(
     }
   }
 
-  return { checkedItemIds, buggedItemIds, buggedItemNotes };
+  const improvementTasks = normalizeImprovementTaskRefs(raw.improvementTasks);
+
+  const improvementItemTasks: Record<string, QaImprovementTaskRef[]> = {};
+  if (raw.improvementItemTasks && typeof raw.improvementItemTasks === 'object') {
+    for (const [key, entry] of Object.entries(
+      raw.improvementItemTasks as Record<string, unknown>,
+    )) {
+      if (typeof key !== 'string' || !key.trim()) continue;
+      const refs = normalizeImprovementTaskRefs(entry);
+      if (refs.length > 0) {
+        improvementItemTasks[key.trim()] = refs;
+      }
+    }
+  }
+
+  return {
+    checkedItemIds,
+    buggedItemIds,
+    buggedItemNotes,
+    improvementTasks,
+    improvementItemTasks,
+  };
 }
 
 function normalizeHeadingTitle(title: string): string {
@@ -233,9 +294,33 @@ All good.`;
     checkedItemIds: ['item-1'],
     buggedItemIds: [],
     buggedItemNotes: {},
+    improvementTasks: [],
+    improvementItemTasks: {},
   });
   console.assert(
     progress?.done === 1 && progress?.total === 2,
     'expected one checked item',
+  );
+  const withImprovements = normalizeQaChecklistState({
+    checkedItemIds: [],
+    buggedItemIds: [],
+    improvementTasks: [
+      { id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', displayId: '#arc-230' },
+      { id: 'bad' },
+    ],
+    improvementItemTasks: {
+      'item-0': [{ id: '11111111-2222-3333-4444-555555555555', displayId: '#arc-231' }],
+      'item-1': 'not-an-array',
+    },
+  });
+  console.assert(
+    withImprovements.improvementTasks.length === 1 &&
+      withImprovements.improvementTasks[0]?.displayId === '#arc-230',
+    'expected one valid task-level improvement ref',
+  );
+  console.assert(
+    withImprovements.improvementItemTasks['item-0']?.length === 1 &&
+      withImprovements.improvementItemTasks['item-1'] === undefined,
+    'expected one valid per-item improvement ref and drop of malformed',
   );
 }

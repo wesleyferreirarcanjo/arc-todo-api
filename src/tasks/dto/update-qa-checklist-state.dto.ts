@@ -1,4 +1,19 @@
-import { IsObject, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsObject,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+export class QaImprovementTaskRefDto {
+  @IsString()
+  id!: string;
+
+  @IsString()
+  displayId!: string;
+}
 
 export class UpdateQaChecklistStateDto {
   @IsOptional()
@@ -13,4 +28,16 @@ export class UpdateQaChecklistStateDto {
   @IsOptional()
   @IsObject()
   buggedItemNotes?: Record<string, string | string[]>;
+
+  /** Task-level Melhoria generations (standalone sibling tasks). */
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QaImprovementTaskRefDto)
+  improvementTasks?: QaImprovementTaskRefDto[];
+
+  /** Per-checklist-item Melhoria generations keyed by item id. */
+  @IsOptional()
+  @IsObject()
+  improvementItemTasks?: Record<string, QaImprovementTaskRefDto[]>;
 }
