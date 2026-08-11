@@ -7,9 +7,11 @@ import { TaskComment } from './task-comment.entity';
 import { TaskEvidence } from './task-evidence.entity';
 import { TaskEvidenceController } from './task-evidence.controller';
 import { TaskEvidenceService } from './task-evidence.service';
+import { EvidenceRetentionSchedulerService } from './evidence-retention-scheduler.service';
 import { TaskHistoryEntry } from './task-history-entry.entity';
 import { Task } from './task.entity';
 import { TaskActivityService } from './task-activity.service';
+import { StorageController } from './storage.controller';
 import { TasksController } from './tasks.controller';
 import { TasksGlobalController } from './tasks-global.controller';
 import { TasksService } from './tasks.service';
@@ -30,8 +32,14 @@ import { TasksService } from './tasks.service';
     TasksController,
     TasksGlobalController,
     TaskEvidenceController,
+    StorageController,
   ],
-  providers: [TasksService, TaskActivityService, TaskEvidenceService],
+  providers: [
+    TasksService,
+    TaskActivityService,
+    TaskEvidenceService,
+    EvidenceRetentionSchedulerService,
+  ],
   exports: [TasksService, TaskActivityService, TaskEvidenceService],
 })
 export class TasksModule {}

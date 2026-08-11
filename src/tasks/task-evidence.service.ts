@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'express';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { MinioStorageService } from '../storage/minio-storage.service';
 import {
   buildTaskEvidenceObjectKey,
@@ -17,6 +19,8 @@ import { TaskEvidence } from './task-evidence.entity';
 import { TasksService } from './tasks.service';
 
 const ALLOWED_MIME_PREFIXES = ['image/', 'video/'];
+const DEFAULT_EVIDENCE_RETENTION_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export interface TaskEvidenceResponse {
   id: string;
@@ -29,6 +33,13 @@ export interface TaskEvidenceResponse {
   createdAt: string;
 }
 
+export interface EvidenceStorageUsage {
+  fileCount: number;
+  totalBytes: number;
+  retentionDays: number;
+  oldestCreatedAt: string | null;
+}
+
 interface UploadedFilePayload {
   originalname: string;
   mimetype: string;
@@ -38,12 +49,78 @@ interface UploadedFilePayload {
 
 @Injectable()
 export class TaskEvidenceService {
+  private readonly logger = new Logger(TaskEvidenceService.name);
+
   constructor(
     @InjectRepository(TaskEvidence)
     private readonly evidenceRepository: Repository<TaskEvidence>,
     private readonly tasksService: TasksService,
     private readonly storageService: MinioStorageService,
+    private readonly configService: ConfigService,
   ) {}
+
+  getRetentionDays(): number {
+    const raw = this.configService.get<string>(
+      'EVIDENCE_RETENTION_DAYS',
+      String(DEFAULT_EVIDENCE_RETENTION_DAYS),
+    );
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      return DEFAULT_EVIDENCE_RETENTION_DAYS;
+    }
+    return parsed;
+  }
+
+  async getEvidenceUsage(): Promise<EvidenceStorageUsage> {
+    const raw = await this.evidenceRepository
+      .createQueryBuilder('e')
+      .select('COUNT(*)', 'fileCount')
+      .addSelect('COALESCE(SUM(e.size_bytes), 0)', 'totalBytes')
+      .addSelect('MIN(e.created_at)', 'oldestCreatedAt')
+      .getRawOne<{
+        fileCount: string;
+        totalBytes: string;
+        oldestCreatedAt: Date | string | null;
+      }>();
+
+    const oldest = raw?.oldestCreatedAt ?? null;
+    let oldestCreatedAt: string | null = null;
+    if (oldest) {
+      oldestCreatedAt =
+        oldest instanceof Date
+          ? oldest.toISOString()
+          : new Date(oldest).toISOString();
+    }
+
+    return {
+      fileCount: Number(raw?.fileCount ?? 0),
+      totalBytes: Number(raw?.totalBytes ?? 0),
+      retentionDays: this.getRetentionDays(),
+      oldestCreatedAt,
+    };
+  }
+
+  /**
+   * Age-based retention (BR-TASK-15). Additive to cycle purge (BR-CYCLE-05).
+   * Best-effort MinIO deletes; DB rows removed after object delete attempts.
+   */
+  async cleanupExpiredEvidence(): Promise<number> {
+    const retentionDays = this.getRetentionDays();
+    const cutoff = new Date(Date.now() - retentionDays * MS_PER_DAY);
+    const rows = await this.evidenceRepository.find({
+      where: { createdAt: LessThan(cutoff) },
+    });
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    await this.storageService.deleteObjects(rows.map((row) => row.objectKey));
+    await this.evidenceRepository.remove(rows);
+    this.logger.log(
+      `Evidence retention: deleted ${rows.length} file(s) older than ${retentionDays} day(s) (before ${cutoff.toISOString()})`,
+    );
+    return rows.length;
+  }
 
   async list(
     userId: string,
