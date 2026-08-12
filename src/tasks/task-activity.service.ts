@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProjectAccessService } from '../projects/project-access.service';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { TaskComment } from './task-comment.entity';
 import { TaskHistoryEntry } from './task-history-entry.entity';
@@ -16,6 +15,7 @@ export interface TaskCommentResponse {
   taskId: string;
   body: string;
   createdById: string | null;
+  createdByUsername: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,7 +38,6 @@ export class TaskActivityService {
     @InjectRepository(TaskHistoryEntry)
     private readonly historyRepository: Repository<TaskHistoryEntry>,
     private readonly tasksService: TasksService,
-    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
   async findComments(
@@ -51,6 +50,7 @@ export class TaskActivityService {
 
     const comments = await this.commentsRepository.find({
       where: { taskId },
+      relations: ['createdBy'],
       order: { createdAt: 'ASC' },
     });
 
@@ -73,7 +73,11 @@ export class TaskActivityService {
     });
 
     const saved = await this.commentsRepository.save(comment);
-    return this.toCommentResponse(saved);
+    const withAuthor = await this.commentsRepository.findOne({
+      where: { id: saved.id },
+      relations: ['createdBy'],
+    });
+    return this.toCommentResponse(withAuthor ?? saved);
   }
 
   async updateComment(
@@ -90,7 +94,11 @@ export class TaskActivityService {
 
     comment.body = dto.body.trim();
     const saved = await this.commentsRepository.save(comment);
-    return this.toCommentResponse(saved);
+    const withAuthor = await this.commentsRepository.findOne({
+      where: { id: saved.id },
+      relations: ['createdBy'],
+    });
+    return this.toCommentResponse(withAuthor ?? saved);
   }
 
   async deleteComment(
@@ -142,11 +150,8 @@ export class TaskActivityService {
     if (comment.createdById === userId) {
       return;
     }
-    if (await this.projectAccessService.isAdmin(userId)) {
-      return;
-    }
     throw new ForbiddenException(
-      'Only the comment author or an admin can modify this comment',
+      'Only the comment author can modify this comment',
     );
   }
 
@@ -156,6 +161,7 @@ export class TaskActivityService {
       taskId: comment.taskId,
       body: comment.body,
       createdById: comment.createdById,
+      createdByUsername: comment.createdBy?.username ?? null,
       createdAt: comment.createdAt.toISOString(),
       updatedAt: comment.updatedAt.toISOString(),
     };
