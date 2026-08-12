@@ -13,6 +13,7 @@ import { ProjectAccessService } from '../projects/project-access.service';
 import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { MinioStorageService } from '../storage/minio-storage.service';
+import { PushService } from '../push/push.service';
 import { UserActivityAction } from '../user-activity/user-activity-action.enum';
 import { UserActivityService } from '../user-activity/user-activity.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -119,6 +120,7 @@ export class TasksService {
     private readonly dataSource: DataSource,
     private readonly storageService: MinioStorageService,
     private readonly userActivityService: UserActivityService,
+    private readonly pushService: PushService,
   ) {}
 
   async findAll(
@@ -540,6 +542,25 @@ export class TasksService {
           projectId,
         },
       });
+
+      if (
+        dto.status === TaskStatus.QA_TEST ||
+        dto.status === TaskStatus.DONE
+      ) {
+        void this.pushService.notifyUser(
+          saved.createdById,
+          userId,
+          'status_gate',
+          {
+            title: `${enriched.displayId} → ${dto.status === TaskStatus.DONE ? 'Done' : 'QA Test'}`,
+            body: `"${saved.title}" moved to ${dto.status === TaskStatus.DONE ? 'Done' : 'QA Test'}`,
+            url: `/board?task=${saved.id}`,
+            kind: 'status_gate',
+            taskId: saved.id,
+            displayId: enriched.displayId,
+          },
+        );
+      }
     } else if (
       dto.title !== undefined ||
       dto.description !== undefined ||

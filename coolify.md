@@ -22,7 +22,7 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 | Branch | `main` |
 | Build pack | Dockerfile |
 | Dockerfile | `/Dockerfile` |
-| Public URL | `http://lmsx2avrg1k29ex12w6e3gce.72.60.59.203.sslip.io` |
+| Public URL | `https://lmsx2avrg1k29ex12w6e3gce.72.60.59.203.sslip.io` |
 | Health check | `GET /health` → `{ "status": "ok" }` |
 
 ### Build / run
@@ -39,10 +39,10 @@ NestJS API deployed in Coolify project **`arc-todo`** on server **`main`** (`72.
 | --- | --- | --- |
 | PostgreSQL `arc-todo-postgres-pgvector` | `x420nshn1p0cjzlhomi0cbnk` | Private; internal host `x420nshn1p0cjzlhomi0cbnk:5432`; image `pgvector/pgvector:pg16` |
 | MinIO `arc-todo-minio` | `jsx5tkzb1b8hj5oz0ydt491u` | Private; internal host `minio-jsx5tkzb1b8hj5oz0ydt491u:9000` |
-| Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | `http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io` |
-| MCP `arc-todo-mcp` | `qv9bek5he3ns8upu71rphbrc` | `http://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
-| Chatbot `arc-todo-chatbot` | `nyagev0aqp4qow1zri6wise5` | `http://nyagev0aqp4qow1zri6wise5.72.60.59.203.sslip.io` |
-| RAG `arc-todo-rag` | `tqfgi4rhtndy3xtgdep04xnd` | `http://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io` |
+| Frontend `arc-todo-web` | `ifo33mi1s8efs8myb5g441vh` | `https://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io` |
+| MCP `arc-todo-mcp` | `qv9bek5he3ns8upu71rphbrc` | `https://qv9bek5he3ns8upu71rphbrc.72.60.59.203.sslip.io/mcp` |
+| Chatbot `arc-todo-chatbot` | `nyagev0aqp4qow1zri6wise5` | `https://nyagev0aqp4qow1zri6wise5.72.60.59.203.sslip.io` |
+| RAG `arc-todo-rag` | `tqfgi4rhtndy3xtgdep04xnd` | `https://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io` |
 
 ## Environment variables (production)
 
@@ -63,7 +63,7 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `ADMIN_SSO_ASSIGN` | Google email for admin `sso_assign` (e.g. operator Gmail) |
 | `GOOGLE_CLIENT_ID` | Google OAuth Web client ID (ID token audience) |
 | `AUTH_SSO_ONLY` | `true` in production (blocks password `POST /auth/login`) |
-| `CORS_ORIGIN` | Frontend URL (`http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io`) |
+| `CORS_ORIGIN` | Frontend URL (`https://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io`) |
 | `NODE_ENV` | `production` |
 | `DB_MIGRATE_ON_START` | `true` (runs pending TypeORM migrations before the app starts) |
 | `DB_SYNCHRONIZE` | `false` (do not enable in production) |
@@ -74,7 +74,10 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `MINIO_SECRET_KEY` | *(redacted — Coolify secret)* |
 | `MINIO_BUCKET` | `arc-todo` |
 | `MINIO_MAX_UPLOAD_BYTES` | `104857600` (100 MB) |
-| `ARC_TODO_RAG_BASE_URL` | RAG service URL (`http://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io`) |
+| `ARC_TODO_RAG_BASE_URL` | RAG service URL (`https://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io`) |
+| `VAPID_PUBLIC_KEY` | Web Push VAPID public key (shared with clients via `GET /push/vapid-public-key`) |
+| `VAPID_PRIVATE_KEY` | Web Push VAPID private key *(redacted — Coolify secret; never expose to web)* |
+| `VAPID_SUBJECT` | VAPID contact URI, e.g. `mailto:wesleyferreirarcanjo@gmail.com` |
 
 ## Deploy order
 

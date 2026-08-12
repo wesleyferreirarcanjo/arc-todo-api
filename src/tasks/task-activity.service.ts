@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { PushService } from '../push/push.service';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { TaskComment } from './task-comment.entity';
 import { TaskHistoryEntry } from './task-history-entry.entity';
@@ -38,6 +39,7 @@ export class TaskActivityService {
     @InjectRepository(TaskHistoryEntry)
     private readonly historyRepository: Repository<TaskHistoryEntry>,
     private readonly tasksService: TasksService,
+    private readonly pushService: PushService,
   ) {}
 
   async findComments(
@@ -64,7 +66,12 @@ export class TaskActivityService {
     taskId: string,
     dto: CreateTaskCommentDto,
   ): Promise<TaskCommentResponse> {
-    await this.tasksService.findOne(userId, orgId, projectId, taskId);
+    const task = await this.tasksService.findOne(
+      userId,
+      orgId,
+      projectId,
+      taskId,
+    );
 
     const comment = this.commentsRepository.create({
       taskId,
@@ -77,6 +84,16 @@ export class TaskActivityService {
       where: { id: saved.id },
       relations: ['createdBy'],
     });
+
+    void this.pushService.notifyUser(task.createdById, userId, 'comment', {
+      title: `New comment on ${task.displayId}`,
+      body: dto.body.trim().slice(0, 120),
+      url: `/board?task=${task.id}`,
+      kind: 'comment',
+      taskId: task.id,
+      displayId: task.displayId,
+    });
+
     return this.toCommentResponse(withAuthor ?? saved);
   }
 
