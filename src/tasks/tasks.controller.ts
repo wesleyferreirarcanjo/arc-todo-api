@@ -117,6 +117,42 @@ export class TasksController {
     );
   }
 
+  @Patch(':taskId/comments/:commentId')
+  updateComment(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+    @Body() dto: CreateTaskCommentDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.taskActivityService.updateComment(
+      req.user.id,
+      orgId,
+      projectId,
+      taskId,
+      commentId,
+      dto,
+    );
+  }
+
+  @Delete(':taskId/comments/:commentId')
+  deleteComment(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Param('commentId') commentId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.taskActivityService.deleteComment(
+      req.user.id,
+      orgId,
+      projectId,
+      taskId,
+      commentId,
+    );
+  }
+
   @Get(':taskId/history')
   findHistory(
     @Param('orgId') orgId: string,

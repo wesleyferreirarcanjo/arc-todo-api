@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ProjectAccessService } from '../projects/project-access.service';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { TaskComment } from './task-comment.entity';
 import { TaskHistoryEntry } from './task-history-entry.entity';
@@ -33,6 +38,7 @@ export class TaskActivityService {
     @InjectRepository(TaskHistoryEntry)
     private readonly historyRepository: Repository<TaskHistoryEntry>,
     private readonly tasksService: TasksService,
+    private readonly projectAccessService: ProjectAccessService,
   ) {}
 
   async findComments(
@@ -70,6 +76,36 @@ export class TaskActivityService {
     return this.toCommentResponse(saved);
   }
 
+  async updateComment(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    taskId: string,
+    commentId: string,
+    dto: CreateTaskCommentDto,
+  ): Promise<TaskCommentResponse> {
+    await this.tasksService.findOne(userId, orgId, projectId, taskId);
+    const comment = await this.findCommentForTask(taskId, commentId);
+    await this.assertCanMutateComment(userId, comment);
+
+    comment.body = dto.body.trim();
+    const saved = await this.commentsRepository.save(comment);
+    return this.toCommentResponse(saved);
+  }
+
+  async deleteComment(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    taskId: string,
+    commentId: string,
+  ): Promise<void> {
+    await this.tasksService.findOne(userId, orgId, projectId, taskId);
+    const comment = await this.findCommentForTask(taskId, commentId);
+    await this.assertCanMutateComment(userId, comment);
+    await this.commentsRepository.remove(comment);
+  }
+
   async findHistory(
     userId: string,
     orgId: string,
@@ -84,6 +120,34 @@ export class TaskActivityService {
     });
 
     return entries.map((entry) => this.toHistoryResponse(entry));
+  }
+
+  private async findCommentForTask(
+    taskId: string,
+    commentId: string,
+  ): Promise<TaskComment> {
+    const comment = await this.commentsRepository.findOne({
+      where: { id: commentId, taskId },
+    });
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
+    }
+    return comment;
+  }
+
+  private async assertCanMutateComment(
+    userId: string,
+    comment: TaskComment,
+  ): Promise<void> {
+    if (comment.createdById === userId) {
+      return;
+    }
+    if (await this.projectAccessService.isAdmin(userId)) {
+      return;
+    }
+    throw new ForbiddenException(
+      'Only the comment author or an admin can modify this comment',
+    );
   }
 
   private toCommentResponse(comment: TaskComment): TaskCommentResponse {
