@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { Repository } from 'typeorm';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -17,6 +18,7 @@ import { User } from './user.entity';
 export interface UserResponse {
   id: string;
   username: string;
+  ssoAssign: string | null;
   isAdmin: boolean;
   projectIds: string[];
   createdAt: string;
@@ -36,12 +38,25 @@ export class UsersService implements OnModuleInit {
     await this.seedAdminUser();
   }
 
+  isSsoOnly(): boolean {
+    return this.configService.get<string>('AUTH_SSO_ONLY', 'false') === 'true';
+  }
+
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { username } });
   }
 
   async findById(id: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id } });
+  }
+
+  async findBySsoAssign(email: string): Promise<User | null> {
+    const normalized = this.normalizeSsoAssign(email);
+    if (!normalized) return null;
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.sso_assign) = :email', { email: normalized })
+      .getOne();
   }
 
   async findAllWithProjects(): Promise<UserResponse[]> {
@@ -60,10 +75,21 @@ export class UsersService implements OnModuleInit {
       throw new ConflictException('Username already taken');
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const ssoOnly = this.isSsoOnly();
+    if (!dto.password && !ssoOnly) {
+      throw new BadRequestException('Password is required');
+    }
+
+    const ssoAssign = this.normalizeSsoAssign(dto.ssoAssign);
+    if (ssoAssign) {
+      await this.assertSsoAssignAvailable(ssoAssign);
+    }
+
+    const passwordHash = await this.hashPasswordOrUnusable(dto.password);
     const user = this.usersRepository.create({
       username: dto.username,
       passwordHash,
+      ssoAssign,
       isAdmin: dto.isAdmin ?? false,
     });
     const saved = await this.usersRepository.save(user);
@@ -92,8 +118,16 @@ export class UsersService implements OnModuleInit {
       throw new BadRequestException('You cannot remove your own admin access');
     }
 
-    if (dto.password !== undefined) {
+    if (dto.password !== undefined && dto.password !== null && dto.password !== '') {
       user.passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    if (dto.ssoAssign !== undefined) {
+      const ssoAssign = this.normalizeSsoAssign(dto.ssoAssign);
+      if (ssoAssign) {
+        await this.assertSsoAssignAvailable(ssoAssign, user.id);
+      }
+      user.ssoAssign = ssoAssign;
     }
 
     if (dto.isAdmin !== undefined) {
@@ -125,6 +159,40 @@ export class UsersService implements OnModuleInit {
     await this.usersRepository.remove(user);
   }
 
+  private normalizeSsoAssign(
+    value: string | null | undefined,
+  ): string | null {
+    if (value === undefined || value === null) return null;
+    const trimmed = value.trim().toLowerCase();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private async assertSsoAssignAvailable(
+    ssoAssign: string,
+    excludeUserId?: string,
+  ): Promise<void> {
+    const qb = this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.sso_assign) = :email', { email: ssoAssign });
+    if (excludeUserId) {
+      qb.andWhere('user.id != :excludeUserId', { excludeUserId });
+    }
+    const existing = await qb.getOne();
+    if (existing) {
+      throw new ConflictException('SSO assign email already in use');
+    }
+  }
+
+  private async hashPasswordOrUnusable(
+    password: string | undefined,
+  ): Promise<string> {
+    if (password && password.length > 0) {
+      return bcrypt.hash(password, 10);
+    }
+    // ponytail: unusable hash when SSO-only and no password; ceiling = cannot password-login; upgrade = nullable password_hash
+    return bcrypt.hash(randomBytes(32).toString('hex'), 10);
+  }
+
   private async toResponse(user: User): Promise<UserResponse> {
     const projectIds = user.isAdmin
       ? []
@@ -133,6 +201,7 @@ export class UsersService implements OnModuleInit {
     return {
       id: user.id,
       username: user.username,
+      ssoAssign: user.ssoAssign,
       isAdmin: user.isAdmin,
       projectIds,
       createdAt: user.createdAt.toISOString(),
@@ -143,6 +212,9 @@ export class UsersService implements OnModuleInit {
   private async seedAdminUser() {
     const username = this.configService.get<string>('ADMIN_USERNAME', 'admin');
     const password = this.configService.get<string>('ADMIN_PASSWORD');
+    const adminSso = this.normalizeSsoAssign(
+      this.configService.get<string>('ADMIN_SSO_ASSIGN'),
+    );
     if (!password) {
       throw new Error(
         'ADMIN_PASSWORD must be set to seed the admin user (do not commit the real value)',
@@ -151,17 +223,39 @@ export class UsersService implements OnModuleInit {
 
     const existing = await this.findByUsername(username);
     if (existing) {
+      let dirty = false;
       if (!existing.isAdmin) {
         existing.isAdmin = true;
+        dirty = true;
+      }
+      if (adminSso && !existing.ssoAssign) {
+        await this.assertSsoAssignAvailable(adminSso, existing.id);
+        existing.ssoAssign = adminSso;
+        dirty = true;
+      }
+      if (dirty) {
         await this.usersRepository.save(existing);
       }
       return;
+    }
+
+    // Avoid duplicate SSO if another user already holds ADMIN_SSO_ASSIGN
+    if (adminSso) {
+      const taken = await this.findBySsoAssign(adminSso);
+      if (taken) {
+        if (!taken.isAdmin) {
+          taken.isAdmin = true;
+          await this.usersRepository.save(taken);
+        }
+        return;
+      }
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = this.usersRepository.create({
       username,
       passwordHash,
+      ssoAssign: adminSso,
       isAdmin: true,
     });
     await this.usersRepository.save(user);

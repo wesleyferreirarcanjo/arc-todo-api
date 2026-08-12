@@ -60,6 +60,9 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `JWT_EXPIRES_IN` | `7d` |
 | `ADMIN_USERNAME` | `admin` |
 | `ADMIN_PASSWORD` | *(redacted — Coolify secret)* |
+| `ADMIN_SSO_ASSIGN` | Google email for admin `sso_assign` (e.g. operator Gmail) |
+| `GOOGLE_CLIENT_ID` | Google OAuth Web client ID (ID token audience) |
+| `AUTH_SSO_ONLY` | `true` in production (blocks password `POST /auth/login`) |
 | `CORS_ORIGIN` | Frontend URL (`http://ifo33mi1s8efs8myb5g441vh.72.60.59.203.sslip.io`) |
 | `NODE_ENV` | `production` |
 | `DB_MIGRATE_ON_START` | `true` (runs pending TypeORM migrations before the app starts) |

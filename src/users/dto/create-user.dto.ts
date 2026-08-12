@@ -1,10 +1,12 @@
 import {
   IsArray,
   IsBoolean,
+  IsEmail,
   IsOptional,
   IsString,
   IsUUID,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateUserDto {
@@ -12,9 +14,16 @@ export class CreateUserDto {
   @MinLength(1)
   username: string;
 
+  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined && value !== null && value !== '')
   @IsString()
   @MinLength(6)
-  password: string;
+  password?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined && value !== null && value !== '')
+  @IsEmail()
+  ssoAssign?: string;
 
   @IsOptional()
   @IsBoolean()

@@ -21,6 +21,10 @@ export class User {
   @Column({ name: 'password_hash' })
   passwordHash: string;
 
+  /** Google account email for SSO; null = cannot sign in with Google. */
+  @Column({ name: 'sso_assign', type: 'varchar', nullable: true })
+  ssoAssign: string | null;
+
   @Column({ name: 'is_admin', default: false })
   isAdmin: boolean;
 
