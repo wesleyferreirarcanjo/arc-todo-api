@@ -1864,5 +1864,154 @@
     "title": "GetProjectDiagramInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "list_project_wireframes": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": ["organization_id", "project_id"],
+    "title": "ListProjectWireframesInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_project_wireframe": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "wireframe_id": {
+        "description": "Project wireframe UUID",
+        "title": "Wireframe Id",
+        "type": "string"
+      }
+    },
+    "required": ["organization_id", "project_id", "wireframe_id"],
+    "title": "GetProjectWireframeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_project_wireframe": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "title": {
+        "description": "Wireframe title (required, non-empty)",
+        "title": "Title",
+        "type": "string"
+      },
+      "html": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted → two-screen starter.",
+        "title": "Html"
+      }
+    },
+    "required": ["organization_id", "project_id", "title"],
+    "title": "CreateProjectWireframeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_project_wireframe": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "wireframe_id": {
+        "description": "Project wireframe UUID",
+        "title": "Wireframe Id",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "New wireframe title",
+        "title": "Title"
+      },
+      "html": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "HTML document (inline CSS/JS; may contain several #page- sections)",
+        "title": "Html"
+      }
+    },
+    "required": ["organization_id", "project_id", "wireframe_id"],
+    "title": "UpdateProjectWireframeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "delete_project_wireframe": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "wireframe_id": {
+        "description": "Project wireframe UUID",
+        "title": "Wireframe Id",
+        "type": "string"
+      }
+    },
+    "required": ["organization_id", "project_id", "wireframe_id"],
+    "title": "GetProjectWireframeInput",
+    "type": "object",
+    "additionalProperties": false
   }
 }

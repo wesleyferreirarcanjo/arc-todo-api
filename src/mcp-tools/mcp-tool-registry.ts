@@ -327,6 +327,48 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     defaultEnabled: true,
     sortOrder: 54,
   },
+  {
+    key: 'list_project_wireframes',
+    group: 'wireframes',
+    displayName: 'List project wireframes',
+    description:
+      'List HTML wireframe prototypes for a project (id, title, timestamps; omits html).',
+    defaultEnabled: true,
+    sortOrder: 60,
+  },
+  {
+    key: 'get_project_wireframe',
+    group: 'wireframes',
+    displayName: 'Get project wireframe',
+    description: 'Fetch one project wireframe including the HTML document.',
+    defaultEnabled: true,
+    sortOrder: 61,
+  },
+  {
+    key: 'create_project_wireframe',
+    group: 'wireframes',
+    displayName: 'Create project wireframe',
+    description:
+      'Create a project HTML wireframe with a title and optional html document.',
+    defaultEnabled: true,
+    sortOrder: 62,
+  },
+  {
+    key: 'update_project_wireframe',
+    group: 'wireframes',
+    displayName: 'Update project wireframe',
+    description: 'Update a project wireframe title and/or HTML document.',
+    defaultEnabled: true,
+    sortOrder: 63,
+  },
+  {
+    key: 'delete_project_wireframe',
+    group: 'wireframes',
+    displayName: 'Delete project wireframe',
+    description: 'Delete a project HTML wireframe.',
+    defaultEnabled: true,
+    sortOrder: 64,
+  },
 ];
 
 export const MCP_TOOL_GROUPS = [
@@ -336,6 +378,7 @@ export const MCP_TOOL_GROUPS = [
   'knowledge',
   'rag',
   'diagrams',
+  'wireframes',
 ] as const;
 
 export type McpToolGroup = (typeof MCP_TOOL_GROUPS)[number];
