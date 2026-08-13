@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Project } from '../projects/project.entity';
 import { User } from '../users/user.entity';
+import { ProjectWireframe } from '../wireframes/project-wireframe.entity';
 
 @Entity('project_diagrams')
 export class ProjectDiagram {
@@ -17,6 +18,9 @@ export class ProjectDiagram {
 
   @Column({ name: 'project_id' })
   projectId: string;
+
+  @Column({ name: 'wireframe_id', type: 'uuid', nullable: true })
+  wireframeId: string | null;
 
   @Column()
   title: string;
@@ -33,6 +37,10 @@ export class ProjectDiagram {
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })
   project: Project;
+
+  @ManyToOne(() => ProjectWireframe, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'wireframe_id' })
+  wireframe: ProjectWireframe | null;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'created_by_id' })

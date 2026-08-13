@@ -6,13 +6,14 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProjectsService } from '../projects/projects.service';
+import { ProjectWireframe } from '../wireframes/project-wireframe.entity';
 import { CreateProjectDiagramDto } from './dto/create-project-diagram.dto';
 import { UpdateProjectDiagramDto } from './dto/update-project-diagram.dto';
 import { ProjectDiagram } from './project-diagram.entity';
 
 export type ProjectDiagramSummary = Pick<
   ProjectDiagram,
-  'id' | 'title' | 'thumbnail' | 'createdAt' | 'updatedAt'
+  'id' | 'title' | 'thumbnail' | 'wireframeId' | 'createdAt' | 'updatedAt'
 >;
 
 @Injectable()
@@ -20,6 +21,8 @@ export class DiagramsService {
   constructor(
     @InjectRepository(ProjectDiagram)
     private readonly diagramRepository: Repository<ProjectDiagram>,
+    @InjectRepository(ProjectWireframe)
+    private readonly wireframeRepository: Repository<ProjectWireframe>,
     private readonly projectsService: ProjectsService,
   ) {}
 
@@ -35,11 +38,19 @@ export class DiagramsService {
     userId: string,
     orgId: string,
     projectId: string,
+    wireframeId?: string,
   ): Promise<ProjectDiagramSummary[]> {
     await this.projectsService.findOne(userId, orgId, projectId);
     return this.diagramRepository.find({
-      where: { projectId },
-      select: ['id', 'title', 'thumbnail', 'createdAt', 'updatedAt'],
+      where: wireframeId ? { projectId, wireframeId } : { projectId },
+      select: [
+        'id',
+        'title',
+        'thumbnail',
+        'wireframeId',
+        'createdAt',
+        'updatedAt',
+      ],
       order: { updatedAt: 'DESC' },
     });
   }
@@ -52,8 +63,21 @@ export class DiagramsService {
   ): Promise<ProjectDiagram> {
     await this.projectsService.findOne(userId, orgId, projectId);
 
+    let wireframeId: string | null = null;
+    if (dto.wireframeId) {
+      const wireframe = await this.wireframeRepository.findOne({
+        where: { id: dto.wireframeId, projectId },
+        select: ['id'],
+      });
+      if (!wireframe) {
+        throw new BadRequestException('Wireframe not found in this project');
+      }
+      wireframeId = wireframe.id;
+    }
+
     const diagram = this.diagramRepository.create({
       projectId,
+      wireframeId,
       title: this.requireTitle(dto.title),
       sceneJson: dto.sceneJson ?? {},
       thumbnail: dto.thumbnail ?? null,

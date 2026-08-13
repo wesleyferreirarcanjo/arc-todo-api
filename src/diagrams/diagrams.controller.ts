@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DiagramsService } from './diagrams.service';
 import { CreateProjectDiagramDto } from './dto/create-project-diagram.dto';
+import { ListProjectDiagramsQueryDto } from './dto/list-project-diagrams-query.dto';
 import { UpdateProjectDiagramDto } from './dto/update-project-diagram.dto';
 
 interface AuthRequest extends Request {
@@ -28,9 +30,15 @@ export class DiagramsController {
   findAll(
     @Param('orgId') orgId: string,
     @Param('projectId') projectId: string,
+    @Query() query: ListProjectDiagramsQueryDto,
     @Req() req: AuthRequest,
   ) {
-    return this.diagramsService.findAll(req.user.id, orgId, projectId);
+    return this.diagramsService.findAll(
+      req.user.id,
+      orgId,
+      projectId,
+      query.wireframeId,
+    );
   }
 
   @Post()

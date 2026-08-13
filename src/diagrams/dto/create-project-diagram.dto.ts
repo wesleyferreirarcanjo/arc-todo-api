@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateProjectDiagramDto {
   @IsString()
@@ -12,4 +12,8 @@ export class CreateProjectDiagramDto {
   @IsOptional()
   @IsString()
   thumbnail?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  wireframeId?: string;
 }
