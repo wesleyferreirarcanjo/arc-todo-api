@@ -18,6 +18,7 @@ export const NAMING_GOALS = [
   'campaign',
 ] as const;
 export type NamingGoal = (typeof NAMING_GOALS)[number];
+export const DEFAULT_NAMING_GOAL: NamingGoal = 'public_product';
 
 const DNS_AVAILABLE_CODES = new Set([
   'ENOTFOUND',

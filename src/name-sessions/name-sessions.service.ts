@@ -22,6 +22,7 @@ import { NameCandidateFeedback } from './name-candidate-feedback.entity';
 import { NameCheckService } from './name-check.service';
 import {
   CandidateSource,
+  DEFAULT_NAMING_GOAL,
   googleQueryUrl,
   isNamingGoal,
   median,
@@ -139,8 +140,13 @@ export class NameSessionsService {
     dto: CreateNameSessionDto,
   ): Promise<ProjectNameSession> {
     await this.projectsService.findOne(userId, orgId, projectId);
-    const namingGoal =
-      dto.namingGoal && isNamingGoal(dto.namingGoal) ? dto.namingGoal : null;
+    let namingGoal = DEFAULT_NAMING_GOAL;
+    if (dto.namingGoal) {
+      if (!isNamingGoal(dto.namingGoal)) {
+        throw new BadRequestException('Invalid naming goal');
+      }
+      namingGoal = dto.namingGoal;
+    }
     const session = this.sessionRepository.create({
       projectId,
       title: this.requireTitle(dto.title),
