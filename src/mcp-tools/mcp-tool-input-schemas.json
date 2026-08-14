@@ -2013,5 +2013,127 @@
     "title": "GetProjectWireframeInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "list_project_name_sessions": {
+    "properties": {
+      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
+      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" }
+    },
+    "required": ["organization_id", "project_id"],
+    "title": "ListProjectNameSessionsInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_name_session": {
+    "properties": {
+      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
+      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
+      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" }
+    },
+    "required": ["organization_id", "project_id", "name_session_id"],
+    "title": "GetNameSessionInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_name_session": {
+    "properties": {
+      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
+      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
+      "title": { "description": "Session title (required, non-empty)", "title": "Title", "type": "string" },
+      "naming_goal": {
+        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "default": null,
+        "description": "Optional naming goal",
+        "title": "Naming Goal"
+      },
+      "product_description": {
+        "anyOf": [{ "additionalProperties": true, "type": "object" }, { "type": "null" }],
+        "default": null,
+        "description": "Optional product-description canvas JSON",
+        "title": "Product Description"
+      }
+    },
+    "required": ["organization_id", "project_id", "title"],
+    "title": "CreateNameSessionInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_name_session": {
+    "properties": {
+      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
+      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
+      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
+      "title": {
+        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "default": null,
+        "title": "Title"
+      },
+      "naming_goal": {
+        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "default": null,
+        "title": "Naming Goal"
+      },
+      "product_description": {
+        "anyOf": [{ "additionalProperties": true, "type": "object" }, { "type": "null" }],
+        "default": null,
+        "title": "Product Description"
+      }
+    },
+    "required": ["organization_id", "project_id", "name_session_id"],
+    "title": "UpdateNameSessionInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "add_name_candidates": {
+    "properties": {
+      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
+      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
+      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
+      "candidates": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 20,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name"],
+          "properties": {
+            "name": { "type": "string" },
+            "family": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null },
+            "lane": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null },
+            "rationale": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null }
+          }
+        }
+      }
+    },
+    "required": ["organization_id", "project_id", "name_session_id", "candidates"],
+    "title": "AddNameCandidatesInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "check_name_candidate": {
+    "properties": {
+      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
+      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
+      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
+      "candidate_id": { "description": "Candidate UUID in the session", "title": "Candidate Id", "type": "string" }
+    },
+    "required": ["organization_id", "project_id", "name_session_id", "candidate_id"],
+    "title": "CheckNameCandidateInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "recommend_name_candidate": {
+    "properties": {
+      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
+      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
+      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
+      "candidate_id": { "description": "Candidate UUID in the session", "title": "Candidate Id", "type": "string" },
+      "decision_note": { "description": "Why this name is recommended", "title": "Decision Note", "type": "string" }
+    },
+    "required": ["organization_id", "project_id", "name_session_id", "candidate_id", "decision_note"],
+    "title": "RecommendNameCandidateInput",
+    "type": "object",
+    "additionalProperties": false
   }
 }

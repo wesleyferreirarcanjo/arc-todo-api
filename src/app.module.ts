@@ -6,6 +6,7 @@ import { getDatabaseConfig } from './database/database.config';
 import { BoardCyclesModule } from './board-cycles/board-cycles.module';
 import { DiagramsModule } from './diagrams/diagrams.module';
 import { WireframesModule } from './wireframes/wireframes.module';
+import { NameSessionsModule } from './name-sessions/name-sessions.module';
 import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { ConversationsModule } from './conversations/conversations.module';
@@ -44,6 +45,7 @@ import { UsersModule } from './users/users.module';
     KnowledgeModule,
     DiagramsModule,
     WireframesModule,
+    NameSessionsModule,
     McpToolsModule,
     ChatbotSettingsModule,
     RagSettingsModule,

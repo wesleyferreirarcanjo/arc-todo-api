@@ -369,6 +369,67 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     defaultEnabled: true,
     sortOrder: 64,
   },
+  {
+    key: 'list_project_name_sessions',
+    group: 'names',
+    displayName: 'List project name sessions',
+    description:
+      'List naming sessions for a project (id, title, recommendedName, timestamps; omits bulky candidates).',
+    defaultEnabled: true,
+    sortOrder: 70,
+  },
+  {
+    key: 'get_name_session',
+    group: 'names',
+    displayName: 'Get name session',
+    description:
+      'Fetch one naming session including product description, lanes, candidates, evidence, and recommendation.',
+    defaultEnabled: true,
+    sortOrder: 71,
+  },
+  {
+    key: 'create_name_session',
+    group: 'names',
+    displayName: 'Create name session',
+    description: 'Create a project naming session with a required title.',
+    defaultEnabled: true,
+    sortOrder: 72,
+  },
+  {
+    key: 'update_name_session',
+    group: 'names',
+    displayName: 'Update name session',
+    description: 'Update naming session title, goal, or product description.',
+    defaultEnabled: true,
+    sortOrder: 73,
+  },
+  {
+    key: 'add_name_candidates',
+    group: 'names',
+    displayName: 'Add name candidates',
+    description:
+      'Add up to 20 name candidates to a session. Source is recorded as MCP.',
+    defaultEnabled: true,
+    sortOrder: 74,
+  },
+  {
+    key: 'check_name_candidate',
+    group: 'names',
+    displayName: 'Check name candidate',
+    description:
+      'Run DNS/RDAP checks for a candidate. Does not register or buy a domain.',
+    defaultEnabled: true,
+    sortOrder: 75,
+  },
+  {
+    key: 'recommend_name_candidate',
+    group: 'names',
+    displayName: 'Recommend name candidate',
+    description:
+      'Recommend a candidate with a decision note. Does not claim legal clearance.',
+    defaultEnabled: true,
+    sortOrder: 76,
+  },
 ];
 
 export const MCP_TOOL_GROUPS = [
@@ -379,6 +440,7 @@ export const MCP_TOOL_GROUPS = [
   'rag',
   'diagrams',
   'wireframes',
+  'names',
 ] as const;
 
 export type McpToolGroup = (typeof MCP_TOOL_GROUPS)[number];
