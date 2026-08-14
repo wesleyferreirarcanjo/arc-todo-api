@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -89,6 +90,22 @@ export class AuthService {
       username: user.username,
       isAdmin: user.isAdmin,
     };
+  }
+
+  async issueAdminServiceToken(): Promise<string> {
+    const username = this.configService.get<string>('ADMIN_USERNAME', 'admin');
+    const user = await this.usersService.findByUsername(username);
+    if (!user?.isAdmin) {
+      throw new ServiceUnavailableException(
+        'ADMIN_USERNAME must refer to an admin user for service authentication',
+      );
+    }
+    const session = await this.issueSession(
+      user.id,
+      user.username,
+      user.isAdmin,
+    );
+    return session.access_token;
   }
 
   private async issueSession(

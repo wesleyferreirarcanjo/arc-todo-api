@@ -529,15 +529,8 @@ export class RagClientService {
     }
   }
 
-  private async getServiceToken(): Promise<string> {
-    const username = this.configService.get<string>('ADMIN_USERNAME', 'admin');
-    const password = this.configService.get<string>('ADMIN_PASSWORD');
-    if (!password) {
-      throw new ServiceUnavailableException(
-        'ADMIN_PASSWORD must be set for RAG service authentication',
-      );
-    }
-    const result = await this.authService.login({ username, password });
-    return result.access_token;
+  private getServiceToken(): Promise<string> {
+    // ponytail: mint a JWT locally — AUTH_SSO_ONLY blocks AuthService.login().
+    return this.authService.issueAdminServiceToken();
   }
 }
