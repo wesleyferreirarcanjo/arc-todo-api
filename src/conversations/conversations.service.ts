@@ -1,9 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { ProjectsService } from '../projects/projects.service';
 import { AddMessageDto } from './dto/add-message.dto';
@@ -182,7 +180,7 @@ export class ConversationsService {
     });
 
     if (!conversation) {
-      throw new NotFoundException('Conversation not found');
+      throw appError('CHAT_CONVERSATION_NOT_FOUND');
     }
 
     return conversation;
@@ -199,7 +197,7 @@ export class ConversationsService {
 
     if (projectId) {
       if (!organizationId) {
-        throw new NotFoundException('organizationId is required with projectId');
+        throw appError('CHAT_ORG_REQUIRED');
       }
       await this.projectsService.findOne(userId, organizationId, projectId);
     }

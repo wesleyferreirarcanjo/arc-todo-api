@@ -1,10 +1,7 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { ProjectsService } from '../projects/projects.service';
 import { ProjectWireframe } from '../wireframes/project-wireframe.entity';
 import { CreateProjectDiagramDto } from './dto/create-project-diagram.dto';
@@ -29,7 +26,7 @@ export class DiagramsService {
   private requireTitle(title: string): string {
     const trimmed = title.trim();
     if (!trimmed) {
-      throw new BadRequestException('Title is required');
+      throw appError('DIAG_TITLE_REQUIRED');
     }
     return trimmed;
   }
@@ -70,7 +67,7 @@ export class DiagramsService {
         select: ['id'],
       });
       if (!wireframe) {
-        throw new BadRequestException('Wireframe not found in this project');
+        throw appError('DIAG_WIREFRAME_MISSING');
       }
       wireframeId = wireframe.id;
     }
@@ -99,7 +96,7 @@ export class DiagramsService {
       where: { id: diagramId, projectId },
     });
     if (!diagram) {
-      throw new NotFoundException('Diagram not found');
+      throw appError('DIAG_NOT_FOUND');
     }
     return diagram;
   }

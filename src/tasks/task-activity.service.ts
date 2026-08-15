@@ -1,10 +1,7 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { PushService } from '../push/push.service';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { TaskComment } from './task-comment.entity';
@@ -155,7 +152,7 @@ export class TaskActivityService {
       where: { id: commentId, taskId },
     });
     if (!comment) {
-      throw new NotFoundException('Comment not found');
+      throw appError('TASK_COMMENT_NOT_FOUND');
     }
     return comment;
   }
@@ -167,9 +164,7 @@ export class TaskActivityService {
     if (comment.createdById === userId) {
       return;
     }
-    throw new ForbiddenException(
-      'Only the comment author can modify this comment',
-    );
+    throw appError('ACL_COMMENT_AUTHOR');
   }
 
   private toCommentResponse(comment: TaskComment): TaskCommentResponse {

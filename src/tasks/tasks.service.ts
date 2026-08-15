@@ -1,14 +1,11 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, IsNull, Repository } from 'typeorm';
 import {
   formatTaskDisplayId,
   parseTaskDisplayId,
 } from '../common/utils/acronym.util';
+import { appError } from '../errors/app-errors';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
@@ -237,7 +234,7 @@ export class TasksService {
           lock: { mode: 'pessimistic_write' },
         });
         if (!project) {
-          throw new NotFoundException('Project not found');
+          throw appError('PROJ_NOT_FOUND');
         }
 
         const taskNumber = project.nextTaskNumber;
@@ -295,14 +292,12 @@ export class TasksService {
   ): Promise<TaskResolveResponse> {
     const parsed = parseTaskDisplayId(identifier);
     if (!parsed) {
-      throw new BadRequestException(
-        'Invalid task identifier. Expected format like arc-1 or #arc-1',
-      );
+      throw appError('TASK_INVALID_ID');
     }
 
     const project = await this.projectsService.findByAcronym(parsed.acronym);
     if (!project) {
-      throw new NotFoundException('Task not found');
+      throw appError('TASK_NOT_FOUND');
     }
 
     await this.projectAccessService.assertProjectAccess(userId, project.id);
@@ -314,7 +309,7 @@ export class TasksService {
       },
     });
     if (!task) {
-      throw new NotFoundException('Task not found');
+      throw appError('TASK_NOT_FOUND');
     }
 
     const [enriched] = await this.enrichTaskResponses([task], {
@@ -344,7 +339,7 @@ export class TasksService {
       where: { id: taskId, projectId },
     });
     if (!task) {
-      throw new NotFoundException('Task not found');
+      throw appError('TASK_NOT_FOUND');
     }
 
     const [enriched] = await this.enrichTaskResponses([task], {
@@ -436,7 +431,7 @@ export class TasksService {
 
     if (dto.parentTaskId !== undefined) {
       if (dto.parentTaskId === task.id) {
-        throw new BadRequestException('A task cannot be its own parent');
+        throw appError('TASK_SELF_PARENT');
       }
       if (dto.parentTaskId === null) {
         task.parentTaskId = null;
@@ -448,9 +443,7 @@ export class TasksService {
 
     if (dto.projectId !== undefined && dto.projectId !== projectId) {
       if (task.parentTaskId) {
-        throw new BadRequestException(
-          'Detach subtask from parent before moving to another project',
-        );
+        throw appError('TASK_MOVE_WHILE_NESTED');
       }
       await this.projectsService.findOne(userId, orgId, dto.projectId);
       task.projectId = dto.projectId;
@@ -468,9 +461,7 @@ export class TasksService {
             ? dto.bugReason?.trim() || null
             : task.bugReason?.trim() || null;
         if (!effectiveReason) {
-          throw new BadRequestException(
-            'bugReason is required to mark a task as bug',
-          );
+          throw appError('TASK_BUG_REASON_REQUIRED');
         }
         task.isBug = true;
         task.status = TaskStatus.TODO;
@@ -635,7 +626,7 @@ export class TasksService {
       where: { id: taskId, projectId },
     });
     if (!task) {
-      throw new NotFoundException('Task not found');
+      throw appError('TASK_NOT_FOUND');
     }
     return task;
   }
@@ -649,13 +640,13 @@ export class TasksService {
       where: { id: parentTaskId, projectId },
     });
     if (!parent) {
-      throw new BadRequestException('Parent task not found in this project');
+      throw appError('TASK_PARENT_MISSING');
     }
     if (parent.parentTaskId) {
-      throw new BadRequestException('Subtasks cannot have subtasks');
+      throw appError('TASK_NESTED_SUBTASK');
     }
     if (taskId && parentTaskId === taskId) {
-      throw new BadRequestException('A task cannot be its own parent');
+      throw appError('TASK_SELF_PARENT');
     }
     return parent;
   }
@@ -873,7 +864,7 @@ export class TasksService {
     return tasks.map((task) => {
       const acronym = acronymsByProjectId.get(task.projectId);
       if (!acronym) {
-        throw new NotFoundException('Project not found for task');
+        throw appError('PROJ_MISSING_FOR_TASK');
       }
 
       const response = this.applyBugCycleCounts(
@@ -894,7 +885,7 @@ export class TasksService {
         response.subtasks = children.map((child) => {
           const childAcronym = acronymsByProjectId.get(child.projectId);
           if (!childAcronym) {
-            throw new NotFoundException('Project not found for task');
+            throw appError('PROJ_MISSING_FOR_TASK');
           }
           return this.applyBugCycleCounts(
             this.toTaskResponse(child, childAcronym),

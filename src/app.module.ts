@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './database/database.config';
+import { AppExceptionFilter } from './errors/app-exception.filter';
 import { BoardCyclesModule } from './board-cycles/board-cycles.module';
 import { DiagramsModule } from './diagrams/diagrams.module';
 import { WireframesModule } from './wireframes/wireframes.module';
@@ -53,5 +55,6 @@ import { UsersModule } from './users/users.module';
     UserActivityModule,
     PushModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: AppExceptionFilter }],
 })
 export class AppModule {}

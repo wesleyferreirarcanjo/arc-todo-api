@@ -1,15 +1,10 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -72,12 +67,12 @@ export class UsersService implements OnModuleInit {
   async createManagedUser(dto: CreateUserDto): Promise<UserResponse> {
     const existing = await this.findByUsername(dto.username);
     if (existing) {
-      throw new ConflictException('Username already taken');
+      throw appError('USER_USERNAME_TAKEN');
     }
 
     const ssoOnly = this.isSsoOnly();
     if (!dto.password && !ssoOnly) {
-      throw new BadRequestException('Password is required');
+      throw appError('USER_PASSWORD_REQUIRED');
     }
 
     const ssoAssign = this.normalizeSsoAssign(dto.ssoAssign);
@@ -111,11 +106,11 @@ export class UsersService implements OnModuleInit {
   ): Promise<UserResponse> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw appError('USER_NOT_FOUND');
     }
 
     if (dto.isAdmin === false && user.id === actorId) {
-      throw new BadRequestException('You cannot remove your own admin access');
+      throw appError('USER_SELF_ADMIN');
     }
 
     if (dto.password !== undefined && dto.password !== null && dto.password !== '') {
@@ -148,12 +143,12 @@ export class UsersService implements OnModuleInit {
 
   async removeManagedUser(userId: string, actorId: string): Promise<void> {
     if (userId === actorId) {
-      throw new BadRequestException('You cannot delete your own account');
+      throw appError('USER_SELF_DELETE');
     }
 
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw appError('USER_NOT_FOUND');
     }
 
     await this.usersRepository.remove(user);
@@ -179,7 +174,7 @@ export class UsersService implements OnModuleInit {
     }
     const existing = await qb.getOne();
     if (existing) {
-      throw new ConflictException('SSO assign email already in use');
+      throw appError('USER_SSO_TAKEN');
     }
   }
 

@@ -1,10 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { UpdateChatbotSettingsDto } from './dto/update-chatbot-settings.dto';
 import { ChatbotSetting } from './chatbot-setting.entity';
 
@@ -64,7 +61,7 @@ export class ChatbotSettingsService implements OnModuleInit {
 
   private toRuntimeResponse(setting: ChatbotSetting): ChatbotRuntimeSettingsResponse {
     if (!setting.apiKey) {
-      throw new NotFoundException('Chatbot API key is not configured');
+      throw appError('CHAT_API_KEY_MISSING');
     }
 
     return {
@@ -90,7 +87,7 @@ export class ChatbotSettingsService implements OnModuleInit {
       where: { id: 'default' },
     });
     if (!setting) {
-      throw new NotFoundException('Chatbot settings not found');
+      throw appError('CHAT_SETTINGS_NOT_FOUND');
     }
     return this.toPublicResponse(setting);
   }
@@ -100,7 +97,7 @@ export class ChatbotSettingsService implements OnModuleInit {
       where: { id: 'default' },
     });
     if (!setting) {
-      throw new NotFoundException('Chatbot settings not found');
+      throw appError('CHAT_SETTINGS_NOT_FOUND');
     }
     return this.toRuntimeResponse(setting);
   }
@@ -112,7 +109,7 @@ export class ChatbotSettingsService implements OnModuleInit {
       where: { id: 'default' },
     });
     if (!setting) {
-      throw new NotFoundException('Chatbot settings not found');
+      throw appError('CHAT_SETTINGS_NOT_FOUND');
     }
 
     if (dto.provider !== undefined) {

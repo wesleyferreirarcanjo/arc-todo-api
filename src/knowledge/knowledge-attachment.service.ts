@@ -1,13 +1,12 @@
 import {
-  BadRequestException,
   Injectable,
-  NotFoundException,
   forwardRef,
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'express';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { MinioStorageService } from '../storage/minio-storage.service';
 import {
   buildKnowledgeObjectKey,
@@ -475,7 +474,7 @@ export class KnowledgeAttachmentService {
       });
 
       if (!attachment) {
-        throw new NotFoundException('Attachment not found');
+        throw appError('FILE_ATTACHMENT_NOT_FOUND');
       }
 
       await this.ragClientService.requireCleanup(() =>
@@ -494,11 +493,11 @@ export class KnowledgeAttachmentService {
       });
 
       if (!attachment) {
-        throw new NotFoundException('Attachment not found');
+        throw appError('FILE_ATTACHMENT_NOT_FOUND');
       }
 
       if (!this.ragClientService.isConfigured()) {
-        throw new BadRequestException('RAG indexing is not configured');
+        throw appError('KNOW_RAG_NOT_CONFIGURED');
       }
 
       const job = await this.ragClientService.resyncAttachment(
@@ -527,7 +526,7 @@ export class KnowledgeAttachmentService {
     });
 
     if (!attachment) {
-      throw new NotFoundException('Attachment not found');
+      throw appError('FILE_ATTACHMENT_NOT_FOUND');
     }
 
     const { stream, stat } = await this.storageService.getObjectStream(
@@ -546,18 +545,16 @@ export class KnowledgeAttachmentService {
 
   private validateFile(file: UploadedFilePayload): void {
     if (!file) {
-      throw new BadRequestException('File is required');
+      throw appError('FILE_REQUIRED');
     }
 
     if (!file.buffer || file.size <= 0) {
-      throw new BadRequestException('File cannot be empty');
+      throw appError('FILE_EMPTY');
     }
 
     const maxBytes = this.storageService.getMaxUploadBytes();
     if (file.size > maxBytes) {
-      throw new BadRequestException(
-        `File exceeds maximum upload size of ${maxBytes} bytes`,
-      );
+      throw appError('FILE_TOO_LARGE');
     }
   }
 

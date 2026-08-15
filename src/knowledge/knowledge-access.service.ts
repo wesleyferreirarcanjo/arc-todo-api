@@ -1,10 +1,7 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { Organization } from '../organizations/organization.entity';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectMember } from '../projects/project-member.entity';
@@ -69,7 +66,7 @@ export class KnowledgeAccessService {
     if (await this.hasOrgKnowledgeAccess(userId, organizationId)) {
       return;
     }
-    throw new ForbiddenException('Knowledge access denied');
+    throw appError('ACL_KNOWLEDGE_DENIED');
   }
 
   async assertProjectKnowledgeAccess(
@@ -79,7 +76,7 @@ export class KnowledgeAccessService {
     if (await this.hasProjectKnowledgeAccess(userId, projectId)) {
       return;
     }
-    throw new ForbiddenException('Knowledge access denied');
+    throw appError('ACL_KNOWLEDGE_DENIED');
   }
 
   async listOrgGrants(
@@ -175,7 +172,7 @@ export class KnowledgeAccessService {
       select: ['id'],
     });
     if (!org) {
-      throw new NotFoundException('Organization not found');
+      throw appError('ORG_NOT_FOUND');
     }
   }
 
@@ -185,7 +182,7 @@ export class KnowledgeAccessService {
       select: ['id', 'organizationId'],
     });
     if (!project) {
-      throw new NotFoundException('Project not found');
+      throw appError('PROJ_NOT_FOUND');
     }
     return project;
   }
@@ -200,7 +197,7 @@ export class KnowledgeAccessService {
       select: ['id'],
     });
     if (users.length !== uniqueUserIds.length) {
-      throw new NotFoundException('One or more users not found');
+      throw appError('ORG_USERS_NOT_FOUND');
     }
     return uniqueUserIds;
   }

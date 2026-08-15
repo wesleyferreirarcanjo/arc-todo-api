@@ -1,14 +1,12 @@
 import {
-  BadRequestException,
   Injectable,
   Logger,
-  NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'express';
 import { LessThan, Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { MinioStorageService } from '../storage/minio-storage.service';
 import {
   buildTaskEvidenceObjectKey,
@@ -164,9 +162,7 @@ export class TaskEvidenceService {
       file.buffer,
       file.mimetype || 'application/octet-stream',
     ).catch(() => {
-      throw new ServiceUnavailableException(
-        'Unable to store evidence file. Check MinIO storage configuration.',
-      );
+      throw appError('FILE_STORAGE_UNAVAILABLE');
     });
 
     const evidence = this.evidenceRepository.create({
@@ -203,7 +199,7 @@ export class TaskEvidenceService {
       where: { id: evidenceId, taskId },
     });
     if (!evidence) {
-      throw new NotFoundException('Evidence not found');
+      throw appError('FILE_EVIDENCE_NOT_FOUND');
     }
 
     const { stream, stat } = await this.storageService.getObjectStream(
@@ -231,7 +227,7 @@ export class TaskEvidenceService {
       where: { id: evidenceId, taskId },
     });
     if (!evidence) {
-      throw new NotFoundException('Evidence not found');
+      throw appError('FILE_EVIDENCE_NOT_FOUND');
     }
 
     await this.evidenceRepository.remove(evidence);
@@ -250,25 +246,21 @@ export class TaskEvidenceService {
 
   private validateFile(file: UploadedFilePayload): void {
     if (!file) {
-      throw new BadRequestException('File is required');
+      throw appError('FILE_REQUIRED');
     }
 
     if (!file.buffer || file.size <= 0) {
-      throw new BadRequestException('File cannot be empty');
+      throw appError('FILE_EMPTY');
     }
 
     const mime = (file.mimetype || '').toLowerCase();
     if (!ALLOWED_MIME_PREFIXES.some((prefix) => mime.startsWith(prefix))) {
-      throw new BadRequestException(
-        'Only image and video files are allowed as QA evidence',
-      );
+      throw appError('FILE_EVIDENCE_TYPE');
     }
 
     const maxBytes = this.storageService.getMaxUploadBytes();
     if (file.size > maxBytes) {
-      throw new BadRequestException(
-        `File exceeds maximum upload size of ${maxBytes} bytes`,
-      );
+      throw appError('FILE_TOO_LARGE');
     }
   }
 
@@ -283,9 +275,7 @@ export class TaskEvidenceService {
       return null;
     }
     if (trimmed.length > 64) {
-      throw new BadRequestException(
-        'checklistItemId must be at most 64 characters',
-      );
+      throw appError('FILE_CHECKLIST_ID');
     }
     return trimmed;
   }

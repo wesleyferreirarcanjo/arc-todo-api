@@ -1,10 +1,7 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { ProjectsService } from '../projects/projects.service';
 import {
   DEFAULT_WIREFRAME_HTML,
@@ -30,7 +27,7 @@ export class WireframesService {
   private requireTitle(title: string): string {
     const trimmed = title.trim();
     if (!trimmed) {
-      throw new BadRequestException('Title is required');
+      throw appError('WIRE_TITLE_REQUIRED');
     }
     return trimmed;
   }
@@ -39,9 +36,7 @@ export class WireframesService {
     try {
       return assertWireframeHtml(html);
     } catch (err) {
-      throw new BadRequestException(
-        err instanceof Error ? err.message : 'Invalid html',
-      );
+      throw appError('WIRE_INVALID_HTML');
     }
   }
 
@@ -93,7 +88,7 @@ export class WireframesService {
       where: { id: wireframeId, projectId },
     });
     if (!wireframe) {
-      throw new NotFoundException('Wireframe not found');
+      throw appError('WIRE_NOT_FOUND');
     }
     return wireframe;
   }

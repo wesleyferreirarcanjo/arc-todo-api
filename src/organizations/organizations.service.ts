@@ -1,12 +1,8 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ensureUniqueSlug, slugify } from '../common/utils/slug.util';
+import { appError } from '../errors/app-errors';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
@@ -52,7 +48,7 @@ export class OrganizationsService {
       where: { id: orgId },
     });
     if (!organization) {
-      throw new NotFoundException('Organization not found');
+      throw appError('ORG_NOT_FOUND');
     }
     return organization;
   }
@@ -74,7 +70,7 @@ export class OrganizationsService {
         where: { slug: dto.slug },
       });
       if (existing && existing.id !== orgId) {
-        throw new ConflictException('Slug already in use');
+        throw appError('ORG_SLUG_TAKEN');
       }
       organization.slug = dto.slug;
     }

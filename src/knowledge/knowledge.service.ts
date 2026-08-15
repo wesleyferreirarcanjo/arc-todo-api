@@ -1,13 +1,11 @@
 import {
-  BadRequestException,
-  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, IsNull, Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { PersonsService } from '../persons/persons.service';
@@ -403,10 +401,10 @@ export class KnowledgeService {
       where: { id: knowledgeId, scope: KnowledgeScope.GENERAL },
     });
     if (!entry) {
-      throw new NotFoundException('Knowledge entry not found');
+      throw appError('KNOW_NOT_FOUND');
     }
     if (entry.createdById !== userId) {
-      throw new ForbiddenException('Access denied');
+      throw appError('ACL_KNOWLEDGE_ENTRY_DENIED');
     }
     return entry;
   }
@@ -427,7 +425,7 @@ export class KnowledgeService {
       },
     });
     if (!entry) {
-      throw new NotFoundException('Knowledge entry not found');
+      throw appError('KNOW_NOT_FOUND');
     }
     return entry;
   }
@@ -452,7 +450,7 @@ export class KnowledgeService {
       },
     });
     if (!entry) {
-      throw new NotFoundException('Knowledge entry not found');
+      throw appError('KNOW_NOT_FOUND');
     }
     return entry;
   }
@@ -474,7 +472,7 @@ export class KnowledgeService {
       },
     });
     if (!entry) {
-      throw new NotFoundException('Knowledge entry not found');
+      throw appError('KNOW_NOT_FOUND');
     }
     return entry;
   }
@@ -496,7 +494,7 @@ export class KnowledgeService {
       },
     });
     if (!entry) {
-      throw new NotFoundException('Knowledge entry not found');
+      throw appError('KNOW_NOT_FOUND');
     }
     return entry;
   }
@@ -710,7 +708,7 @@ export class KnowledgeService {
     const entry = await qb.getOne();
 
     if (!entry) {
-      throw new NotFoundException('Knowledge entry not found');
+      throw appError('KNOW_NOT_FOUND');
     }
 
     return entry;
@@ -726,9 +724,7 @@ export class KnowledgeService {
     if (dto.taskId !== undefined) {
       if (entry.scope !== KnowledgeScope.PROJECT || !entry.projectId) {
         if (dto.taskId !== null) {
-          throw new BadRequestException(
-            'taskId can only be set on project-scoped knowledge entries',
-          );
+          throw appError('KNOW_TASK_SCOPE');
         }
         entry.taskId = null;
       } else {
@@ -757,12 +753,10 @@ export class KnowledgeService {
     }
     const task = await this.taskRepository.findOne({ where: { id: taskId } });
     if (!task) {
-      throw new NotFoundException('Task not found');
+      throw appError('TASK_NOT_FOUND');
     }
     if (task.projectId !== projectId) {
-      throw new BadRequestException(
-        'taskId must belong to the same project as the knowledge entry',
-      );
+        throw appError('KNOW_TASK_PROJECT');
     }
     return task.id;
   }

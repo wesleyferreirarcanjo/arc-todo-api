@@ -1,10 +1,7 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { OrganizationsService } from '../organizations/organizations.service';
 import { CreatePersonDto } from './dto/create-person.dto';
 import { UpdatePersonDto } from './dto/update-person.dto';
@@ -43,7 +40,7 @@ export class PersonsService {
       where: { id: personId, organizationId: IsNull(), createdById: userId },
     });
     if (!person) {
-      throw new NotFoundException('Person not found');
+      throw appError('PERS_NOT_FOUND');
     }
 
     return person;
@@ -101,7 +98,7 @@ export class PersonsService {
       where: { id: personId, organizationId: orgId },
     });
     if (!person) {
-      throw new NotFoundException('Person not found');
+      throw appError('PERS_NOT_FOUND');
     }
 
     return person;

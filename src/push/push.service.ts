@@ -1,8 +1,9 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as webpush from 'web-push';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { CreatePushSubscriptionDto } from './dto/create-push-subscription.dto';
 import { UpdatePushPreferencesDto } from './dto/update-push-preferences.dto';
 import { PushPreference } from './push-preference.entity';
@@ -45,7 +46,7 @@ export class PushService {
   getVapidPublicKey(): { publicKey: string } {
     const publicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
     if (!publicKey || !this.vapidConfigured) {
-      throw new ServiceUnavailableException('Web Push is not configured');
+      throw appError('PUSH_NOT_CONFIGURED');
     }
     return { publicKey };
   }
@@ -223,7 +224,7 @@ export class PushService {
 
   private assertConfigured(): void {
     if (!this.vapidConfigured) {
-      throw new ServiceUnavailableException('Web Push is not configured');
+      throw appError('PUSH_NOT_CONFIGURED');
     }
   }
 

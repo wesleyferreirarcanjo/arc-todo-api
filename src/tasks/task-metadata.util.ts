@@ -1,5 +1,5 @@
-import { BadRequestException } from '@nestjs/common';
-import { TaskCategory, BUILTIN_TASK_CATEGORIES, isTaskCategory } from './task-category.enum';
+import { appError } from '../errors/app-errors';
+import { TaskCategory, isTaskCategory } from './task-category.enum';
 
 export const CODING_METADATA_KEYS = [
   'repositoryUrl',
@@ -27,12 +27,10 @@ function assertStringField(
     return;
   }
   if (typeof value !== 'string') {
-    throw new BadRequestException(`metadata.${key} must be a string`);
+    throw appError('META_FIELD_TYPE');
   }
   if (value.length > maxLen) {
-    throw new BadRequestException(
-      `metadata.${key} exceeds maximum length of ${maxLen}`,
-    );
+    throw appError('META_FIELD_LENGTH');
   }
 }
 
@@ -51,7 +49,7 @@ function assertUrlField(
       throw new Error('invalid protocol');
     }
   } catch {
-    throw new BadRequestException(`metadata.${key} must be a valid http(s) URL`);
+    throw appError('META_URL');
   }
 }
 
@@ -61,23 +59,17 @@ function assertCommitsField(metadata: Record<string, unknown>): void {
     return;
   }
   if (!Array.isArray(value)) {
-    throw new BadRequestException('metadata.commits must be an array of strings');
+    throw appError('META_COMMITS_TYPE');
   }
   if (value.length > MAX_COMMITS) {
-    throw new BadRequestException(
-      `metadata.commits exceeds maximum of ${MAX_COMMITS} entries`,
-    );
+    throw appError('META_COMMITS_COUNT');
   }
   for (const commit of value) {
     if (typeof commit !== 'string' || commit.length === 0) {
-      throw new BadRequestException(
-        'metadata.commits must contain non-empty strings',
-      );
+      throw appError('META_COMMITS_EMPTY');
     }
     if (commit.length > MAX_COMMIT_LEN) {
-      throw new BadRequestException(
-        `metadata.commits entries exceed maximum length of ${MAX_COMMIT_LEN}`,
-      );
+      throw appError('META_COMMITS_LENGTH');
     }
   }
 }
@@ -86,7 +78,7 @@ function validateCodingMetadata(metadata: Record<string, unknown>): void {
   const allowed = new Set<string>(CODING_METADATA_KEYS);
   for (const key of Object.keys(metadata)) {
     if (!allowed.has(key)) {
-      throw new BadRequestException(`Unknown coding metadata field: ${key}`);
+      throw appError('META_UNKNOWN_FIELD');
     }
   }
   assertUrlField(metadata, 'repositoryUrl');
@@ -99,9 +91,7 @@ function validateCodingMetadata(metadata: Record<string, unknown>): void {
 
 export function assertTaskCategory(category: string): asserts category is TaskCategory {
   if (!isTaskCategory(category)) {
-    throw new BadRequestException(
-      `category must be one of: ${BUILTIN_TASK_CATEGORIES.join(', ')}`,
-    );
+    throw appError('META_CATEGORY');
   }
 }
 
@@ -113,20 +103,18 @@ export function normalizeTaskMetadata(
     return {};
   }
   if (typeof metadata !== 'object' || Array.isArray(metadata)) {
-    throw new BadRequestException('metadata must be a JSON object');
+    throw appError('META_OBJECT');
   }
   const record = metadata as Record<string, unknown>;
   const serialized = JSON.stringify(record);
   if (serialized.length > MAX_METADATA_BYTES) {
-    throw new BadRequestException('metadata exceeds maximum size');
+    throw appError('META_SIZE');
   }
 
   if (category === 'coding') {
     validateCodingMetadata(record);
   } else if (Object.keys(record).length > 0) {
-    throw new BadRequestException(
-      `metadata is only supported for coding tasks today`,
-    );
+    throw appError('META_CODING_ONLY');
   }
 
   return record;

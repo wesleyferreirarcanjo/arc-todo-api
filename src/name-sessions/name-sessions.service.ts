@@ -1,12 +1,8 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { ProjectAccessService } from '../projects/project-access.service';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateNameSessionDto } from './dto/create-name-session.dto';
@@ -69,7 +65,7 @@ export class NameSessionsService {
   private requireTitle(title: string): string {
     const trimmed = title.trim();
     if (!trimmed) {
-      throw new BadRequestException('Title is required');
+      throw appError('NAME_TITLE_REQUIRED');
     }
     return trimmed;
   }
@@ -143,7 +139,7 @@ export class NameSessionsService {
     let namingGoal = DEFAULT_NAMING_GOAL;
     if (dto.namingGoal) {
       if (!isNamingGoal(dto.namingGoal)) {
-        throw new BadRequestException('Invalid naming goal');
+        throw appError('NAME_INVALID_GOAL');
       }
       namingGoal = dto.namingGoal;
     }
@@ -176,7 +172,7 @@ export class NameSessionsService {
       where: { id: sessionId, projectId },
     });
     if (!session) {
-      throw new NotFoundException('Name session not found');
+      throw appError('NAME_SESSION_NOT_FOUND');
     }
     return session;
   }
@@ -209,7 +205,7 @@ export class NameSessionsService {
       if (dto.namingGoal === null || dto.namingGoal === '') {
         session.namingGoal = null;
       } else if (!isNamingGoal(dto.namingGoal)) {
-        throw new BadRequestException('Invalid naming goal');
+        throw appError('NAME_INVALID_GOAL');
       } else {
         session.namingGoal = dto.namingGoal;
       }
@@ -257,7 +253,7 @@ export class NameSessionsService {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
     const name = dto.name.trim();
     if (!name) {
-      throw new BadRequestException('Name is required');
+      throw appError('NAME_REQUIRED');
     }
     const domainChecks = await this.nameCheckService.checkName(name);
     const candidate = this.upsertCandidate(session, {
@@ -284,7 +280,7 @@ export class NameSessionsService {
       (item) => normalizeNameKey(item.name) === normalizeNameKey(name),
     );
     if (!existing) {
-      throw new BadRequestException('Check the name before domain history');
+      throw appError('NAME_CHECK_FIRST');
     }
     const domainChecks = Array.isArray(existing.domainChecks)
       ? (existing.domainChecks as Array<{ host?: string; availability?: string }>)
@@ -347,7 +343,7 @@ export class NameSessionsService {
     const candidates = this.asCandidates(session.candidates);
     const target = candidates.find((item) => item.id === dto.candidateId);
     if (!target) {
-      throw new NotFoundException('Candidate not found');
+      throw appError('NAME_CANDIDATE_NOT_FOUND');
     }
     for (const candidate of candidates) {
       if (candidate.id === dto.candidateId) {
@@ -376,17 +372,17 @@ export class NameSessionsService {
     await this.assertCanManageFeedback(userId, session);
     const ids = [...new Set(dto.candidateIds)];
     if (ids.length < 2 || ids.length > 5) {
-      throw new BadRequestException('Select 2 to 5 candidates');
+      throw appError('NAME_ROUND_SIZE');
     }
     const candidates = this.asCandidates(session.candidates);
     for (const id of ids) {
       if (!candidates.some((item) => item.id === id)) {
-        throw new BadRequestException('Unknown candidate in round');
+        throw appError('NAME_ROUND_UNKNOWN');
       }
     }
     const rounds = this.asRounds(session.feedbackRounds);
     if (rounds.some((round) => round.status === 'open')) {
-      throw new BadRequestException('A feedback round is already open');
+      throw appError('NAME_ROUND_OPEN');
     }
     rounds.push({
       id: randomUUID(),
@@ -413,13 +409,13 @@ export class NameSessionsService {
       (item) => item.id === roundId,
     );
     if (!round) {
-      throw new NotFoundException('Feedback round not found');
+      throw appError('NAME_ROUND_NOT_FOUND');
     }
     if (round.status !== 'open') {
-      throw new BadRequestException('This feedback round is closed');
+      throw appError('NAME_ROUND_CLOSED');
     }
     if (!round.candidateIds.includes(dto.candidateId)) {
-      throw new BadRequestException('Candidate is not in this round');
+      throw appError('NAME_CANDIDATE_NOT_IN_ROUND');
     }
     let row = await this.feedbackRepository.findOne({
       where: { roundId, candidateId: dto.candidateId, userId },
@@ -463,7 +459,7 @@ export class NameSessionsService {
     const rounds = this.asRounds(session.feedbackRounds);
     const round = rounds.find((item) => item.id === roundId);
     if (!round) {
-      throw new NotFoundException('Feedback round not found');
+      throw appError('NAME_ROUND_NOT_FOUND');
     }
     round.status = 'closed';
     round.closedAt = new Date().toISOString();
@@ -478,9 +474,7 @@ export class NameSessionsService {
   ) {
     if (session.createdById === userId) return;
     if (await this.projectAccess.isAdmin(userId)) return;
-    throw new ForbiddenException(
-      'Only the session owner or an admin can start or close a feedback round',
-    );
+    throw appError('ACL_NAME_FEEDBACK');
   }
 
   private sanitizeCandidates(value: unknown[]): CandidateRecord[] {

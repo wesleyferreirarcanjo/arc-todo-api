@@ -1,10 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { UpdateMcpToolSettingDto } from './dto/update-mcp-tool-setting.dto';
 import { UpdateMcpToolSettingsDto } from './dto/update-mcp-tool-settings.dto';
 import { McpToolSetting } from './mcp-tool-setting.entity';
@@ -174,7 +171,7 @@ export class McpToolsService implements OnModuleInit {
   async updateOne(key: string, dto: UpdateMcpToolSettingDto) {
     const setting = await this.settingsRepository.findOne({ where: { key } });
     if (!setting) {
-      throw new NotFoundException(`MCP tool '${key}' not found`);
+      throw appError('MCP_TOOL_NOT_FOUND');
     }
 
     setting.enabled = dto.enabled;
@@ -194,7 +191,7 @@ export class McpToolsService implements OnModuleInit {
     for (const item of dto.tools) {
       const setting = settingsByKey.get(item.key);
       if (!setting) {
-        throw new NotFoundException(`MCP tool '${item.key}' not found`);
+        throw appError('MCP_TOOL_NOT_FOUND');
       }
       setting.enabled = item.enabled;
       const saved = await this.settingsRepository.save(setting);

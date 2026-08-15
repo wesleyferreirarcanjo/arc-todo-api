@@ -1,10 +1,8 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { ensureUniqueProjectAcronym } from '../common/utils/acronym.util';
+import { appError } from '../errors/app-errors';
 import { ProjectAccessService } from './project-access.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -66,7 +64,7 @@ export class ProjectsService {
     );
 
     if (project.organizationId !== orgId) {
-      throw new NotFoundException('Project not found');
+      throw appError('PROJ_NOT_FOUND');
     }
 
     return project;

@@ -1,10 +1,7 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { Organization } from '../organizations/organization.entity';
 import { User } from '../users/user.entity';
 import { ProjectMember } from './project-member.entity';
@@ -33,7 +30,7 @@ export class ProjectAccessService {
 
   async assertAdmin(userId: string): Promise<void> {
     if (!(await this.isAdmin(userId))) {
-      throw new ForbiddenException('Admin access required');
+      throw appError('ACL_ADMIN_REQUIRED');
     }
   }
 
@@ -44,7 +41,7 @@ export class ProjectAccessService {
         relations: ['organization'],
       });
       if (!project) {
-        throw new NotFoundException('Project not found');
+        throw appError('PROJ_NOT_FOUND');
       }
       return project;
     }
@@ -54,7 +51,7 @@ export class ProjectAccessService {
       relations: ['project', 'project.organization'],
     });
     if (!membership) {
-      throw new ForbiddenException('Access denied');
+      throw appError('ACL_PROJECT_DENIED');
     }
 
     return membership.project;
@@ -73,7 +70,7 @@ export class ProjectAccessService {
       .getCount();
 
     if (count === 0) {
-      throw new ForbiddenException('Access denied');
+      throw appError('ACL_PROJECT_DENIED');
     }
   }
 
@@ -145,7 +142,7 @@ export class ProjectAccessService {
         select: ['id'],
       });
       if (projects.length !== uniqueProjectIds.length) {
-        throw new NotFoundException('One or more projects not found');
+        throw appError('PROJ_BULK_NOT_FOUND');
       }
     }
 

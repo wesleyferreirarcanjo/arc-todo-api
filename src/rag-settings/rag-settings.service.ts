@@ -1,10 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { appError } from '../errors/app-errors';
 import { UpdateRagSettingsDto } from './dto/update-rag-settings.dto';
 import { RagSetting } from './rag-setting.entity';
 
@@ -142,7 +139,7 @@ export class RagSettingsService implements OnModuleInit {
       where: { id: 'default' },
     });
     if (!setting) {
-      throw new NotFoundException('RAG settings not found');
+      throw appError('RAG_SETTINGS_NOT_FOUND');
     }
     return this.toPublicResponse(setting);
   }
@@ -152,7 +149,7 @@ export class RagSettingsService implements OnModuleInit {
       where: { id: 'default' },
     });
     if (!setting) {
-      throw new NotFoundException('RAG settings not found');
+      throw appError('RAG_SETTINGS_NOT_FOUND');
     }
     return this.toRuntimeResponse(setting);
   }
@@ -162,7 +159,7 @@ export class RagSettingsService implements OnModuleInit {
       where: { id: 'default' },
     });
     if (!setting) {
-      throw new NotFoundException('RAG settings not found');
+      throw appError('RAG_SETTINGS_NOT_FOUND');
     }
 
     if (dto.enabled !== undefined) setting.enabled = dto.enabled;

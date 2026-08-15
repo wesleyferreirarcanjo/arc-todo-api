@@ -2,10 +2,14 @@ import {
   HttpException,
   Injectable,
   Logger,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../auth/auth.service';
+import {
+  APP_ERRORS,
+  AppHttpException,
+  appError,
+} from '../errors/app-errors';
 import {
   buildChunkCleanupQuery,
   buildChunkDeletePath,
@@ -479,7 +483,7 @@ export class RagClientService {
     const baseUrl = this.getBaseUrl();
     if (!baseUrl) {
       if (throwOnError) {
-        throw new ServiceUnavailableException('RAG service is not configured');
+        throw appError('RAG_NOT_CONFIGURED');
       }
       throw new Error('RAG service is not configured');
     }
@@ -508,7 +512,10 @@ export class RagClientService {
           // ignore
         }
         if (throwOnError) {
-          throw new HttpException(message, response.status);
+          throw new AppHttpException(
+            { ...APP_ERRORS.RAG_UPSTREAM, status: response.status },
+            message,
+          );
         }
         throw new Error(message);
       }
@@ -523,7 +530,7 @@ export class RagClientService {
         throw error;
       }
       if (throwOnError) {
-        throw new ServiceUnavailableException('RAG service unavailable');
+        throw appError('RAG_UNAVAILABLE');
       }
       throw error;
     }
