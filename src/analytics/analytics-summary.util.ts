@@ -49,11 +49,25 @@ export interface ClosedDwell {
 
 export type AnalyticsTrendGranularity = 'day' | 'week';
 
+export type AnalyticsTrendCountField =
+  | 'tasksCreated'
+  | 'tasksCompleted'
+  | 'moves'
+  | 'bugReports';
+
 export interface AnalyticsTrendBucket {
   date: string;
   tasksCreated: number;
+  tasksCompleted: number;
   moves: number;
   bugReports: number;
+}
+
+export interface ArchiveClosure {
+  taskId: string;
+  archivedAtMs: number;
+  completedAtMs: number;
+  createdById: string | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -129,6 +143,60 @@ export function closedStatusDwells(events: StatusChangeEvent[]): ClosedDwell[] {
     }
   }
   return dwells;
+}
+
+export function timestampMs(value: unknown): number {
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    return new Date(value).getTime();
+  }
+  return Number.NaN;
+}
+
+export function appendArchiveClosures(
+  events: StatusChangeEvent[],
+  archives: ArchiveClosure[],
+): StatusChangeEvent[] {
+  if (archives.length === 0) {
+    return events;
+  }
+  const extra: StatusChangeEvent[] = [];
+  const grouped = groupSorted(events);
+  for (const archive of archives) {
+    if (!Number.isFinite(archive.archivedAtMs)) {
+      continue;
+    }
+    const list = grouped.get(archive.taskId) ?? [];
+    const last = list.length > 0 ? list[list.length - 1] : undefined;
+    const createdById = last?.createdById ?? archive.createdById;
+    if (!last || last.status !== TaskStatus.DONE) {
+      const enterMs = Number.isFinite(archive.completedAtMs)
+        ? archive.completedAtMs
+        : archive.archivedAtMs;
+      if ((!last || enterMs > last.atMs) && enterMs <= archive.archivedAtMs) {
+        extra.push({
+          taskId: archive.taskId,
+          atMs: enterMs,
+          status: TaskStatus.DONE,
+          createdById,
+        });
+      }
+    }
+    if (!last || archive.archivedAtMs > last.atMs) {
+      extra.push({
+        taskId: archive.taskId,
+        atMs: archive.archivedAtMs,
+        status: TaskStatus.DONE,
+        createdById,
+      });
+    }
+  }
+  return extra.length === 0 ? events : [...events, ...extra];
 }
 
 export function closedTestDwells(
@@ -249,7 +317,7 @@ export function bucketStartMs(atMs: number, granularity: AnalyticsTrendGranulari
 }
 
 function emptyBucket(date: string): AnalyticsTrendBucket {
-  return { date, tasksCreated: 0, moves: 0, bugReports: 0 };
+  return { date, tasksCreated: 0, tasksCompleted: 0, moves: 0, bugReports: 0 };
 }
 
 export function emptyTrendBuckets(
@@ -283,7 +351,7 @@ export function emptyTrendBuckets(
 export function fillTrendField(
   buckets: AnalyticsTrendBucket[],
   rows: Array<{ date: string; count: number }>,
-  field: 'tasksCreated' | 'moves' | 'bugReports',
+  field: AnalyticsTrendCountField,
 ): void {
   const index = new Map(buckets.map((bucket) => [bucket.date, bucket]));
   for (const row of rows) {
@@ -297,7 +365,7 @@ export function fillTrendField(
 export function countEventsIntoTrend(
   buckets: AnalyticsTrendBucket[],
   events: Array<{ atMs: number }>,
-  field: 'tasksCreated' | 'moves' | 'bugReports',
+  field: AnalyticsTrendCountField,
   granularity: AnalyticsTrendGranularity,
 ): void {
   const counts = new Map<string, number>();
@@ -319,12 +387,14 @@ export function bucketSeries(
   window: TimeWindow,
   granularity: AnalyticsTrendGranularity,
   nowMs = Date.now(),
+  completed: Array<{ atMs: number }> = [],
 ): AnalyticsTrendBucket[] {
-  const extra = [...created, ...moves, ...bugReports].map((event) =>
+  const extra = [...created, ...moves, ...bugReports, ...completed].map((event) =>
     formatIsoDateUtc(event.atMs),
   );
   const buckets = emptyTrendBuckets(window, granularity, extra, nowMs);
   countEventsIntoTrend(buckets, created, 'tasksCreated', granularity);
+  countEventsIntoTrend(buckets, completed, 'tasksCompleted', granularity);
   countEventsIntoTrend(buckets, moves, 'moves', granularity);
   countEventsIntoTrend(buckets, bugReports, 'bugReports', granularity);
   return buckets;
@@ -388,9 +458,38 @@ if (require.main === module) {
     [{ atMs: Date.UTC(2026, 7, 24, 18) }],
     window,
     'day',
+    Date.now(),
+    [{ atMs: Date.UTC(2026, 7, 26, 16) }],
   );
   console.assert(series.length === 3, 'three daily buckets');
   console.assert(series[0].date === '2026-08-24' && series[0].tasksCreated === 1 && series[0].bugReports === 1, 'first day counts');
   console.assert(series[1].moves === 1 && series[1].tasksCreated === 0, 'second day moves');
-  console.assert(series[2].tasksCreated === 1, 'third day created');
+  console.assert(series[2].tasksCreated === 1 && series[2].tasksCompleted === 1, 'third day created and completed');
+
+  const openDone = closedTestDwells([
+    { taskId: 't1', atMs: 0, status: TaskStatus.QA_TEST, createdById: 'u1' },
+    { taskId: 't1', atMs: 4_000, status: TaskStatus.DONE, createdById: 'u1' },
+  ]);
+  console.assert((openDone.byStatus.done.length ?? 0) === 0, 'open Done stay is omitted before archive');
+
+  const afterSprintClose = closedTestDwells(
+    appendArchiveClosures(
+      [
+        { taskId: 't1', atMs: 0, status: TaskStatus.QA_TEST, createdById: 'u1' },
+        { taskId: 't1', atMs: 4_000, status: TaskStatus.DONE, createdById: 'u1' },
+      ],
+      [{ taskId: 't1', archivedAtMs: 10_000, completedAtMs: 4_000, createdById: 'u1' }],
+    ),
+  );
+  console.assert(afterSprintClose.byStatus.done.length === 1, 'sprint close counts the Done stay');
+  console.assert(afterSprintClose.byStatus.done[0] === 6_000, 'Done stay ends at archival');
+  console.assert(afterSprintClose.qaTest[0] === 4_000, 'QA stay still closes at Done');
+
+  const archivedWithoutMoves = closedTestDwells(
+    appendArchiveClosures([], [
+      { taskId: 't2', archivedAtMs: 8_000, completedAtMs: 3_000, createdById: 'u2' },
+    ]),
+  );
+  console.assert(archivedWithoutMoves.byStatus.done[0] === 5_000, 'archived Done without status events still counts');
+  console.assert(timestampMs('2026-08-25T12:00:00.000Z') === Date.parse('2026-08-25T12:00:00.000Z'), 'iso timestamp');
 }

@@ -28,6 +28,7 @@ import {
   ANALYTICS_COMPLETION_TIMESTAMP_SOURCE,
   ANALYTICS_TEST_DURATION_SOURCE,
   analyticsTrendGranularity,
+  appendArchiveClosures,
   closedBugSolves,
   closedTestDwells,
   countEventsIntoTrend,
@@ -35,6 +36,7 @@ import {
   fillTrendField,
   meanMs,
   mergePersonIds,
+  timestampMs,
 } from './analytics-summary.util';
 import { AnalyticsSummaryQueryDto } from './dto/analytics-summary-query.dto';
 import type {
@@ -74,9 +76,11 @@ interface PersonCountRow {
 }
 
 interface DurationRow {
+  taskId: string;
   userId: string | null;
   ms: string;
-  completedAt: Date;
+  completedAt: Date | string;
+  archivedAt: Date | string | null;
 }
 
 interface StatusEventRow {
@@ -156,6 +160,17 @@ export class AnalyticsService {
       createdById: row.createdById,
       actorUserId: row.actorUserId,
     }));
+    const dwellEvents = appendArchiveClosures(
+      mappedEvents,
+      doneDurations
+        .filter((row) => Number.isFinite(timestampMs(row.archivedAt)))
+        .map((row) => ({
+          taskId: row.taskId,
+          archivedAtMs: timestampMs(row.archivedAt),
+          completedAtMs: timestampMs(row.completedAt),
+          createdById: row.userId,
+        })),
+    );
     const mappedBugs = bugEvents.map((row) => ({
       taskId: row.taskId,
       atMs: new Date(row.createdAt).getTime(),
@@ -178,9 +193,19 @@ export class AnalyticsService {
         ).length
       : null;
 
-    const doneCurrent = doneDurations.filter((row) =>
-      inRange(new Date(row.completedAt).getTime(), period.current),
-    );
+    const doneCurrent = doneDurations.filter((row) => {
+      const completedAtMs = timestampMs(row.completedAt);
+      return Number.isFinite(completedAtMs) && inRange(completedAtMs, period.current);
+    });
+    const donePrevious = period.previous
+      ? doneDurations.filter((row) => {
+          const completedAtMs = timestampMs(row.completedAt);
+          return (
+            Number.isFinite(completedAtMs) &&
+            inRange(completedAtMs, period.previous as TimeWindow)
+          );
+        }).length
+      : null;
     const doneMean = meanMs(doneCurrent.map((row) => Number(row.ms)));
 
     const bugSolves = closedBugSolves(mappedBugs);
@@ -189,7 +214,7 @@ export class AnalyticsService {
       .map((solve) => solve.durationMs);
     const bugMean = meanMs(bugSolveMs);
 
-    const dwells = closedTestDwells(mappedEvents, (dwell) => inRange(dwell.endMs, period.current));
+    const dwells = closedTestDwells(dwellEvents, (dwell) => inRange(dwell.endMs, period.current));
     const dwellByStatus = this.toDwellByStatus(dwells.byStatus);
     const longestStay = this.toLongestStay(dwellByStatus);
     const devMean = meanMs(dwells.devTest);
@@ -207,12 +232,19 @@ export class AnalyticsService {
       ...createdSeries.map((row) => row.date),
       ...currentMoves.map((event) => formatIsoDateUtc(event.atMs)),
       ...currentBugReports.map((event) => formatIsoDateUtc(event.atMs)),
+      ...doneCurrent.map((row) => formatIsoDateUtc(timestampMs(row.completedAt))),
     ];
     const buckets = emptyTrendBuckets(period.current, granularity, extraDates);
     fillTrendField(
       buckets,
       createdSeries.map((row) => ({ date: row.date, count: row.count })),
       'tasksCreated',
+    );
+    countEventsIntoTrend(
+      buckets,
+      doneCurrent.map((row) => ({ atMs: timestampMs(row.completedAt) })),
+      'tasksCompleted',
+      granularity,
     );
     countEventsIntoTrend(buckets, currentMoves, 'moves', granularity);
     countEventsIntoTrend(buckets, currentBugReports, 'bugReports', granularity);
@@ -229,10 +261,12 @@ export class AnalyticsService {
       },
       growth: {
         tasksCreated: growthMetric(createdCurrent, createdPrevious),
+        tasksCompleted: growthMetric(doneCurrent.length, donePrevious),
         moves: growthMetric(movesCurrent, movesPrevious),
         bugReports: growthMetric(bugReportsCurrent, bugReportsPrevious),
       },
       tasksCreated: createdCurrent,
+      tasksCompleted: doneCurrent.length,
       activeCount: Number(snapshot.activeCount),
       archivedCount: Number(snapshot.archivedCount),
       byStatus: {
@@ -471,24 +505,28 @@ export class AnalyticsService {
       .createQueryBuilder('history')
       .innerJoin(Task, 'task', 'task.id = history.task_id')
       .innerJoin(Project, 'project', 'project.id = task.project_id')
-      .select('task.created_by_id', 'userId')
+      .select('task.id', 'taskId')
+      .addSelect('task.created_by_id', 'userId')
       .addSelect(
         'EXTRACT(EPOCH FROM (history.completed_at - task.created_at)) * 1000',
         'ms',
       )
       .addSelect('history.completed_at', 'completedAt')
+      .addSelect('history.archived_at', 'archivedAt')
       .where('task.archived_in_cycle_id IS NOT NULL');
     this.applyTaskScope(archivedQb, query);
 
     const activeQb = this.tasksRepository
       .createQueryBuilder('task')
       .innerJoin('task.project', 'project')
-      .select('task.created_by_id', 'userId')
+      .select('task.id', 'taskId')
+      .addSelect('task.created_by_id', 'userId')
       .addSelect(
         'EXTRACT(EPOCH FROM (task.updated_at - task.created_at)) * 1000',
         'ms',
       )
       .addSelect('task.updated_at', 'completedAt')
+      .addSelect('NULL', 'archivedAt')
       .where('task.archived_in_cycle_id IS NULL')
       .andWhere('task.status = :done', { done: TaskStatus.DONE });
     this.applyTaskScope(activeQb, query);
@@ -497,7 +535,10 @@ export class AnalyticsService {
       archivedQb.getRawMany<DurationRow>(),
       activeQb.getRawMany<DurationRow>(),
     ]);
-    return [...archived, ...active].filter((row) => Number.isFinite(Number(row.ms)));
+    return [...archived, ...active].filter((row) => {
+      const ms = Number(row.ms);
+      return Number.isFinite(ms) && Number.isFinite(timestampMs(row.completedAt));
+    });
   }
 
   private async loadChecklist(query: AnalyticsSummaryQueryDto): Promise<{
@@ -511,7 +552,8 @@ export class AnalyticsService {
       .createQueryBuilder('task')
       .innerJoin('task.project', 'project')
       .select(['task.id', 'task.testDescription', 'task.qaChecklistState'])
-      .where('task.parentTaskId IS NULL');
+      .where('task.parentTaskId IS NULL')
+      .andWhere('task.archivedInCycleId IS NULL');
     this.applyTaskScope(qb, query);
     const parents = await qb.getMany();
 
@@ -646,6 +688,7 @@ export class AnalyticsService {
 
     const ids = mergePersonIds(
       createdByUser.keys(),
+      doneByUser.keys(),
       movesByUser.keys(),
       openBugsByUser.keys(),
       input.dwells.byCreator.keys(),
@@ -670,6 +713,7 @@ export class AnalyticsService {
         userId,
         username: userId ? (usernameById.get(userId) ?? userId) : UNASSIGNED_USERNAME,
         tasksCreated: createdByUser.get(userId) ?? 0,
+        tasksCompleted: done.sampleSize,
         moves: movesByUser.get(userId) ?? 0,
         openBugs: openBugsByUser.get(userId) ?? 0,
         averageMsToDone: done.averageMs,
