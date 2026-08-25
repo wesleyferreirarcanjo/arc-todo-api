@@ -4,4 +4,5 @@ export enum TaskHistoryField {
   DUE_DATE = 'dueDate',
   IS_BUG = 'isBug',
   BUG_REASON = 'bugReason',
+  ASSIGNEE = 'assignee',
 }

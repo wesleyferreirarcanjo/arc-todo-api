@@ -37,6 +37,9 @@ export class User {
   @OneToMany(() => Task, (task) => task.createdBy)
   createdTasks: Task[];
 
+  @OneToMany(() => Task, (task) => task.assignee)
+  assignedTasks: Task[];
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

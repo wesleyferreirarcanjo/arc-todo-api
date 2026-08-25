@@ -29,6 +29,22 @@ function normalizeBugReason(value: string | null | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+export function buildAssigneeHistoryDraft(
+  currentAssigneeId: string | null,
+  nextAssigneeId: string | null,
+  currentLabel: string | null,
+  nextLabel: string | null,
+): TaskHistoryDraft | null {
+  if (currentAssigneeId === nextAssigneeId) {
+    return null;
+  }
+  return {
+    field: TaskHistoryField.ASSIGNEE,
+    oldValue: currentLabel,
+    newValue: nextLabel,
+  };
+}
+
 export function buildTaskHistoryDrafts(
   current: {
     title: string;
@@ -225,6 +241,23 @@ if (require.main === module) {
   const counts = countBugCyclesFromHistory(allIsBug);
   console.assert(counts.bugReportCount === 2, 'expected 2 reports');
   console.assert(counts.bugResolveCount === 1, 'expected 1 resolve mid-cycle');
+
+  const assigneeDraft = buildAssigneeHistoryDraft(
+    'user-1',
+    null,
+    'wesley',
+    null,
+  );
+  console.assert(
+    assigneeDraft?.field === TaskHistoryField.ASSIGNEE &&
+      assigneeDraft.oldValue === 'wesley' &&
+      assigneeDraft.newValue === null,
+    'expected assignee history draft',
+  );
+  console.assert(
+    buildAssigneeHistoryDraft('user-1', 'user-1', 'wesley', 'wesley') === null,
+    'expected no assignee draft when unchanged',
+  );
 
   const afterSecondClear = buildBugHistoryDrafts(
     { isBug: true, bugReason: 'Regressão após correção' },

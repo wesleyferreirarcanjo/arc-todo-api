@@ -29,7 +29,9 @@ import { TaskHistoryField } from './task-history-field.enum';
 import {
   buildBugHistoryDrafts,
   buildTaskHistoryDrafts,
+  buildAssigneeHistoryDraft,
 } from './task-history.util';
+import { resolveCreateAssigneeId } from './task-assignee.util';
 import {
   computeSubtaskProgress,
   shouldCompleteParent,
@@ -59,6 +61,8 @@ export interface TaskResponse {
   dueDate: string | null;
   projectId: string;
   createdById: string | null;
+  assigneeId: string | null;
+  assignee: { id: string; username: string } | null;
   parentTaskId: string | null;
   taskNumber: number;
   displayId: string;
@@ -217,7 +221,11 @@ export class TasksService {
     projectId: string,
     dto: CreateTaskDto,
   ): Promise<TaskResponse> {
-    await this.projectsService.findOne(userId, orgId, projectId);
+    const projectMeta = await this.projectsService.findOne(
+      userId,
+      orgId,
+      projectId,
+    );
 
     if (dto.parentTaskId) {
       await this.validateParentTask(dto.parentTaskId, projectId);
@@ -226,6 +234,25 @@ export class TasksService {
     const category = dto.category ?? DEFAULT_TASK_CATEGORY;
     assertTaskCategory(category);
     const metadata = normalizeTaskMetadata(category, dto.metadata);
+
+    let assigneeId = resolveCreateAssigneeId(
+      dto.assigneeId,
+      projectMeta.defaultAssigneeId,
+    );
+    if (assigneeId) {
+      try {
+        await this.projectAccessService.assertUserAssignableToProject(
+          projectId,
+          assigneeId,
+        );
+      } catch (error) {
+        if (dto.assigneeId === undefined) {
+          assigneeId = null;
+        } else {
+          throw error;
+        }
+      }
+    }
 
     const { saved, acronym } = await this.dataSource.transaction(
       async (manager) => {
@@ -259,6 +286,7 @@ export class TasksService {
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
           projectId,
           createdById: userId,
+          assigneeId,
           parentTaskId: dto.parentTaskId ?? null,
           taskNumber,
           category,
@@ -283,7 +311,8 @@ export class TasksService {
       },
     });
 
-    return this.toTaskResponse(saved, acronym);
+    const [enriched] = await this.enrichTaskResponses([saved]);
+    return enriched;
   }
 
   async resolveByIdentifier(
@@ -446,6 +475,16 @@ export class TasksService {
         throw appError('TASK_MOVE_WHILE_NESTED');
       }
       await this.projectsService.findOne(userId, orgId, dto.projectId);
+      if (task.assigneeId) {
+        try {
+          await this.projectAccessService.assertUserAssignableToProject(
+            dto.projectId,
+            task.assigneeId,
+          );
+        } catch {
+          task.assigneeId = null;
+        }
+      }
       task.projectId = dto.projectId;
       await this.moveSubtasksWithParent(taskId, dto.projectId);
     }
@@ -485,6 +524,32 @@ export class TasksService {
       task.qaChecklistState = normalizeQaChecklistState(
         dto.qaChecklistState,
       ) as unknown as Record<string, unknown>;
+    }
+
+    if (dto.assigneeId !== undefined) {
+      if (dto.assigneeId === null) {
+        const assigneeDraft = buildAssigneeHistoryDraft(
+          task.assigneeId ?? null,
+          null,
+          await this.assigneeHistoryLabel(task.assigneeId ?? null),
+          null,
+        );
+        if (assigneeDraft) historyDrafts.push(assigneeDraft);
+        task.assigneeId = null;
+      } else {
+        const next = await this.projectAccessService.assertUserAssignableToProject(
+          task.projectId,
+          dto.assigneeId,
+        );
+        const assigneeDraft = buildAssigneeHistoryDraft(
+          task.assigneeId ?? null,
+          next.id,
+          await this.assigneeHistoryLabel(task.assigneeId ?? null),
+          next.username,
+        );
+        if (assigneeDraft) historyDrafts.push(assigneeDraft);
+        task.assigneeId = next.id;
+      }
     }
 
     const saved = await this.tasksRepository.save(task);
@@ -559,7 +624,8 @@ export class TasksService {
       dto.criticity !== undefined ||
       dto.dueDate !== undefined ||
       dto.category !== undefined ||
-      dto.isBug !== undefined
+      dto.isBug !== undefined ||
+      dto.assigneeId !== undefined
     ) {
       this.userActivityService.record({
         organizationId: orgId,
@@ -726,7 +792,11 @@ export class TasksService {
     }
   }
 
-  private toTaskResponse(task: Task, projectAcronym: string): TaskResponse {
+  private toTaskResponse(
+    task: Task,
+    projectAcronym: string,
+    assignees: Map<string, { id: string; username: string }> = new Map(),
+  ): TaskResponse {
     const descriptions = toDescriptionResponse(task);
     return {
       id: task.id,
@@ -740,6 +810,8 @@ export class TasksService {
       dueDate: task.dueDate ? task.dueDate.toISOString() : null,
       projectId: task.projectId,
       createdById: task.createdById,
+      assigneeId: task.assigneeId ?? null,
+      assignee: assignees.get(task.assigneeId ?? '') ?? null,
       parentTaskId: task.parentTaskId,
       taskNumber: task.taskNumber,
       displayId: formatTaskDisplayId(projectAcronym, task.taskNumber),
@@ -860,6 +932,12 @@ export class TasksService {
       ]),
     ];
     const bugCountsByTaskId = await this.loadBugCycleCounts(allTaskIds);
+    const assigneeIds = [
+      ...tasks.map((task) => task.assigneeId),
+      ...allSubtasks.map((subtask) => subtask.assigneeId),
+    ].filter((id): id is string => Boolean(id));
+    const assignees =
+      await this.projectAccessService.findPublicUsersByIds(assigneeIds);
 
     return tasks.map((task) => {
       const acronym = acronymsByProjectId.get(task.projectId);
@@ -868,7 +946,7 @@ export class TasksService {
       }
 
       const response = this.applyBugCycleCounts(
-        this.toTaskResponse(task, acronym),
+        this.toTaskResponse(task, acronym, assignees),
         bugCountsByTaskId,
       );
       if (task.parentTaskId) {
@@ -888,12 +966,24 @@ export class TasksService {
             throw appError('PROJ_MISSING_FOR_TASK');
           }
           return this.applyBugCycleCounts(
-            this.toTaskResponse(child, childAcronym),
+            this.toTaskResponse(child, childAcronym, assignees),
             bugCountsByTaskId,
           );
         });
       }
       return response;
     });
+  }
+
+  private async assigneeHistoryLabel(
+    assigneeId: string | null,
+  ): Promise<string | null> {
+    if (!assigneeId) {
+      return null;
+    }
+    const users = await this.projectAccessService.findPublicUsersByIds([
+      assigneeId,
+    ]);
+    return users.get(assigneeId)?.username ?? assigneeId;
   }
 }

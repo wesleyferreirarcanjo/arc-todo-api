@@ -48,7 +48,18 @@ export class ProjectsService {
       color: dto.color ?? DEFAULT_PROJECT_COLOR,
       acronym,
       nextTaskNumber: 1,
+      defaultAssigneeId: null,
     });
+
+    if (dto.defaultAssigneeId) {
+      const users = await this.projectAccessService.findPublicUsersByIds([
+        dto.defaultAssigneeId,
+      ]);
+      if (!users.has(dto.defaultAssigneeId)) {
+        throw appError('TASK_ASSIGNEE_INVALID');
+      }
+      project.defaultAssigneeId = dto.defaultAssigneeId;
+    }
 
     return this.projectsRepository.save(project);
   }
@@ -70,6 +81,15 @@ export class ProjectsService {
     return project;
   }
 
+  async listAssignableUsers(
+    userId: string,
+    orgId: string,
+    projectId: string,
+  ): Promise<Array<{ id: string; username: string }>> {
+    await this.findOne(userId, orgId, projectId);
+    return this.projectAccessService.listAssignableUsers(userId, projectId);
+  }
+
   async update(
     userId: string,
     orgId: string,
@@ -82,6 +102,19 @@ export class ProjectsService {
     if (dto.name !== undefined) project.name = dto.name;
     if (dto.description !== undefined) project.description = dto.description;
     if (dto.color !== undefined) project.color = dto.color;
+    if (dto.defaultAssigneeId !== undefined) {
+      if (dto.defaultAssigneeId === null) {
+        project.defaultAssigneeId = null;
+      } else {
+        const users = await this.projectAccessService.findPublicUsersByIds([
+          dto.defaultAssigneeId,
+        ]);
+        if (!users.has(dto.defaultAssigneeId)) {
+          throw appError('TASK_ASSIGNEE_INVALID');
+        }
+        project.defaultAssigneeId = dto.defaultAssigneeId;
+      }
+    }
 
     return this.projectsRepository.save(project);
   }

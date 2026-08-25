@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateIf,
 } from 'class-validator';
 import { TaskCriticity, TaskStatus } from '../task.enums';
 import { UpdateQaChecklistStateDto } from './update-qa-checklist-state.dto';
@@ -50,6 +51,11 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsUUID()
   parentTaskId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  assigneeId?: string | null;
 
   @IsOptional()
   @IsString()

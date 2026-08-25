@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateIf,
 } from 'class-validator';
 import { TaskCriticity, TaskStatus } from '../task.enums';
 
@@ -45,6 +46,11 @@ export class CreateTaskDto {
   @IsOptional()
   @IsUUID()
   parentTaskId?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsUUID()
+  assigneeId?: string | null;
 
   @IsOptional()
   @IsString()

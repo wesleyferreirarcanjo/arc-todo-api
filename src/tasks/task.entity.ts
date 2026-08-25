@@ -55,6 +55,9 @@ export class Task {
   @Column({ name: 'created_by_id', nullable: true })
   createdById: string | null;
 
+  @Column({ name: 'assignee_id', type: 'uuid', nullable: true })
+  assigneeId: string | null;
+
   @Column({ name: 'parent_task_id', nullable: true })
   parentTaskId: string | null;
 
@@ -105,6 +108,13 @@ export class Task {
   })
   @JoinColumn({ name: 'created_by_id' })
   createdBy: User | null;
+
+  @ManyToOne(() => User, (user) => user.assignedTasks, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'assignee_id' })
+  assignee: User | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

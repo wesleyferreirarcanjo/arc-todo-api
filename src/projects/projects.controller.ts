@@ -38,6 +38,15 @@ export class ProjectsController {
     return this.projectsService.create(req.user.id, orgId, dto);
   }
 
+  @Get(':projectId/assignable-users')
+  listAssignableUsers(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.projectsService.listAssignableUsers(req.user.id, orgId, projectId);
+  }
+
   @Get(':projectId')
   findOne(
     @Param('orgId') orgId: string,

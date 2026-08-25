@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Organization } from '../organizations/organization.entity';
 import { Task } from '../tasks/task.entity';
+import { User } from '../users/user.entity';
 import { ProjectMember } from './project-member.entity';
 
 @Entity('projects')
@@ -35,6 +36,9 @@ export class Project {
   @Column({ name: 'next_task_number', type: 'int', default: 1 })
   nextTaskNumber: number;
 
+  @Column({ name: 'default_assignee_id', type: 'uuid', nullable: true })
+  defaultAssigneeId: string | null;
+
   @ManyToOne(() => Organization, (organization) => organization.projects, {
     onDelete: 'CASCADE',
   })
@@ -46,6 +50,10 @@ export class Project {
 
   @OneToMany(() => ProjectMember, (member) => member.project)
   members: ProjectMember[];
+
+  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'default_assignee_id' })
+  defaultAssignee: User | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

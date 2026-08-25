@@ -187,6 +187,12 @@ export const APP_ERRORS = {
     status: HttpStatus.NOT_FOUND,
     message: 'That comment is gone. Refresh the task and try again.',
   },
+  TASK_ASSIGNEE_INVALID: {
+    code: 'ERR-ARC-TASK-09',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'That person cannot be assigned to this project. Pick a project member or an administrator, or leave it unassigned.',
+  },
 
   META_FIELD_TYPE: {
     code: 'ERR-ARC-META-01',

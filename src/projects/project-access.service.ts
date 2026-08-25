@@ -157,4 +157,76 @@ export class ProjectAccessService {
     );
     await this.projectMembersRepository.save(memberships);
   }
+
+  async listAssignableUsers(
+    userId: string,
+    projectId: string,
+  ): Promise<Array<{ id: string; username: string }>> {
+    await this.assertProjectAccess(userId, projectId);
+
+    const members = await this.projectMembersRepository.find({
+      where: { projectId },
+      relations: ['user'],
+    });
+    const admins = await this.usersRepository.find({
+      where: { isAdmin: true },
+      select: ['id', 'username'],
+      order: { username: 'ASC' },
+    });
+
+    const byId = new Map<string, { id: string; username: string }>();
+    for (const member of members) {
+      if (member.user) {
+        byId.set(member.user.id, {
+          id: member.user.id,
+          username: member.user.username,
+        });
+      }
+    }
+    for (const admin of admins) {
+      byId.set(admin.id, { id: admin.id, username: admin.username });
+    }
+
+    return [...byId.values()].sort((left, right) =>
+      left.username.localeCompare(right.username),
+    );
+  }
+
+  async assertUserAssignableToProject(
+    projectId: string,
+    assigneeId: string,
+  ): Promise<{ id: string; username: string }> {
+    const user = await this.usersRepository.findOne({
+      where: { id: assigneeId },
+      select: ['id', 'username', 'isAdmin'],
+    });
+    if (!user) {
+      throw appError('TASK_ASSIGNEE_INVALID');
+    }
+    if (user.isAdmin) {
+      return { id: user.id, username: user.username };
+    }
+
+    const membership = await this.projectMembersRepository.findOne({
+      where: { projectId, userId: assigneeId },
+    });
+    if (!membership) {
+      throw appError('TASK_ASSIGNEE_INVALID');
+    }
+    return { id: user.id, username: user.username };
+  }
+
+  async findPublicUsersByIds(
+    userIds: string[],
+  ): Promise<Map<string, { id: string; username: string }>> {
+    const uniqueIds = [...new Set(userIds.filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      return new Map();
+    }
+    const users = await this.usersRepository.find({
+      where: { id: In(uniqueIds) },
+      select: ['id', 'username'],
+    });
+    return new Map(users.map((user) => [user.id, { id: user.id, username: user.username }]));
+  }
 }
