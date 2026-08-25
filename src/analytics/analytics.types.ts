@@ -44,6 +44,20 @@ export interface AnalyticsLongestStay {
   sampleSize: number;
 }
 
+export type AnalyticsTrendGranularity = 'day' | 'week';
+
+export interface AnalyticsTrendBucket {
+  date: string;
+  tasksCreated: number;
+  moves: number;
+  bugReports: number;
+}
+
+export interface AnalyticsTrend {
+  granularity: AnalyticsTrendGranularity;
+  buckets: AnalyticsTrendBucket[];
+}
+
 export interface AnalyticsSummary {
   period: AnalyticsPeriodInfo;
   growth: {
@@ -76,4 +90,5 @@ export interface AnalyticsSummary {
   checklistCompleteTasks: number;
   checklistOpenBugs: number;
   byPerson: AnalyticsPersonRow[];
+  trend: AnalyticsTrend;
 }

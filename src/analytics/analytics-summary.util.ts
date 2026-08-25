@@ -1,4 +1,7 @@
 import { TaskStatus } from '../tasks/task.enums';
+import type { AnalyticsPeriodKey } from './analytics-period.util';
+import type { TimeWindow } from './analytics-period.util';
+import { formatIsoDateUtc } from './analytics-period.util';
 
 export const ANALYTICS_COMPLETION_TIMESTAMP_SOURCE = 'task.updatedAt';
 export const ANALYTICS_TEST_DURATION_SOURCE = 'user_activity.task.status_changed';
@@ -43,6 +46,18 @@ export interface ClosedDwell {
   durationMs: number;
   createdById: string | null;
 }
+
+export type AnalyticsTrendGranularity = 'day' | 'week';
+
+export interface AnalyticsTrendBucket {
+  date: string;
+  tasksCreated: number;
+  moves: number;
+  bugReports: number;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * DAY_MS;
 
 function emptyByStatus(): Record<TaskStatus, number[]> {
   return {
@@ -200,6 +215,121 @@ export function mergePersonIds(
   return result;
 }
 
+export function analyticsTrendGranularity(
+  key: AnalyticsPeriodKey,
+  window: TimeWindow,
+): AnalyticsTrendGranularity {
+  if (key === '7d' || key === '30d') {
+    return 'day';
+  }
+  if (key === '90d' || key === 'all') {
+    return 'week';
+  }
+  if (window.startMs !== null && window.endMs !== null) {
+    const days = (window.endMs - window.startMs) / DAY_MS;
+    return days <= 45 ? 'day' : 'week';
+  }
+  return 'week';
+}
+
+export function utcDayStart(ms: number): number {
+  const date = new Date(ms);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+export function utcWeekStart(ms: number): number {
+  const dayStart = utcDayStart(ms);
+  const weekday = new Date(dayStart).getUTCDay();
+  const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+  return dayStart + mondayOffset * DAY_MS;
+}
+
+export function bucketStartMs(atMs: number, granularity: AnalyticsTrendGranularity): number {
+  return granularity === 'day' ? utcDayStart(atMs) : utcWeekStart(atMs);
+}
+
+function emptyBucket(date: string): AnalyticsTrendBucket {
+  return { date, tasksCreated: 0, moves: 0, bugReports: 0 };
+}
+
+export function emptyTrendBuckets(
+  window: TimeWindow,
+  granularity: AnalyticsTrendGranularity,
+  extraDates: string[] = [],
+  nowMs = Date.now(),
+): AnalyticsTrendBucket[] {
+  const step = granularity === 'day' ? DAY_MS : WEEK_MS;
+  let startMs = window.startMs;
+  const endMs = window.endMs ?? nowMs;
+  if (startMs === null) {
+    const fromExtra = extraDates
+      .map((date) => {
+        const [year, month, day] = date.split('-').map(Number);
+        return Date.UTC(year, month - 1, day);
+      })
+      .filter((ms) => Number.isFinite(ms));
+    startMs = fromExtra.length > 0 ? Math.min(...fromExtra) : endMs - 12 * WEEK_MS;
+  }
+  let cursor = bucketStartMs(startMs, granularity);
+  const last = bucketStartMs(Math.max(endMs - 1, startMs), granularity);
+  const buckets: AnalyticsTrendBucket[] = [];
+  while (cursor <= last) {
+    buckets.push(emptyBucket(formatIsoDateUtc(cursor)));
+    cursor += step;
+  }
+  return buckets;
+}
+
+export function fillTrendField(
+  buckets: AnalyticsTrendBucket[],
+  rows: Array<{ date: string; count: number }>,
+  field: 'tasksCreated' | 'moves' | 'bugReports',
+): void {
+  const index = new Map(buckets.map((bucket) => [bucket.date, bucket]));
+  for (const row of rows) {
+    const bucket = index.get(row.date.slice(0, 10));
+    if (bucket) {
+      bucket[field] += row.count;
+    }
+  }
+}
+
+export function countEventsIntoTrend(
+  buckets: AnalyticsTrendBucket[],
+  events: Array<{ atMs: number }>,
+  field: 'tasksCreated' | 'moves' | 'bugReports',
+  granularity: AnalyticsTrendGranularity,
+): void {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    const date = formatIsoDateUtc(bucketStartMs(event.atMs, granularity));
+    counts.set(date, (counts.get(date) ?? 0) + 1);
+  }
+  fillTrendField(
+    buckets,
+    [...counts.entries()].map(([date, count]) => ({ date, count })),
+    field,
+  );
+}
+
+export function bucketSeries(
+  created: Array<{ atMs: number }>,
+  moves: Array<{ atMs: number }>,
+  bugReports: Array<{ atMs: number }>,
+  window: TimeWindow,
+  granularity: AnalyticsTrendGranularity,
+  nowMs = Date.now(),
+): AnalyticsTrendBucket[] {
+  const extra = [...created, ...moves, ...bugReports].map((event) =>
+    formatIsoDateUtc(event.atMs),
+  );
+  const buckets = emptyTrendBuckets(window, granularity, extra, nowMs);
+  countEventsIntoTrend(buckets, created, 'tasksCreated', granularity);
+  countEventsIntoTrend(buckets, moves, 'moves', granularity);
+  countEventsIntoTrend(buckets, bugReports, 'bugReports', granularity);
+  return buckets;
+}
+
 if (require.main === module) {
   const empty = meanMs([]);
   console.assert(empty.averageMs === null && empty.sampleSize === 0, 'empty mean is null');
@@ -238,4 +368,29 @@ if (require.main === module) {
   ]);
   console.assert(bugs.reports === 2, 'two bug reports');
   console.assert(bugs.durations.length === 1 && bugs.durations[0] === 8_000, 'one closed bug solve');
+
+  const monday = Date.UTC(2026, 7, 24);
+  console.assert(utcWeekStart(Date.UTC(2026, 7, 25)) === monday, 'week starts Monday UTC');
+  console.assert(analyticsTrendGranularity('30d', { startMs: 0, endMs: 1 }) === 'day', '30d is daily');
+  console.assert(analyticsTrendGranularity('90d', { startMs: 0, endMs: 1 }) === 'week', '90d is weekly');
+  console.assert(
+    analyticsTrendGranularity('custom', {
+      startMs: Date.UTC(2026, 7, 1),
+      endMs: Date.UTC(2026, 7, 10),
+    }) === 'day',
+    'short custom is daily',
+  );
+
+  const window = { startMs: Date.UTC(2026, 7, 24), endMs: Date.UTC(2026, 7, 27) };
+  const series = bucketSeries(
+    [{ atMs: Date.UTC(2026, 7, 24, 12) }, { atMs: Date.UTC(2026, 7, 26, 8) }],
+    [{ atMs: Date.UTC(2026, 7, 25, 9) }],
+    [{ atMs: Date.UTC(2026, 7, 24, 18) }],
+    window,
+    'day',
+  );
+  console.assert(series.length === 3, 'three daily buckets');
+  console.assert(series[0].date === '2026-08-24' && series[0].tasksCreated === 1 && series[0].bugReports === 1, 'first day counts');
+  console.assert(series[1].moves === 1 && series[1].tasksCreated === 0, 'second day moves');
+  console.assert(series[2].tasksCreated === 1, 'third day created');
 }

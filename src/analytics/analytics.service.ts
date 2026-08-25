@@ -18,6 +18,7 @@ import { UserActivityAction } from '../user-activity/user-activity-action.enum';
 import { UserActivity } from '../user-activity/user-activity.entity';
 import { User } from '../users/user.entity';
 import {
+  formatIsoDateUtc,
   growthMetric,
   inRange,
   resolveAnalyticsPeriod,
@@ -26,8 +27,12 @@ import {
 import {
   ANALYTICS_COMPLETION_TIMESTAMP_SOURCE,
   ANALYTICS_TEST_DURATION_SOURCE,
+  analyticsTrendGranularity,
   closedBugSolves,
   closedTestDwells,
+  countEventsIntoTrend,
+  emptyTrendBuckets,
+  fillTrendField,
   meanMs,
   mergePersonIds,
 } from './analytics-summary.util';
@@ -38,6 +43,7 @@ import type {
   AnalyticsLongestStay,
   AnalyticsPersonRow,
   AnalyticsSummary,
+  AnalyticsTrendGranularity,
 } from './analytics.types';
 
 const UNASSIGNED_USERNAME = 'Unassigned';
@@ -115,6 +121,8 @@ export class AnalyticsService {
     }
     const period = resolved.value;
 
+    const granularity = analyticsTrendGranularity(period.key, period.current);
+
     const [
       snapshot,
       createdCurrent,
@@ -125,6 +133,7 @@ export class AnalyticsService {
       bugEvents,
       personCreated,
       personOpenBugs,
+      createdSeries,
     ] = await Promise.all([
       this.loadSnapshot(query),
       this.loadCreatedCount(query, period.current, 'createdCurrent'),
@@ -137,6 +146,7 @@ export class AnalyticsService {
       this.loadBugEvents(query),
       this.loadPersonCreated(query, period.current),
       this.loadPersonOpenBugs(query),
+      this.loadCreatedSeries(query, period.current, granularity, 'createdSeries'),
     ]);
 
     const mappedEvents = statusEvents.map((row) => ({
@@ -152,14 +162,16 @@ export class AnalyticsService {
       newValue: row.newValue,
     }));
 
-    const movesCurrent = mappedEvents.filter((event) => inRange(event.atMs, period.current)).length;
+    const currentMoves = mappedEvents.filter((event) => inRange(event.atMs, period.current));
+    const movesCurrent = currentMoves.length;
     const movesPrevious = period.previous
       ? mappedEvents.filter((event) => inRange(event.atMs, period.previous as TimeWindow)).length
       : null;
 
-    const bugReportsCurrent = mappedBugs.filter(
+    const currentBugReports = mappedBugs.filter(
       (event) => event.newValue === 'true' && inRange(event.atMs, period.current),
-    ).length;
+    );
+    const bugReportsCurrent = currentBugReports.length;
     const bugReportsPrevious = period.previous
       ? mappedBugs.filter(
           (event) => event.newValue === 'true' && inRange(event.atMs, period.previous as TimeWindow),
@@ -187,9 +199,23 @@ export class AnalyticsService {
       personCreated,
       personOpenBugs,
       doneDurations: doneCurrent,
-      moveEvents: mappedEvents.filter((event) => inRange(event.atMs, period.current)),
+      moveEvents: currentMoves,
       dwells,
     });
+
+    const extraDates = [
+      ...createdSeries.map((row) => row.date),
+      ...currentMoves.map((event) => formatIsoDateUtc(event.atMs)),
+      ...currentBugReports.map((event) => formatIsoDateUtc(event.atMs)),
+    ];
+    const buckets = emptyTrendBuckets(period.current, granularity, extraDates);
+    fillTrendField(
+      buckets,
+      createdSeries.map((row) => ({ date: row.date, count: row.count })),
+      'tasksCreated',
+    );
+    countEventsIntoTrend(buckets, currentMoves, 'moves', granularity);
+    countEventsIntoTrend(buckets, currentBugReports, 'bugReports', granularity);
 
     return {
       period: {
@@ -233,6 +259,10 @@ export class AnalyticsService {
       longestStay,
       ...checklist,
       byPerson,
+      trend: {
+        granularity,
+        buckets,
+      },
     };
   }
 
@@ -404,6 +434,34 @@ export class AnalyticsService {
     this.applyTimeWindow(qb, 'task.created_at', window, key);
     const row = await qb.getRawOne<{ count: string }>();
     return Number(row?.count ?? 0);
+  }
+
+  private async loadCreatedSeries(
+    query: AnalyticsSummaryQueryDto,
+    window: TimeWindow,
+    granularity: AnalyticsTrendGranularity,
+    key: string,
+  ): Promise<Array<{ date: string; count: number }>> {
+    const trunc = granularity === 'day' ? 'day' : 'week';
+    const qb = this.tasksRepository
+      .createQueryBuilder('task')
+      .innerJoin('task.project', 'project')
+      .select(
+        `to_char(date_trunc('${trunc}', timezone('UTC', task.created_at)), 'YYYY-MM-DD')`,
+        'date',
+      )
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('date')
+      .orderBy('date', 'ASC');
+    this.applyTaskScope(qb, query);
+    this.applyTimeWindow(qb, 'task.created_at', window, key);
+    const rows = await qb.getRawMany<{ date: string; count: string }>();
+    return rows
+      .filter((row) => row.date)
+      .map((row) => ({
+        date: String(row.date).slice(0, 10),
+        count: Number(row.count),
+      }));
   }
 
   private async loadDoneDurations(
