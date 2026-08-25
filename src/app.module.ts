@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { getDatabaseConfig } from './database/database.config';
 import { AppExceptionFilter } from './errors/app-exception.filter';
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
         getDatabaseConfig(configService),
     }),
     HealthModule,
+    AnalyticsModule,
     UsersModule,
     AuthModule,
     OrganizationsModule,
