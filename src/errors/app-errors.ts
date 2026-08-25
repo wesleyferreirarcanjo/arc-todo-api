@@ -105,6 +105,13 @@ export const APP_ERRORS = {
     message: 'Only the person who wrote this comment can change or delete it.',
   },
 
+  ANALYTICS_INVALID_RANGE: {
+    code: 'ERR-ARC-ANALYTICS-01',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'That date range is not valid. Pick a From date that is on or before the To date.',
+  },
+
   ORG_NOT_FOUND: {
     code: 'ERR-ARC-ORG-01',
     status: HttpStatus.NOT_FOUND,

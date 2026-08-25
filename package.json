@@ -19,7 +19,7 @@
     "test:task-metadata": "npm run build && node dist/tasks/task-metadata.util.js",
     "test:task-hierarchy": "npm run build && node dist/tasks/task-hierarchy.util.js",
     "test:task-qa-checklist": "npm run build && node dist/tasks/task-qa-checklist.util.js",
-    "test:analytics": "npm run build && node dist/analytics/analytics-summary.util.js",
+    "test:analytics": "npm run build && node dist/analytics/analytics-summary.util.js && node dist/analytics/analytics-period.util.js",
     "test:board-cycle": "npm run build && node dist/board-cycles/board-cycle.util.js",
     "test:acronym": "npm run build && node dist/common/utils/acronym.util.js",
     "test:rag-cleanup": "npm run build && node dist/rag-settings/rag-cleanup.util.js",

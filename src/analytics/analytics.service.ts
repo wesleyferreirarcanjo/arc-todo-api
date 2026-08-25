@@ -18,9 +18,15 @@ import { UserActivityAction } from '../user-activity/user-activity-action.enum';
 import { UserActivity } from '../user-activity/user-activity.entity';
 import { User } from '../users/user.entity';
 import {
+  growthMetric,
+  inRange,
+  resolveAnalyticsPeriod,
+  type TimeWindow,
+} from './analytics-period.util';
+import {
   ANALYTICS_COMPLETION_TIMESTAMP_SOURCE,
   ANALYTICS_TEST_DURATION_SOURCE,
-  closedBugSolveMs,
+  closedBugSolves,
   closedTestDwells,
   meanMs,
   mergePersonIds,
@@ -28,15 +34,23 @@ import {
 import { AnalyticsSummaryQueryDto } from './dto/analytics-summary-query.dto';
 import type {
   AnalyticsByStatus,
+  AnalyticsDwellByStatus,
+  AnalyticsLongestStay,
   AnalyticsPersonRow,
   AnalyticsSummary,
 } from './analytics.types';
 
 const UNASSIGNED_USERNAME = 'Unassigned';
 
-interface CountRow {
-  tasksCreated: string;
-  tasksCreatedLast7Days: string;
+const STATUS_LABEL: Record<TaskStatus, string> = {
+  [TaskStatus.TODO]: 'To Do',
+  [TaskStatus.IN_PROGRESS]: 'In Progress',
+  [TaskStatus.DEV_TEST]: 'Dev Test',
+  [TaskStatus.QA_TEST]: 'QA Test',
+  [TaskStatus.DONE]: 'Done',
+};
+
+interface SnapshotRow {
   activeCount: string;
   archivedCount: string;
   todo: string;
@@ -56,11 +70,7 @@ interface PersonCountRow {
 interface DurationRow {
   userId: string | null;
   ms: string;
-}
-
-interface MoveRow {
-  userId: string | null;
-  moves: string;
+  completedAt: Date;
 }
 
 interface StatusEventRow {
@@ -68,6 +78,7 @@ interface StatusEventRow {
   createdAt: Date;
   status: string | null;
   createdById: string | null;
+  actorUserId: string | null;
 }
 
 interface BugEventRow {
@@ -98,68 +109,116 @@ export class AnalyticsService {
   async getSummary(query: AnalyticsSummaryQueryDto): Promise<AnalyticsSummary> {
     await this.assertScope(query);
 
+    const resolved = resolveAnalyticsPeriod(query);
+    if (!resolved.ok) {
+      throw appError('ANALYTICS_INVALID_RANGE');
+    }
+    const period = resolved.value;
+
     const [
-      counts,
+      snapshot,
+      createdCurrent,
+      createdPrevious,
       doneDurations,
       checklist,
-      moves,
-      moveRows,
       statusEvents,
       bugEvents,
-      personCounts,
+      personCreated,
+      personOpenBugs,
     ] = await Promise.all([
-      this.loadCounts(query),
+      this.loadSnapshot(query),
+      this.loadCreatedCount(query, period.current, 'createdCurrent'),
+      period.previous
+        ? this.loadCreatedCount(query, period.previous, 'createdPrevious')
+        : Promise.resolve(null as number | null),
       this.loadDoneDurations(query),
       this.loadChecklist(query),
-      this.loadMoveCount(query),
-      this.loadMovesByActor(query),
       this.loadStatusEvents(query),
       this.loadBugEvents(query),
-      this.loadPersonCounts(query),
+      this.loadPersonCreated(query, period.current),
+      this.loadPersonOpenBugs(query),
     ]);
 
-    const doneMean = meanMs(doneDurations.map((row) => Number(row.ms)));
-    const bugPairs = closedBugSolveMs(
-      bugEvents.map((row) => ({
-        taskId: row.taskId,
-        atMs: new Date(row.createdAt).getTime(),
-        newValue: row.newValue,
-      })),
+    const mappedEvents = statusEvents.map((row) => ({
+      taskId: row.taskId,
+      atMs: new Date(row.createdAt).getTime(),
+      status: row.status ?? '',
+      createdById: row.createdById,
+      actorUserId: row.actorUserId,
+    }));
+    const mappedBugs = bugEvents.map((row) => ({
+      taskId: row.taskId,
+      atMs: new Date(row.createdAt).getTime(),
+      newValue: row.newValue,
+    }));
+
+    const movesCurrent = mappedEvents.filter((event) => inRange(event.atMs, period.current)).length;
+    const movesPrevious = period.previous
+      ? mappedEvents.filter((event) => inRange(event.atMs, period.previous as TimeWindow)).length
+      : null;
+
+    const bugReportsCurrent = mappedBugs.filter(
+      (event) => event.newValue === 'true' && inRange(event.atMs, period.current),
+    ).length;
+    const bugReportsPrevious = period.previous
+      ? mappedBugs.filter(
+          (event) => event.newValue === 'true' && inRange(event.atMs, period.previous as TimeWindow),
+        ).length
+      : null;
+
+    const doneCurrent = doneDurations.filter((row) =>
+      inRange(new Date(row.completedAt).getTime(), period.current),
     );
-    const bugMean = meanMs(bugPairs.durations);
-    const dwells = closedTestDwells(
-      statusEvents.map((row) => ({
-        taskId: row.taskId,
-        atMs: new Date(row.createdAt).getTime(),
-        status: row.status ?? '',
-        createdById: row.createdById,
-      })),
-    );
+    const doneMean = meanMs(doneCurrent.map((row) => Number(row.ms)));
+
+    const bugSolves = closedBugSolves(mappedBugs);
+    const bugSolveMs = bugSolves.solves
+      .filter((solve) => inRange(solve.resolvedAtMs, period.current))
+      .map((solve) => solve.durationMs);
+    const bugMean = meanMs(bugSolveMs);
+
+    const dwells = closedTestDwells(mappedEvents, (dwell) => inRange(dwell.endMs, period.current));
+    const dwellByStatus = this.toDwellByStatus(dwells.byStatus);
+    const longestStay = this.toLongestStay(dwellByStatus);
     const devMean = meanMs(dwells.devTest);
     const qaMean = meanMs(dwells.qaTest);
 
     const byPerson = await this.buildByPerson({
-      personCounts,
-      doneDurations,
-      moveRows,
+      personCreated,
+      personOpenBugs,
+      doneDurations: doneCurrent,
+      moveEvents: mappedEvents.filter((event) => inRange(event.atMs, period.current)),
       dwells,
     });
 
     return {
-      tasksCreated: Number(counts.tasksCreated),
-      tasksCreatedLast7Days: Number(counts.tasksCreatedLast7Days),
-      activeCount: Number(counts.activeCount),
-      archivedCount: Number(counts.archivedCount),
+      period: {
+        key: period.key,
+        label: period.label,
+        from: period.fromDate,
+        to: period.toDate,
+        previousLabel: period.previousLabel,
+        compareFrom: period.compareFromDate,
+        compareTo: period.compareToDate,
+      },
+      growth: {
+        tasksCreated: growthMetric(createdCurrent, createdPrevious),
+        moves: growthMetric(movesCurrent, movesPrevious),
+        bugReports: growthMetric(bugReportsCurrent, bugReportsPrevious),
+      },
+      tasksCreated: createdCurrent,
+      activeCount: Number(snapshot.activeCount),
+      archivedCount: Number(snapshot.archivedCount),
       byStatus: {
-        [TaskStatus.TODO]: Number(counts.todo),
-        [TaskStatus.IN_PROGRESS]: Number(counts.in_progress),
-        [TaskStatus.DEV_TEST]: Number(counts.dev_test),
-        [TaskStatus.QA_TEST]: Number(counts.qa_test),
-        [TaskStatus.DONE]: Number(counts.done),
+        [TaskStatus.TODO]: Number(snapshot.todo),
+        [TaskStatus.IN_PROGRESS]: Number(snapshot.in_progress),
+        [TaskStatus.DEV_TEST]: Number(snapshot.dev_test),
+        [TaskStatus.QA_TEST]: Number(snapshot.qa_test),
+        [TaskStatus.DONE]: Number(snapshot.done),
       } satisfies AnalyticsByStatus,
-      openBugs: Number(counts.openBugs),
-      bugReports: bugPairs.reports,
-      moves,
+      openBugs: Number(snapshot.openBugs),
+      bugReports: bugReportsCurrent,
+      moves: movesCurrent,
       averageMsToDone: doneMean.averageMs,
       sampleSize: doneMean.sampleSize,
       completionTimestampSource: ANALYTICS_COMPLETION_TIMESTAMP_SOURCE,
@@ -170,9 +229,40 @@ export class AnalyticsService {
       averageMsInQaTest: qaMean.averageMs,
       sampleSizeQaTestDwells: qaMean.sampleSize,
       testDurationSource: ANALYTICS_TEST_DURATION_SOURCE,
+      dwellByStatus,
+      longestStay,
       ...checklist,
       byPerson,
     };
+  }
+
+  private toDwellByStatus(byStatus: Record<TaskStatus, number[]>): AnalyticsDwellByStatus {
+    return {
+      [TaskStatus.TODO]: meanMs(byStatus.todo),
+      [TaskStatus.IN_PROGRESS]: meanMs(byStatus.in_progress),
+      [TaskStatus.DEV_TEST]: meanMs(byStatus.dev_test),
+      [TaskStatus.QA_TEST]: meanMs(byStatus.qa_test),
+      [TaskStatus.DONE]: meanMs(byStatus.done),
+    };
+  }
+
+  private toLongestStay(dwellByStatus: AnalyticsDwellByStatus): AnalyticsLongestStay | null {
+    let longest: AnalyticsLongestStay | null = null;
+    for (const status of Object.values(TaskStatus)) {
+      const stat = dwellByStatus[status];
+      if (stat.averageMs === null || stat.sampleSize === 0) {
+        continue;
+      }
+      if (!longest || stat.averageMs > longest.averageMs) {
+        longest = {
+          status,
+          label: STATUS_LABEL[status],
+          averageMs: stat.averageMs,
+          sampleSize: stat.sampleSize,
+        };
+      }
+    }
+    return longest;
   }
 
   private async assertScope(query: AnalyticsSummaryQueryDto): Promise<void> {
@@ -234,20 +324,29 @@ export class AnalyticsService {
     }
   }
 
-  private async loadCounts(query: AnalyticsSummaryQueryDto): Promise<CountRow> {
-    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  private applyTimeWindow(
+    qb: SelectQueryBuilder<ObjectLiteral>,
+    columnSql: string,
+    window: TimeWindow,
+    key: string,
+  ): void {
+    if (window.startMs !== null) {
+      qb.andWhere(`${columnSql} >= :${key}Start`, {
+        [`${key}Start`]: new Date(window.startMs),
+      });
+    }
+    if (window.endMs !== null) {
+      qb.andWhere(`${columnSql} < :${key}End`, {
+        [`${key}End`]: new Date(window.endMs),
+      });
+    }
+  }
+
+  private async loadSnapshot(query: AnalyticsSummaryQueryDto): Promise<SnapshotRow> {
     const qb = this.tasksRepository
       .createQueryBuilder('task')
       .innerJoin('task.project', 'project')
-      .select('COUNT(*)', 'tasksCreated')
-      .addSelect(
-        'COUNT(*) FILTER (WHERE task.created_at >= :since7d)',
-        'tasksCreatedLast7Days',
-      )
-      .addSelect(
-        'COUNT(*) FILTER (WHERE task.archived_in_cycle_id IS NULL)',
-        'activeCount',
-      )
+      .select('COUNT(*) FILTER (WHERE task.archived_in_cycle_id IS NULL)', 'activeCount')
       .addSelect(
         'COUNT(*) FILTER (WHERE task.archived_in_cycle_id IS NOT NULL)',
         'archivedCount',
@@ -275,15 +374,11 @@ export class AnalyticsService {
       .addSelect(
         'COUNT(*) FILTER (WHERE task.archived_in_cycle_id IS NULL AND task.is_bug = true)',
         'openBugs',
-      )
-      .setParameter('since7d', since7d);
-
+      );
     this.applyTaskScope(qb, query);
-    const row = await qb.getRawOne<CountRow>();
+    const row = await qb.getRawOne<SnapshotRow>();
     return (
       row ?? {
-        tasksCreated: '0',
-        tasksCreatedLast7Days: '0',
         activeCount: '0',
         archivedCount: '0',
         todo: '0',
@@ -294,6 +389,21 @@ export class AnalyticsService {
         openBugs: '0',
       }
     );
+  }
+
+  private async loadCreatedCount(
+    query: AnalyticsSummaryQueryDto,
+    window: TimeWindow,
+    key: string,
+  ): Promise<number> {
+    const qb = this.tasksRepository
+      .createQueryBuilder('task')
+      .innerJoin('task.project', 'project')
+      .select('COUNT(*)', 'count');
+    this.applyTaskScope(qb, query);
+    this.applyTimeWindow(qb, 'task.created_at', window, key);
+    const row = await qb.getRawOne<{ count: string }>();
+    return Number(row?.count ?? 0);
   }
 
   private async loadDoneDurations(
@@ -308,6 +418,7 @@ export class AnalyticsService {
         'EXTRACT(EPOCH FROM (history.completed_at - task.created_at)) * 1000',
         'ms',
       )
+      .addSelect('history.completed_at', 'completedAt')
       .where('task.archived_in_cycle_id IS NOT NULL');
     this.applyTaskScope(archivedQb, query);
 
@@ -319,6 +430,7 @@ export class AnalyticsService {
         'EXTRACT(EPOCH FROM (task.updated_at - task.created_at)) * 1000',
         'ms',
       )
+      .addSelect('task.updated_at', 'completedAt')
       .where('task.archived_in_cycle_id IS NULL')
       .andWhere('task.status = :done', { done: TaskStatus.DONE });
     this.applyTaskScope(activeQb, query);
@@ -380,24 +492,6 @@ export class AnalyticsService {
     };
   }
 
-  private async loadMoveCount(query: AnalyticsSummaryQueryDto): Promise<number> {
-    const qb = this.activityRepository.createQueryBuilder('activity');
-    this.applyActivityScope(qb, query);
-    return qb.getCount();
-  }
-
-  private async loadMovesByActor(
-    query: AnalyticsSummaryQueryDto,
-  ): Promise<MoveRow[]> {
-    const qb = this.activityRepository
-      .createQueryBuilder('activity')
-      .select('activity.actor_user_id', 'userId')
-      .addSelect('COUNT(*)', 'moves')
-      .groupBy('activity.actor_user_id');
-    this.applyActivityScope(qb, query);
-    return qb.getRawMany<MoveRow>();
-  }
-
   private async loadStatusEvents(
     query: AnalyticsSummaryQueryDto,
   ): Promise<StatusEventRow[]> {
@@ -407,7 +501,8 @@ export class AnalyticsService {
       .select('activity.entity_id', 'taskId')
       .addSelect('activity.created_at', 'createdAt')
       .addSelect("activity.metadata ->> 'status'", 'status')
-      .addSelect('task.created_by_id', 'createdById');
+      .addSelect('task.created_by_id', 'createdById')
+      .addSelect('activity.actor_user_id', 'actorUserId');
     this.applyActivityScope(qb, query);
     return qb.getRawMany<StatusEventRow>();
   }
@@ -427,14 +522,30 @@ export class AnalyticsService {
     return qb.getRawMany<BugEventRow>();
   }
 
-  private async loadPersonCounts(
+  private async loadPersonCreated(
     query: AnalyticsSummaryQueryDto,
+    window: TimeWindow,
   ): Promise<PersonCountRow[]> {
     const qb = this.tasksRepository
       .createQueryBuilder('task')
       .innerJoin('task.project', 'project')
       .select('task.created_by_id', 'userId')
       .addSelect('COUNT(*)', 'tasksCreated')
+      .addSelect('0', 'openBugs')
+      .groupBy('task.created_by_id');
+    this.applyTaskScope(qb, query);
+    this.applyTimeWindow(qb, 'task.created_at', window, 'personCreated');
+    return qb.getRawMany<PersonCountRow>();
+  }
+
+  private async loadPersonOpenBugs(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<PersonCountRow[]> {
+    const qb = this.tasksRepository
+      .createQueryBuilder('task')
+      .innerJoin('task.project', 'project')
+      .select('task.created_by_id', 'userId')
+      .addSelect('0', 'tasksCreated')
       .addSelect(
         'COUNT(*) FILTER (WHERE task.archived_in_cycle_id IS NULL AND task.is_bug = true)',
         'openBugs',
@@ -445,9 +556,10 @@ export class AnalyticsService {
   }
 
   private async buildByPerson(input: {
-    personCounts: PersonCountRow[];
+    personCreated: PersonCountRow[];
+    personOpenBugs: PersonCountRow[];
     doneDurations: DurationRow[];
-    moveRows: MoveRow[];
+    moveEvents: Array<{ actorUserId: string | null }>;
     dwells: ReturnType<typeof closedTestDwells>;
   }): Promise<AnalyticsPersonRow[]> {
     const doneByUser = new Map<string | null, number[]>();
@@ -459,18 +571,25 @@ export class AnalyticsService {
     }
 
     const movesByUser = new Map<string | null, number>();
-    for (const row of input.moveRows) {
-      movesByUser.set(row.userId, Number(row.moves));
+    for (const event of input.moveEvents) {
+      const key = event.actorUserId;
+      movesByUser.set(key, (movesByUser.get(key) ?? 0) + 1);
     }
 
-    const countByUser = new Map<string | null, PersonCountRow>();
-    for (const row of input.personCounts) {
-      countByUser.set(row.userId, row);
+    const createdByUser = new Map<string | null, number>();
+    for (const row of input.personCreated) {
+      createdByUser.set(row.userId, Number(row.tasksCreated));
+    }
+
+    const openBugsByUser = new Map<string | null, number>();
+    for (const row of input.personOpenBugs) {
+      openBugsByUser.set(row.userId, Number(row.openBugs));
     }
 
     const ids = mergePersonIds(
-      countByUser.keys(),
+      createdByUser.keys(),
       movesByUser.keys(),
+      openBugsByUser.keys(),
       input.dwells.byCreator.keys(),
     );
     const namedIds = ids.filter((id): id is string => typeof id === 'string');
@@ -483,7 +602,6 @@ export class AnalyticsService {
     const usernameById = new Map(users.map((user) => [user.id, user.username]));
 
     const rows = ids.map((userId) => {
-      const counts = countByUser.get(userId);
       const done = meanMs(doneByUser.get(userId) ?? []);
       const creatorDwells = input.dwells.byCreator.get(userId);
       const testMean = meanMs([
@@ -493,9 +611,9 @@ export class AnalyticsService {
       return {
         userId,
         username: userId ? (usernameById.get(userId) ?? userId) : UNASSIGNED_USERNAME,
-        tasksCreated: Number(counts?.tasksCreated ?? 0),
+        tasksCreated: createdByUser.get(userId) ?? 0,
         moves: movesByUser.get(userId) ?? 0,
-        openBugs: Number(counts?.openBugs ?? 0),
+        openBugs: openBugsByUser.get(userId) ?? 0,
         averageMsToDone: done.averageMs,
         sampleSizeToDone: done.sampleSize,
         averageMsInTest: testMean.averageMs,

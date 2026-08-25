@@ -30,9 +30,32 @@ export interface BugHistoryEvent {
 }
 
 export interface ClosedTestDwells {
+  byStatus: Record<TaskStatus, number[]>;
   devTest: number[];
   qaTest: number[];
   byCreator: Map<string | null, { devTest: number[]; qaTest: number[] }>;
+}
+
+export interface ClosedDwell {
+  status: TaskStatus;
+  startMs: number;
+  endMs: number;
+  durationMs: number;
+  createdById: string | null;
+}
+
+function emptyByStatus(): Record<TaskStatus, number[]> {
+  return {
+    [TaskStatus.TODO]: [],
+    [TaskStatus.IN_PROGRESS]: [],
+    [TaskStatus.DEV_TEST]: [],
+    [TaskStatus.QA_TEST]: [],
+    [TaskStatus.DONE]: [],
+  };
+}
+
+function isTaskStatus(value: string): value is TaskStatus {
+  return (Object.values(TaskStatus) as string[]).includes(value);
 }
 
 export function meanMs(values: number[]): MeanResult {
@@ -71,39 +94,62 @@ function creatorBucket(
   return created;
 }
 
-export function closedTestDwells(events: StatusChangeEvent[]): ClosedTestDwells {
-  const byCreator = new Map<string | null, { devTest: number[]; qaTest: number[] }>();
-  const devTest: number[] = [];
-  const qaTest: number[] = [];
-
+export function closedStatusDwells(events: StatusChangeEvent[]): ClosedDwell[] {
+  const dwells: ClosedDwell[] = [];
   for (const list of groupSorted(events).values()) {
     for (let index = 0; index < list.length - 1; index += 1) {
       const current = list[index];
       const next = list[index + 1];
       const duration = next.atMs - current.atMs;
-      if (duration < 0) {
+      if (duration < 0 || !isTaskStatus(current.status)) {
         continue;
       }
-      const bucket = creatorBucket(byCreator, current.createdById);
-      if (current.status === TaskStatus.DEV_TEST) {
-        devTest.push(duration);
-        bucket.devTest.push(duration);
-      } else if (current.status === TaskStatus.QA_TEST) {
-        qaTest.push(duration);
-        bucket.qaTest.push(duration);
-      }
+      dwells.push({
+        status: current.status,
+        startMs: current.atMs,
+        endMs: next.atMs,
+        durationMs: duration,
+        createdById: current.createdById,
+      });
+    }
+  }
+  return dwells;
+}
+
+export function closedTestDwells(
+  events: StatusChangeEvent[],
+  include?: (dwell: ClosedDwell) => boolean,
+): ClosedTestDwells {
+  const byCreator = new Map<string | null, { devTest: number[]; qaTest: number[] }>();
+  const byStatus = emptyByStatus();
+
+  for (const dwell of closedStatusDwells(events)) {
+    if (include && !include(dwell)) {
+      continue;
+    }
+    byStatus[dwell.status].push(dwell.durationMs);
+    const bucket = creatorBucket(byCreator, dwell.createdById);
+    if (dwell.status === TaskStatus.DEV_TEST) {
+      bucket.devTest.push(dwell.durationMs);
+    } else if (dwell.status === TaskStatus.QA_TEST) {
+      bucket.qaTest.push(dwell.durationMs);
     }
   }
 
-  return { devTest, qaTest, byCreator };
+  return {
+    byStatus,
+    devTest: byStatus[TaskStatus.DEV_TEST],
+    qaTest: byStatus[TaskStatus.QA_TEST],
+    byCreator,
+  };
 }
 
-export function closedBugSolveMs(events: BugHistoryEvent[]): {
-  durations: number[];
+export function closedBugSolves(events: BugHistoryEvent[]): {
   reports: number;
+  solves: Array<{ durationMs: number; reportedAtMs: number; resolvedAtMs: number }>;
 } {
   let reports = 0;
-  const durations: number[] = [];
+  const solves: Array<{ durationMs: number; reportedAtMs: number; resolvedAtMs: number }> = [];
 
   for (const list of groupSorted(events).values()) {
     let openAt: number | null = null;
@@ -114,14 +160,26 @@ export function closedBugSolveMs(events: BugHistoryEvent[]): {
       } else if (event.newValue === 'false' && openAt !== null) {
         const duration = event.atMs - openAt;
         if (duration >= 0) {
-          durations.push(duration);
+          solves.push({
+            durationMs: duration,
+            reportedAtMs: openAt,
+            resolvedAtMs: event.atMs,
+          });
         }
         openAt = null;
       }
     }
   }
 
-  return { durations, reports };
+  return { reports, solves };
+}
+
+export function closedBugSolveMs(events: BugHistoryEvent[]): {
+  durations: number[];
+  reports: number;
+} {
+  const { reports, solves } = closedBugSolves(events);
+  return { durations: solves.map((solve) => solve.durationMs), reports };
 }
 
 export function mergePersonIds(
@@ -157,11 +215,21 @@ if (require.main === module) {
   ]);
   console.assert(dwells.devTest.length === 1 && dwells.devTest[0] === 4_000, 'closed dev-test dwell');
   console.assert(dwells.qaTest.length === 1 && dwells.qaTest[0] === 6_000, 'closed qa-test dwell');
+  console.assert(dwells.byStatus.dev_test[0] === 4_000, 'status-keyed dwell');
   console.assert(dwells.byCreator.get('u1')?.devTest[0] === 4_000, 'creator-keyed dwell');
   console.assert(
     (dwells.byCreator.get('u2')?.qaTest.length ?? 0) === 0,
     'open test dwell is omitted',
   );
+  const endedEarly = closedTestDwells(
+    [
+      { taskId: 't1', atMs: 0, status: TaskStatus.DEV_TEST, createdById: 'u1' },
+      { taskId: 't1', atMs: 4_000, status: TaskStatus.QA_TEST, createdById: 'u1' },
+      { taskId: 't1', atMs: 10_000, status: TaskStatus.DONE, createdById: 'u1' },
+    ],
+    (dwell) => dwell.endMs < 5_000,
+  );
+  console.assert(endedEarly.devTest.length === 1 && endedEarly.qaTest.length === 0, 'dwell end filter');
 
   const bugs = closedBugSolveMs([
     { taskId: 't1', atMs: 0, newValue: 'true' },
