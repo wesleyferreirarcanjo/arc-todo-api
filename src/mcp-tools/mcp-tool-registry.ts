@@ -108,7 +108,8 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     key: 'list_tasks',
     group: 'tasks',
     displayName: 'List tasks',
-    description: 'List tasks across organizations with optional filters.',
+    description:
+      'List tasks with optional filters including parent_task_id. Default include=summary (no description bodies). Use include=plan to fetch plans.',
     defaultEnabled: true,
     sortOrder: 20,
   },
@@ -116,7 +117,8 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     key: 'list_project_tasks',
     group: 'tasks',
     displayName: 'List project tasks',
-    description: 'List tasks within a specific project.',
+    description:
+      'List tasks within a specific project. Default include=summary (no description bodies).',
     defaultEnabled: true,
     sortOrder: 21,
   },
@@ -124,7 +126,8 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     key: 'get_task',
     group: 'tasks',
     displayName: 'Get task',
-    description: 'Fetch one task by organization, project, and task ID.',
+    description:
+      'Fetch one task. Default include=plan (business + plan/code, no QA essay). Friendly IDs like #arc-1 do not need organization_id/project_id. include: summary | plan | qa | full.',
     defaultEnabled: true,
     sortOrder: 22,
   },
@@ -157,7 +160,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'tasks',
     displayName: 'List task comments',
     description:
-      'List comments on a task (QA notes, discussion). Supports friendly task IDs.',
+      'List comments on a task. Use only when is_bug is true or the user asked. Supports friendly task IDs.',
     defaultEnabled: true,
     sortOrder: 26,
   },
@@ -174,7 +177,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'tasks',
     displayName: 'List task evidence',
     description:
-      'List image/video evidence attachments on a task. Supports friendly task IDs.',
+      'List image/video evidence attachments on a task. Use only when is_bug is true or the user asked. Supports friendly task IDs.',
     defaultEnabled: true,
     sortOrder: 28,
   },
@@ -192,7 +195,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'tasks',
     displayName: 'List task history',
     description:
-      'List field-change history for a task (title, description, dueDate, isBug, bugReason). Supports friendly task IDs.',
+      'List field-change history for a task (title, description, dueDate, isBug, bugReason). Use only when is_bug is true or the user asked. Supports friendly task IDs.',
     defaultEnabled: true,
     sortOrder: 30,
   },

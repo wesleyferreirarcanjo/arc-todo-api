@@ -284,7 +284,7 @@
           }
         ],
         "default": null,
-        "description": "todo | in_progress | done",
+        "description": "todo | in_progress | dev_test | qa_test | done",
         "title": "Status"
       },
       "criticity": {
@@ -312,6 +312,38 @@
         "default": null,
         "description": "Filter by parent task UUID",
         "title": "Parent Task Id"
+      },
+      "category": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "coding | meeting | design | marketing | other",
+        "title": "Category"
+      },
+      "is_bug": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Filter tasks flagged as bugs",
+        "title": "Is Bug"
+      },
+      "include": {
+        "default": "summary",
+        "description": "summary | plan | qa | full. Default summary. summary=ids/flags/subtask stubs; plan=+business+planCode; qa=+testDescription+checklist+bug fields; full=all except duplicate description.",
+        "title": "Include",
+        "type": "string"
       }
     },
     "title": "ListTasksInput",
@@ -327,34 +359,63 @@
       "project_id": {
         "title": "Project Id",
         "type": "string"
+      },
+      "include": {
+        "default": "summary",
+        "description": "summary | plan | qa | full. Default summary. summary=ids/flags/subtask stubs; plan=+business+planCode; qa=+testDescription+checklist+bug fields; full=all except duplicate description.",
+        "title": "Include",
+        "type": "string"
       }
     },
     "required": [
       "organization_id",
       "project_id"
     ],
-    "title": "ProjectTaskScopeInput",
+    "title": "ListProjectTasksInput",
     "type": "object",
     "additionalProperties": false
   },
   "get_task": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
       },
       "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
         "title": "Task Id",
+        "type": "string"
+      },
+      "include": {
+        "default": "plan",
+        "description": "summary | plan | qa | full. Default plan (business + plan/code, no QA essay). summary=ids/flags/subtask stubs; qa=+testDescription+checklist+bug fields; full=all except duplicate description.",
+        "title": "Include",
         "type": "string"
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "task_id"
     ],
     "title": "GetTaskInput",
@@ -386,6 +447,45 @@
         ],
         "default": null,
         "title": "Description"
+      },
+      "business_description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Business intent, scope, and acceptance criteria",
+        "title": "Business Description"
+      },
+      "plan_code_description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Technical execution plan for agents or developers",
+        "title": "Plan Code Description"
+      },
+      "test_description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Verification steps for Dev Test, QA Test, and final checks",
+        "title": "Test Description"
       },
       "status": {
         "default": "todo",
@@ -419,8 +519,74 @@
           }
         ],
         "default": null,
-        "description": "Parent task UUID for one-level subtasks",
+        "description": "Parent task UUID or friendly ID for one-level subtasks",
         "title": "Parent Task Id"
+      },
+      "category": {
+        "default": "other",
+        "description": "coding | meeting | design | marketing | other",
+        "title": "Category",
+        "type": "string"
+      },
+      "metadata": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Structured metadata. For coding tasks: repositoryUrl, branch, commits, pullRequestUrl, deploymentUrl, implementationNotes",
+        "title": "Metadata"
+      },
+      "is_bug": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Report or solve a bug. true = mark as open bug (requires bug_reason, moves status to todo); false = mark bug solved.",
+        "title": "Is Bug"
+      },
+      "bug_reason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Required non-blank reason when reporting a bug (is_bug=true)",
+        "title": "Bug Reason"
+      },
+      "qa_checklist_state": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "QA checklist state: checkedItemIds, buggedItemIds, buggedItemNotes",
+        "title": "Qa Checklist State"
+      },
+      "include": {
+        "default": "summary",
+        "description": "Response shape: summary | plan | qa | full. Default summary (the agent already sent the text).",
+        "title": "Include",
+        "type": "string"
       }
     },
     "required": [
@@ -435,14 +601,33 @@
   "update_task": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
       },
       "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
         "title": "Task Id",
         "type": "string"
       },
@@ -469,6 +654,45 @@
         ],
         "default": null,
         "title": "Description"
+      },
+      "business_description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Business intent, scope, and acceptance criteria",
+        "title": "Business Description"
+      },
+      "plan_code_description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Technical execution plan for agents or developers",
+        "title": "Plan Code Description"
+      },
+      "test_description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Verification steps for Dev Test, QA Test, and final checks",
+        "title": "Test Description"
       },
       "status": {
         "anyOf": [
@@ -516,13 +740,84 @@
           }
         ],
         "default": null,
-        "description": "Parent task UUID; null detaches subtask",
+        "description": "Parent task UUID or friendly ID; null detaches subtask",
         "title": "Parent Task Id"
+      },
+      "category": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "coding | meeting | design | marketing | other",
+        "title": "Category"
+      },
+      "metadata": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Structured metadata. For coding tasks: repositoryUrl, branch, commits, pullRequestUrl, deploymentUrl, implementationNotes",
+        "title": "Metadata"
+      },
+      "is_bug": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Report or solve a bug. true = mark as open bug (requires bug_reason, moves status to todo); false = mark bug solved.",
+        "title": "Is Bug"
+      },
+      "bug_reason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Required non-blank reason when reporting a bug (is_bug=true)",
+        "title": "Bug Reason"
+      },
+      "qa_checklist_state": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "QA checklist state: checkedItemIds, buggedItemIds, buggedItemNotes",
+        "title": "Qa Checklist State"
+      },
+      "include": {
+        "default": "summary",
+        "description": "Response shape: summary | plan | qa | full. Default summary (the agent already sent the text).",
+        "title": "Include",
+        "type": "string"
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "task_id"
     ],
     "title": "UpdateTaskInput",
@@ -532,36 +827,30 @@
   "delete_task": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
-      },
-      "task_id": {
-        "title": "Task Id",
-        "type": "string"
-      }
-    },
-    "required": [
-      "organization_id",
-      "project_id",
-      "task_id"
-    ],
-    "title": "GetTaskInput",
-    "type": "object",
-    "additionalProperties": false
-  },
-  "list_task_comments": {
-    "properties": {
-      "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
       },
       "task_id": {
         "description": "Task UUID or friendly ID like arc-1 or #arc-1",
@@ -570,23 +859,80 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "task_id"
     ],
-    "title": "GetTaskInput",
+    "title": "OptionalTaskScopeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_task_comments": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "task_id"
+    ],
+    "title": "OptionalTaskScopeInput",
     "type": "object",
     "additionalProperties": false
   },
   "add_task_comment": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
       },
       "task_id": {
         "description": "Task UUID or friendly ID like arc-1 or #arc-1",
@@ -600,8 +946,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "task_id",
       "body"
     ],
@@ -612,12 +956,30 @@
   "list_task_evidence": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
       },
       "task_id": {
         "description": "Task UUID or friendly ID like arc-1 or #arc-1",
@@ -626,23 +988,39 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "task_id"
     ],
-    "title": "GetTaskInput",
+    "title": "OptionalTaskScopeInput",
     "type": "object",
     "additionalProperties": false
   },
   "download_task_evidence": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
       },
       "task_id": {
         "description": "Task UUID or friendly ID like arc-1 or #arc-1",
@@ -656,8 +1034,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "task_id",
       "evidence_id"
     ],
@@ -1701,7 +2077,10 @@
         "type": "string"
       }
     },
-    "required": ["organization_id", "project_id"],
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
     "title": "ListProjectDiagramsInput",
     "type": "object",
     "additionalProperties": false
@@ -1724,7 +2103,11 @@
         "type": "string"
       }
     },
-    "required": ["organization_id", "project_id", "diagram_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "diagram_id"
+    ],
     "title": "GetProjectDiagramInput",
     "type": "object",
     "additionalProperties": false
@@ -1774,7 +2157,11 @@
         "title": "Thumbnail"
       }
     },
-    "required": ["organization_id", "project_id", "title"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "title"
+    ],
     "title": "CreateProjectDiagramInput",
     "type": "object",
     "additionalProperties": false
@@ -1837,7 +2224,11 @@
         "title": "Thumbnail"
       }
     },
-    "required": ["organization_id", "project_id", "diagram_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "diagram_id"
+    ],
     "title": "UpdateProjectDiagramInput",
     "type": "object",
     "additionalProperties": false
@@ -1860,7 +2251,11 @@
         "type": "string"
       }
     },
-    "required": ["organization_id", "project_id", "diagram_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "diagram_id"
+    ],
     "title": "GetProjectDiagramInput",
     "type": "object",
     "additionalProperties": false
@@ -1878,7 +2273,10 @@
         "type": "string"
       }
     },
-    "required": ["organization_id", "project_id"],
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
     "title": "ListProjectWireframesInput",
     "type": "object",
     "additionalProperties": false
@@ -1901,7 +2299,11 @@
         "type": "string"
       }
     },
-    "required": ["organization_id", "project_id", "wireframe_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "wireframe_id"
+    ],
     "title": "GetProjectWireframeInput",
     "type": "object",
     "additionalProperties": false
@@ -1933,11 +2335,15 @@
           }
         ],
         "default": null,
-        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted → two-screen starter.",
+        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted \u2192 two-screen starter.",
         "title": "Html"
       }
     },
-    "required": ["organization_id", "project_id", "title"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "title"
+    ],
     "title": "CreateProjectWireframeInput",
     "type": "object",
     "additionalProperties": false
@@ -1986,7 +2392,11 @@
         "title": "Html"
       }
     },
-    "required": ["organization_id", "project_id", "wireframe_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "wireframe_id"
+    ],
     "title": "UpdateProjectWireframeInput",
     "type": "object",
     "additionalProperties": false
@@ -2009,86 +2419,198 @@
         "type": "string"
       }
     },
-    "required": ["organization_id", "project_id", "wireframe_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "wireframe_id"
+    ],
     "title": "GetProjectWireframeInput",
     "type": "object",
     "additionalProperties": false
   },
   "list_project_name_sessions": {
     "properties": {
-      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
-      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" }
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      }
     },
-    "required": ["organization_id", "project_id"],
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
     "title": "ListProjectNameSessionsInput",
     "type": "object",
     "additionalProperties": false
   },
   "get_name_session": {
     "properties": {
-      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
-      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
-      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" }
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "name_session_id": {
+        "description": "Name session UUID",
+        "title": "Name Session Id",
+        "type": "string"
+      }
     },
-    "required": ["organization_id", "project_id", "name_session_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "name_session_id"
+    ],
     "title": "GetNameSessionInput",
     "type": "object",
     "additionalProperties": false
   },
   "create_name_session": {
     "properties": {
-      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
-      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
-      "title": { "description": "Session title (required, non-empty)", "title": "Title", "type": "string" },
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "title": {
+        "description": "Session title (required, non-empty)",
+        "title": "Title",
+        "type": "string"
+      },
       "naming_goal": {
-        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
         "description": "Optional naming goal",
         "title": "Naming Goal"
       },
       "product_description": {
-        "anyOf": [{ "additionalProperties": true, "type": "object" }, { "type": "null" }],
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
         "description": "Optional product-description canvas JSON",
         "title": "Product Description"
       }
     },
-    "required": ["organization_id", "project_id", "title"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "title"
+    ],
     "title": "CreateNameSessionInput",
     "type": "object",
     "additionalProperties": false
   },
   "update_name_session": {
     "properties": {
-      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
-      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
-      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "name_session_id": {
+        "description": "Name session UUID",
+        "title": "Name Session Id",
+        "type": "string"
+      },
       "title": {
-        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
         "title": "Title"
       },
       "naming_goal": {
-        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
         "title": "Naming Goal"
       },
       "product_description": {
-        "anyOf": [{ "additionalProperties": true, "type": "object" }, { "type": "null" }],
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
         "title": "Product Description"
       }
     },
-    "required": ["organization_id", "project_id", "name_session_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "name_session_id"
+    ],
     "title": "UpdateNameSessionInput",
     "type": "object",
     "additionalProperties": false
   },
   "add_name_candidates": {
     "properties": {
-      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
-      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
-      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "name_session_id": {
+        "description": "Name session UUID",
+        "title": "Name Session Id",
+        "type": "string"
+      },
       "candidates": {
         "type": "array",
         "minItems": 1,
@@ -2096,42 +2618,128 @@
         "items": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["name"],
+          "required": [
+            "name"
+          ],
           "properties": {
-            "name": { "type": "string" },
-            "family": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null },
-            "lane": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null },
-            "rationale": { "anyOf": [{ "type": "string" }, { "type": "null" }], "default": null }
+            "name": {
+              "type": "string"
+            },
+            "family": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "lane": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "rationale": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
           }
         }
       }
     },
-    "required": ["organization_id", "project_id", "name_session_id", "candidates"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "name_session_id",
+      "candidates"
+    ],
     "title": "AddNameCandidatesInput",
     "type": "object",
     "additionalProperties": false
   },
   "check_name_candidate": {
     "properties": {
-      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
-      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
-      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
-      "candidate_id": { "description": "Candidate UUID in the session", "title": "Candidate Id", "type": "string" }
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "name_session_id": {
+        "description": "Name session UUID",
+        "title": "Name Session Id",
+        "type": "string"
+      },
+      "candidate_id": {
+        "description": "Candidate UUID in the session",
+        "title": "Candidate Id",
+        "type": "string"
+      }
     },
-    "required": ["organization_id", "project_id", "name_session_id", "candidate_id"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "name_session_id",
+      "candidate_id"
+    ],
     "title": "CheckNameCandidateInput",
     "type": "object",
     "additionalProperties": false
   },
   "recommend_name_candidate": {
     "properties": {
-      "organization_id": { "description": "Organization UUID", "title": "Organization Id", "type": "string" },
-      "project_id": { "description": "Project UUID", "title": "Project Id", "type": "string" },
-      "name_session_id": { "description": "Name session UUID", "title": "Name Session Id", "type": "string" },
-      "candidate_id": { "description": "Candidate UUID in the session", "title": "Candidate Id", "type": "string" },
-      "decision_note": { "description": "Why this name is recommended", "title": "Decision Note", "type": "string" }
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "name_session_id": {
+        "description": "Name session UUID",
+        "title": "Name Session Id",
+        "type": "string"
+      },
+      "candidate_id": {
+        "description": "Candidate UUID in the session",
+        "title": "Candidate Id",
+        "type": "string"
+      },
+      "decision_note": {
+        "description": "Why this name is recommended",
+        "title": "Decision Note",
+        "type": "string"
+      }
     },
-    "required": ["organization_id", "project_id", "name_session_id", "candidate_id", "decision_note"],
+    "required": [
+      "organization_id",
+      "project_id",
+      "name_session_id",
+      "candidate_id",
+      "decision_note"
+    ],
     "title": "RecommendNameCandidateInput",
     "type": "object",
     "additionalProperties": false
@@ -2149,7 +2757,10 @@
         "type": "string"
       }
     },
-    "required": ["organization_id", "project_id"],
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
     "title": "GetProjectQaInfoInput",
     "type": "object",
     "additionalProperties": false
@@ -2173,18 +2784,34 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["name", "url"],
+              "required": [
+                "name",
+                "url"
+              ],
               "properties": {
-                "name": { "type": "string" },
-                "url": { "type": "string" },
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
                 "notes": {
-                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
                   "default": null
                 }
               }
             }
           },
-          { "type": "null" }
+          {
+            "type": "null"
+          }
         ],
         "default": null,
         "description": "Replace the environments list. Omit to keep the current list.",
@@ -2197,40 +2824,118 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["label"],
+              "required": [
+                "label"
+              ],
               "properties": {
-                "label": { "type": "string" },
+                "label": {
+                  "type": "string"
+                },
                 "email": {
-                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
                   "default": null
                 },
                 "how_to_sign_in": {
-                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
                   "default": null,
                   "description": "How to sign in, in words. Maps to howToSignIn. Do not send a password."
                 },
                 "notes": {
-                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
                   "default": null
                 }
               }
             }
           },
-          { "type": "null" }
+          {
+            "type": "null"
+          }
         ],
         "default": null,
         "description": "Replace the test-users list. Omit to keep the current list.",
         "title": "Users"
       },
       "notes": {
-        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
         "default": null,
         "description": "Free-text navigation and conventions. Empty string clears. Omit to keep current.",
         "title": "Notes"
       }
     },
-    "required": ["organization_id", "project_id"],
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
     "title": "UpdateProjectQaInfoInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_task_history": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "task_id"
+    ],
+    "title": "OptionalTaskScopeInput",
     "type": "object",
     "additionalProperties": false
   }
