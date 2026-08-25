@@ -7,6 +7,7 @@ import { ConversationMessage } from '../conversations/conversation-message.entit
 import { ConversationTaskContext } from '../conversations/conversation-task-context.entity';
 import { ChatbotSetting } from '../chatbot-settings/chatbot-setting.entity';
 import { ProjectDiagram } from '../diagrams/project-diagram.entity';
+import { ProjectQaProfile } from '../qa-info/project-qa-profile.entity';
 import { ProjectWireframe } from '../wireframes/project-wireframe.entity';
 import { ProjectNameSession } from '../name-sessions/project-name-session.entity';
 import { NameCandidateFeedback } from '../name-sessions/name-candidate-feedback.entity';
@@ -46,6 +47,7 @@ export const entities = [
   KnowledgeAttachment,
   KnowledgeAccessGrant,
   ProjectDiagram,
+  ProjectQaProfile,
   ProjectWireframe,
   ProjectNameSession,
   NameCandidateFeedback,

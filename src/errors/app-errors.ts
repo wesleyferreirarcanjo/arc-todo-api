@@ -399,6 +399,19 @@ export const APP_ERRORS = {
     message: 'That wireframe is not in this project. Open it from Wireframes instead.',
   },
 
+  QA_INVALID_URL: {
+    code: 'ERR-ARC-QA-01',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'That environment URL is not valid. Use an http or https address.',
+  },
+  QA_INVALID_PROFILE: {
+    code: 'ERR-ARC-QA-02',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'QA info could not be saved. Check environment names and URLs, and give each test user a label.',
+  },
+
   WIRE_TITLE_REQUIRED: {
     code: 'ERR-ARC-WIRE-01',
     status: HttpStatus.BAD_REQUEST,

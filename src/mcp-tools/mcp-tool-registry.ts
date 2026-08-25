@@ -430,6 +430,24 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     defaultEnabled: true,
     sortOrder: 76,
   },
+  {
+    key: 'get_project_qa_info',
+    group: 'qa',
+    displayName: 'Get project QA info',
+    description:
+      'Fetch the project QA info profile (environments, test users, notes). Empty when none is saved yet.',
+    defaultEnabled: true,
+    sortOrder: 80,
+  },
+  {
+    key: 'update_project_qa_info',
+    group: 'qa',
+    displayName: 'Update project QA info',
+    description:
+      'Create or replace the project QA info profile. Omit a field to keep the current value. No password field.',
+    defaultEnabled: true,
+    sortOrder: 81,
+  },
 ];
 
 export const MCP_TOOL_GROUPS = [
@@ -441,6 +459,7 @@ export const MCP_TOOL_GROUPS = [
   'diagrams',
   'wireframes',
   'names',
+  'qa',
 ] as const;
 
 export type McpToolGroup = (typeof MCP_TOOL_GROUPS)[number];

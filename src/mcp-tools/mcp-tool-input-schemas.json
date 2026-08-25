@@ -2135,5 +2135,103 @@
     "title": "RecommendNameCandidateInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "get_project_qa_info": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": ["organization_id", "project_id"],
+    "title": "GetProjectQaInfoInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_project_qa_info": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "environments": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["name", "url"],
+              "properties": {
+                "name": { "type": "string" },
+                "url": { "type": "string" },
+                "notes": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "default": null
+                }
+              }
+            }
+          },
+          { "type": "null" }
+        ],
+        "default": null,
+        "description": "Replace the environments list. Omit to keep the current list.",
+        "title": "Environments"
+      },
+      "users": {
+        "anyOf": [
+          {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["label"],
+              "properties": {
+                "label": { "type": "string" },
+                "email": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "default": null
+                },
+                "how_to_sign_in": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "default": null,
+                  "description": "How to sign in, in words. Maps to howToSignIn. Do not send a password."
+                },
+                "notes": {
+                  "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  "default": null
+                }
+              }
+            }
+          },
+          { "type": "null" }
+        ],
+        "default": null,
+        "description": "Replace the test-users list. Omit to keep the current list.",
+        "title": "Users"
+      },
+      "notes": {
+        "anyOf": [{ "type": "string" }, { "type": "null" }],
+        "default": null,
+        "description": "Free-text navigation and conventions. Empty string clears. Omit to keep current.",
+        "title": "Notes"
+      }
+    },
+    "required": ["organization_id", "project_id"],
+    "title": "UpdateProjectQaInfoInput",
+    "type": "object",
+    "additionalProperties": false
   }
 }

@@ -8,6 +8,7 @@ import { getDatabaseConfig } from './database/database.config';
 import { AppExceptionFilter } from './errors/app-exception.filter';
 import { BoardCyclesModule } from './board-cycles/board-cycles.module';
 import { DiagramsModule } from './diagrams/diagrams.module';
+import { QaInfoModule } from './qa-info/qa-info.module';
 import { WireframesModule } from './wireframes/wireframes.module';
 import { NameSessionsModule } from './name-sessions/name-sessions.module';
 import { HealthModule } from './health/health.module';
@@ -48,6 +49,7 @@ import { UsersModule } from './users/users.module';
     StorageModule,
     KnowledgeModule,
     DiagramsModule,
+    QaInfoModule,
     WireframesModule,
     NameSessionsModule,
     McpToolsModule,
