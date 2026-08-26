@@ -141,12 +141,22 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 23,
   },
   {
+    key: 'move_task',
+    group: 'tasks',
+    displayName: 'Move task',
+    description:
+      'Change only a task board status. Prefer this over update_task for column moves. Friendly IDs like #arc-1 do not need organization_id/project_id. Response is a short ack.',
+    defaultEnabled: true,
+    sortOrder: 24,
+  },
+  {
     key: 'update_task',
     group: 'tasks',
     displayName: 'Update task',
-    description: 'Update a task in a project.',
+    description:
+      'Update task fields (title, descriptions, bug flag, checklist). Do not use this only to change status — use move_task. Default response is ack (id/title/status), not the full card.',
     defaultEnabled: true,
-    sortOrder: 24,
+    sortOrder: 25,
   },
   {
     key: 'delete_task',
