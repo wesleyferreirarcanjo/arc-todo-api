@@ -109,7 +109,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'tasks',
     displayName: 'List tasks',
     description:
-      'List tasks with optional filters including parent_task_id. Default include=summary (no description bodies). Use include=plan to fetch plans.',
+      'List tasks with optional filters. Default include=summary. Rows omit nested project/organization objects. Pass q, limit, and parents_only for duplicate checks. organization_id/project_id UUIDs are optional: use project=ski (acronym) or a friendly task id on another call in this session.',
     defaultEnabled: true,
     sortOrder: 20,
   },
@@ -118,7 +118,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'tasks',
     displayName: 'List project tasks',
     description:
-      'List tasks within a specific project. Default include=summary (no description bodies).',
+      'List tasks in one project. Leaner than list_tasks (no nested org/project). Pass project=ski (acronym) or slug; UUIDs optional. status, q, limit, and parents_only filter the board so duplicate checks do not pull every status.',
     defaultEnabled: true,
     sortOrder: 21,
   },
@@ -135,7 +135,8 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     key: 'create_task',
     group: 'tasks',
     displayName: 'Create task',
-    description: 'Create a task in a project.',
+    description:
+      'Create a task in a project. Pass project=ski (acronym) or skill (slug) instead of UUIDs. Optional parent_task_id creates a direct subtask.',
     defaultEnabled: true,
     sortOrder: 23,
   },

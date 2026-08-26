@@ -116,7 +116,7 @@ export class ScopeResolverService {
       id: project.id,
       project,
       organization: project.organization,
-      labels: [project.name],
+      labels: [project.name, project.acronym],
     }));
   }
 

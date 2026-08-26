@@ -260,6 +260,7 @@
           }
         ],
         "default": null,
+        "description": "Organization UUID or slug. Omit to use the last board from this MCP session.",
         "title": "Organization Id"
       },
       "project_id": {
@@ -272,7 +273,21 @@
           }
         ],
         "default": null,
+        "description": "Project UUID, acronym (ski), slug, or name. Omit to use the last board.",
         "title": "Project Id"
+      },
+      "project": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project acronym, slug, or name (e.g. ski, skill, cursor).",
+        "title": "Project"
       },
       "status": {
         "anyOf": [
@@ -310,7 +325,7 @@
           }
         ],
         "default": null,
-        "description": "Filter by parent task UUID",
+        "description": "Filter by parent task UUID or friendly ID",
         "title": "Parent Task Id"
       },
       "category": {
@@ -339,9 +354,50 @@
         "description": "Filter tasks flagged as bugs",
         "title": "Is Bug"
       },
+      "q": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Case-insensitive title substring. Use this for duplicate checks instead of listing the whole board.",
+        "title": "Q"
+      },
+      "limit": {
+        "anyOf": [
+          {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Max rows to return (1-200).",
+        "title": "Limit"
+      },
+      "parents_only": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "If true, return only parent tasks (parentTaskId is null).",
+        "title": "Parents Only"
+      },
       "include": {
         "default": "summary",
-        "description": "summary | plan | qa | full. Default summary. summary=ids/flags/subtask stubs; plan=+business+planCode; qa=+testDescription+checklist+bug fields; full=all except duplicate description.",
+        "description": "summary | plan | qa | full. Default summary. summary=ids/flags/subtask stubs; plan=+business+planCode; qa=+testDescription+checklist+bug fields; full=all except duplicate description. List rows never nest project/organization objects.",
         "title": "Include",
         "type": "string"
       }
@@ -353,12 +409,97 @@
   "list_project_tasks": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID or slug. Optional when project is an acronym/slug or after get_task in this session.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID, acronym, slug, or name.",
+        "title": "Project Id"
+      },
+      "project": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project acronym, slug, or name (e.g. ski, skill, cursor).",
+        "title": "Project"
+      },
+      "status": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "todo | in_progress | dev_test | qa_test | done. Omit to include every status.",
+        "title": "Status"
+      },
+      "q": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Case-insensitive title substring for duplicate checks.",
+        "title": "Q"
+      },
+      "limit": {
+        "anyOf": [
+          {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Max rows to return (1-200).",
+        "title": "Limit"
+      },
+      "parents_only": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "If true, return only parent tasks (parentTaskId is null).",
+        "title": "Parents Only"
       },
       "include": {
         "default": "summary",
@@ -367,10 +508,6 @@
         "type": "string"
       }
     },
-    "required": [
-      "organization_id",
-      "project_id"
-    ],
     "title": "ListProjectTasksInput",
     "type": "object",
     "additionalProperties": false
@@ -425,12 +562,43 @@
   "create_task": {
     "properties": {
       "organization_id": {
-        "title": "Organization Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID or slug. Optional when project is an acronym/slug.",
+        "title": "Organization Id"
       },
       "project_id": {
-        "title": "Project Id",
-        "type": "string"
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Prefer `project` with an acronym or slug.",
+        "title": "Project Id"
+      },
+      "project": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project acronym, slug, or name (e.g. ski, skill, cursor). Preferred over UUIDs.",
+        "title": "Project"
       },
       "title": {
         "title": "Title",
@@ -590,8 +758,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "title"
     ],
     "title": "CreateTaskInput",

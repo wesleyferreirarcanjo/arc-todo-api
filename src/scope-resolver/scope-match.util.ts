@@ -148,11 +148,11 @@ export function selfCheckScopeMatch(): void {
   const projects = [
     {
       id: '22222222-2222-4222-8222-222222222222',
-      labels: ['My System'],
+      labels: ['My System', 'sys'],
     },
     {
       id: '33333333-3333-4333-8333-333333333333',
-      labels: ['My System'],
+      labels: ['My System', 'mys'],
     },
   ];
 
@@ -166,6 +166,11 @@ export function selfCheckScopeMatch(): void {
   );
   if (uniqueProject?.id !== projects[0].id) {
     throw new Error('expected fuzzy project match');
+  }
+
+  const byAcronym = pickUniqueCandidate(matchScopeCandidates(projects, 'sys'));
+  if (byAcronym?.id !== projects[0].id) {
+    throw new Error('expected exact project acronym match');
   }
 
   const ambiguous = pickUniqueCandidate(matchScopeCandidates(projects, 'my system'));

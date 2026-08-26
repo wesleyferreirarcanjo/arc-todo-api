@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, IsNull, Repository } from 'typeorm';
+import { DataSource, In, Repository, SelectQueryBuilder } from 'typeorm';
 import {
   formatTaskDisplayId,
   parseTaskDisplayId,
@@ -128,12 +128,17 @@ export class TasksService {
     userId: string,
     orgId: string,
     projectId: string,
+    query: ListTasksQueryDto = {},
   ): Promise<TaskResponse[]> {
     await this.projectsService.findOne(userId, orgId, projectId);
-    const tasks = await this.tasksRepository.find({
-      where: { projectId, archivedInCycleId: IsNull() },
-      order: { createdAt: 'DESC' },
-    });
+    const qb = this.tasksRepository
+      .createQueryBuilder('task')
+      .where('task.projectId = :projectId', { projectId })
+      .andWhere('task.archivedInCycleId IS NULL');
+    this.applyListFilters(qb, query);
+    qb.orderBy('task.createdAt', 'DESC');
+    this.applyListLimit(qb, query);
+    const tasks = await qb.getMany();
     return this.enrichTaskResponses(tasks);
   }
 
@@ -167,10 +172,6 @@ export class TasksService {
       qb.andWhere('project.id = :projectId', { projectId: query.projectId });
     }
 
-    if (query.status) {
-      qb.andWhere('task.status = :status', { status: query.status });
-    }
-
     if (query.criticity) {
       qb.andWhere('task.criticity = :criticity', { criticity: query.criticity });
     }
@@ -193,7 +194,9 @@ export class TasksService {
       qb.andWhere('task.createdById = :userId', { userId });
     }
 
+    this.applyListFilters(qb, query);
     qb.orderBy('task.updatedAt', 'DESC');
+    this.applyListLimit(qb, query);
 
     const tasks = await qb.getMany();
     const enriched = await this.enrichTaskResponses(tasks);
@@ -213,6 +216,33 @@ export class TasksService {
         slug: task.project.organization.slug,
       },
     }));
+  }
+
+  private applyListFilters(
+    qb: SelectQueryBuilder<Task>,
+    query: ListTasksQueryDto,
+  ): void {
+    if (query.status) {
+      qb.andWhere('task.status = :listStatus', { listStatus: query.status });
+    }
+    if (query.parentsOnly) {
+      qb.andWhere('task.parentTaskId IS NULL');
+    }
+    const titleQ = query.q?.trim();
+    if (titleQ) {
+      qb.andWhere('task.title ILIKE :titleQ', {
+        titleQ: `%${titleQ}%`,
+      });
+    }
+  }
+
+  private applyListLimit(
+    qb: SelectQueryBuilder<Task>,
+    query: ListTasksQueryDto,
+  ): void {
+    if (query.limit) {
+      qb.take(query.limit);
+    }
   }
 
   async create(

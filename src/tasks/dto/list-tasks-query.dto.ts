@@ -1,4 +1,14 @@
-import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { TaskCriticity, TaskStatus } from '../task.enums';
 
@@ -36,4 +46,25 @@ export class ListTasksQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   createdByMe?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  q?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === undefined || value === null || value === ''
+      ? undefined
+      : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  parentsOnly?: boolean;
 }

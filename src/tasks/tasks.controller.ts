@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateTaskCommentDto } from './dto/create-task-comment.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { TaskActivityService } from './task-activity.service';
 import { TasksService } from './tasks.service';
@@ -33,9 +35,10 @@ export class TasksController {
   findAll(
     @Param('orgId') orgId: string,
     @Param('projectId') projectId: string,
+    @Query() query: ListTasksQueryDto,
     @Req() req: AuthRequest,
   ) {
-    return this.tasksService.findAll(req.user.id, orgId, projectId);
+    return this.tasksService.findAll(req.user.id, orgId, projectId, query);
   }
 
   @Post()
