@@ -11,6 +11,19 @@
     "type": "object",
     "additionalProperties": false
   },
+  "set_caller_auth": {
+    "properties": {
+      "token": {
+        "description": "Arc Todo JWT from the web app (localStorage arc_todo_token) or the arc_todo_token secret. Bearer prefix optional. Binds to this MCP session so later tenant tools work when the HTTP connector drops the Authorization header.",
+        "title": "Token",
+        "type": "string"
+      }
+    },
+    "required": ["token"],
+    "title": "SetCallerAuthInput",
+    "type": "object",
+    "additionalProperties": false
+  },
   "list_organizations": {
     "properties": {},
     "title": "EmptyInput",

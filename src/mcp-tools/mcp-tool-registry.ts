@@ -16,13 +16,22 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     defaultEnabled: true,
     sortOrder: 1,
   },
-  {
+    {
     key: 'list_enabled_mcp_tools',
     group: 'system',
     displayName: 'List enabled MCP tools',
     description: 'List MCP tools registered by this server at startup.',
     defaultEnabled: true,
     sortOrder: 2,
+  },
+  {
+    key: 'set_caller_auth',
+    group: 'system',
+    displayName: 'Set caller auth',
+    description:
+      'Bind an Arc Todo JWT to this MCP session. Use when tenant tools return Missing Authorization bearer token (Grok/cloud HTTP connectors drop headers.Authorization). Pass the JWT from the arc_todo_token secret. Then retry list_organizations on the same connection.',
+    defaultEnabled: true,
+    sortOrder: 3,
   },
   {
     key: 'list_organizations',
