@@ -18,7 +18,19 @@ export type NormalizedBugFlagFields = {
   secondary: BugFlagSecondary[];
   motivo: string;
   evidence: string | null;
+  taskScore: number;
+  flagScore: number;
 };
+
+export function normalizeBugFlagScore(value: unknown): number | null {
+  if (typeof value === 'string' && value.trim() !== '') {
+    value = Number(value.trim());
+  }
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 10) {
+    return null;
+  }
+  return value;
+}
 
 export function isBugFlagPrimary(value: string): value is BugFlagPrimary {
   return (BUG_FLAG_PRIMARIES as readonly string[]).includes(value);
@@ -64,17 +76,24 @@ export function normalizeBugFlagFields(input: {
   secondary?: unknown;
   motivo?: unknown;
   evidence?: unknown;
+  taskScore?: unknown;
+  flagScore?: unknown;
 }): { ok: true; value: NormalizedBugFlagFields } | { ok: false } {
   const primary = normalizePrimary(input.primary);
   const secondary = normalizeSecondaryList(input.secondary);
   const motivo = asTrimmed(input.motivo);
   const evidence = asTrimmed(input.evidence) || null;
+  const taskScore = normalizeBugFlagScore(input.taskScore);
+  const flagScore = normalizeBugFlagScore(input.flagScore);
 
-  if (!primary || secondary == null || !motivo) {
+  if (!primary || secondary == null || !motivo || taskScore == null || flagScore == null) {
     return { ok: false };
   }
 
-  return { ok: true, value: { primary, secondary, motivo, evidence } };
+  return {
+    ok: true,
+    value: { primary, secondary, motivo, evidence, taskScore, flagScore },
+  };
 }
 
 if (require.main === module) {
@@ -83,30 +102,52 @@ if (require.main === module) {
     secondary: ['Regression', 'not-deployed', 'regression', ''],
     motivo: '  URL goes to /knowledge  ',
     evidence: ' image.png ',
+    taskScore: 7,
+    flagScore: '9',
   });
   const missing = normalizeBugFlagFields({
     primary: 'INSUFFICIENT_EVIDENCE',
     secondary: ['missing_evidence', 'missing_repro'],
     motivo: 'No print',
     evidence: '   ',
+    taskScore: 3,
+    flagScore: 8,
   });
   const emptyMotivo = normalizeBugFlagFields({
     primary: 'REAL_DEFECT',
     secondary: [],
     motivo: '  ',
+    taskScore: 5,
+    flagScore: 5,
   });
   const badPrimary = normalizeBugFlagFields({
     primary: 'FALSE_POSITIVE',
     motivo: 'x',
+    taskScore: 1,
+    flagScore: 1,
   });
   const badSecondary = normalizeBugFlagFields({
     primary: 'REAL_DEFECT',
     secondary: ['unknown_tag'],
     motivo: 'x',
+    taskScore: 1,
+    flagScore: 1,
   });
   const notArray = normalizeBugFlagFields({
     primary: 'REAL_DEFECT',
     secondary: 'regression',
+    motivo: 'x',
+    taskScore: 1,
+    flagScore: 1,
+  });
+  const badScore = normalizeBugFlagFields({
+    primary: 'REAL_DEFECT',
+    motivo: 'x',
+    taskScore: 0,
+    flagScore: 11,
+  });
+  const missingScore = normalizeBugFlagFields({
+    primary: 'REAL_DEFECT',
     motivo: 'x',
   });
 
@@ -121,10 +162,14 @@ if (require.main === module) {
     ['evidence trim', defect.ok && defect.value.evidence === 'image.png'],
     ['empty secondary ok', missing.ok && missing.value.secondary.length === 2],
     ['blank evidence null', missing.ok && missing.value.evidence === null],
+    ['task score', defect.ok && defect.value.taskScore === 7],
+    ['flag score string', defect.ok && defect.value.flagScore === 9],
     ['empty motivo', !emptyMotivo.ok],
     ['bad primary', !badPrimary.ok],
     ['bad secondary', !badSecondary.ok],
     ['secondary not array', !notArray.ok],
+    ['bad score range', !badScore.ok],
+    ['missing scores', !missingScore.ok],
   ];
   const failed = checks.filter(([, ok]) => !ok);
   if (failed.length) {

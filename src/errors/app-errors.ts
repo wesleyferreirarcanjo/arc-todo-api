@@ -115,7 +115,7 @@ export const APP_ERRORS = {
     code: 'ERR-ARC-ANALYTICS-02',
     status: HttpStatus.BAD_REQUEST,
     message:
-      'That bug-flag dossier is not valid. Use primary REAL_DEFECT or INSUFFICIENT_EVIDENCE, and secondary tags from regression, not_deployed, missing_evidence, missing_repro.',
+      'That bug-flag dossier is not valid. Use primary REAL_DEFECT or INSUFFICIENT_EVIDENCE, secondary tags from regression, not_deployed, missing_evidence, missing_repro, and taskScore and flagScore as integers from 1 to 10.',
   },
 
   ORG_NOT_FOUND: {

@@ -817,6 +817,8 @@ export class AnalyticsService {
         secondary: fields.value.secondary,
         motivo: fields.value.motivo,
         evidence: fields.value.evidence,
+        taskScore: fields.value.taskScore,
+        flagScore: fields.value.flagScore,
         createdById: userId,
       }),
     );
@@ -837,6 +839,8 @@ export class AnalyticsService {
       secondary: row.secondary ?? [],
       motivo: row.motivo,
       evidence: row.evidence,
+      taskScore: row.taskScore,
+      flagScore: row.flagScore,
       createdAt:
         row.createdAt instanceof Date
           ? row.createdAt.toISOString()

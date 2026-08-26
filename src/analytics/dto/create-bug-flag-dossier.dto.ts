@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 export class CreateBugFlagDossierDto {
   @IsUUID()
@@ -18,4 +18,14 @@ export class CreateBugFlagDossierDto {
   @IsOptional()
   @IsString()
   evidence?: string | null;
+
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  taskScore!: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  flagScore!: number;
 }

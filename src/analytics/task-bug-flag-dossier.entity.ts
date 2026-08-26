@@ -32,6 +32,12 @@ export class TaskBugFlagDossier {
   @Column({ type: 'text', nullable: true })
   evidence: string | null;
 
+  @Column({ name: 'task_score', type: 'smallint', nullable: true })
+  taskScore: number | null;
+
+  @Column({ name: 'flag_score', type: 'smallint', nullable: true })
+  flagScore: number | null;
+
   @Column({ name: 'created_by_id', type: 'uuid', nullable: true })
   createdById: string | null;
 

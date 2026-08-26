@@ -4011,6 +4011,20 @@
         "description": "What evidence was reviewed (filenames, timestamps, checklist). Use a short note like 'sem evidência' when none exists.",
         "title": "Evidence"
       },
+      "task_score": {
+        "description": "1-10 rating of the task itself (clarity, completeness of the ticket).",
+        "maximum": 10,
+        "minimum": 1,
+        "title": "Task Score",
+        "type": "integer"
+      },
+      "flag_score": {
+        "description": "1-10 rating of this bug report (evidence, repro, how well it was filed).",
+        "maximum": 10,
+        "minimum": 1,
+        "title": "Flag Score",
+        "type": "integer"
+      },
       "arc_todo_token": {
         "anyOf": [
           {
@@ -4028,7 +4042,9 @@
     "required": [
       "task_id",
       "primary",
-      "motivo"
+      "motivo",
+      "task_score",
+      "flag_score"
     ],
     "title": "CreateTaskBugFlagInput",
     "type": "object",

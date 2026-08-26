@@ -233,7 +233,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'tasks',
     displayName: 'Create task bug flag',
     description:
-      'File a Grok bug-report dossier on a task (primary REAL_DEFECT | INSUFFICIENT_EVIDENCE; secondary regression, not_deployed, missing_evidence, missing_repro; motivo; evidence). Stored for admin Analytics only. Friendly IDs like #arc-296. Pass arc_todo_token on Grok HTTP calls.',
+      'File a Grok bug-report dossier on a task (primary REAL_DEFECT | INSUFFICIENT_EVIDENCE; secondary regression, not_deployed, missing_evidence, missing_repro; motivo; evidence; task_score 1-10; flag_score 1-10). Stored for admin Analytics only. Friendly IDs like #arc-296. Pass arc_todo_token on Grok HTTP calls.',
     defaultEnabled: true,
     sortOrder: 32,
   },

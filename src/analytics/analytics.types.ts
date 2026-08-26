@@ -106,6 +106,8 @@ export interface AnalyticsBugFlagDossier {
   secondary: string[];
   motivo: string;
   evidence: string | null;
+  taskScore: number | null;
+  flagScore: number | null;
   createdAt: string;
   createdById: string | null;
 }
