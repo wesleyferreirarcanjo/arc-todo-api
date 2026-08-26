@@ -29,7 +29,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'system',
     displayName: 'Set caller auth',
     description:
-      'Bind an Arc Todo JWT to this MCP session. Use when tenant tools return Missing Authorization bearer token (Grok/cloud HTTP connectors drop headers.Authorization). Pass the JWT from the arc_todo_token secret. Then retry list_organizations on the same connection.',
+      'Prove an Arc Todo JWT via GET /auth/me. Grok/cloud HTTP connectors do not reuse MCP sessions, so this does not authenticate later tools. Pass arc_todo_token on every tenant tool call instead.',
     defaultEnabled: true,
     sortOrder: 3,
   },
