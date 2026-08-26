@@ -39,7 +39,12 @@ import {
   timestampMs,
 } from './analytics-summary.util';
 import { AnalyticsSummaryQueryDto } from './dto/analytics-summary-query.dto';
+import { CreateBugFlagDossierDto } from './dto/create-bug-flag-dossier.dto';
+import { formatTaskDisplayId } from '../common/utils/acronym.util';
+import { normalizeBugFlagFields } from './bug-flag-dossier.util';
+import { TaskBugFlagDossier } from './task-bug-flag-dossier.entity';
 import type {
+  AnalyticsBugFlagDossier,
   AnalyticsByStatus,
   AnalyticsDwellByStatus,
   AnalyticsLongestStay,
@@ -114,6 +119,8 @@ export class AnalyticsService {
     private readonly historyRepository: Repository<TaskHistoryEntry>,
     @InjectRepository(BoardCycleHistoryEntry)
     private readonly cycleHistoryRepository: Repository<BoardCycleHistoryEntry>,
+    @InjectRepository(TaskBugFlagDossier)
+    private readonly bugFlagRepository: Repository<TaskBugFlagDossier>,
   ) {}
 
   async getSummary(query: AnalyticsSummaryQueryDto): Promise<AnalyticsSummary> {
@@ -730,5 +737,111 @@ export class AnalyticsService {
       return left.username.localeCompare(right.username);
     });
     return rows;
+  }
+
+  async listBugFlags(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<{ items: AnalyticsBugFlagDossier[] }> {
+    await this.assertScope(query);
+
+    const resolved = resolveAnalyticsPeriod(query);
+    if (!resolved.ok) {
+      throw appError('ANALYTICS_INVALID_RANGE');
+    }
+    const window = resolved.value.current;
+
+    const qb = this.bugFlagRepository
+      .createQueryBuilder('dossier')
+      .distinctOn(['dossier.taskId'])
+      .innerJoinAndSelect('dossier.task', 'task')
+      .innerJoinAndSelect('task.project', 'project')
+      .orderBy('dossier.taskId')
+      .addOrderBy('dossier.createdAt', 'DESC');
+
+    this.applyTaskScope(qb, query, 'project');
+    if (window.startMs !== null) {
+      qb.andWhere('dossier.createdAt >= :flagStart', {
+        flagStart: new Date(window.startMs),
+      });
+    }
+    if (window.endMs !== null) {
+      qb.andWhere('dossier.createdAt < :flagEnd', {
+        flagEnd: new Date(window.endMs),
+      });
+    }
+
+    const rows = await qb.getMany();
+    const items = rows
+      .map((row) => this.toBugFlagRow(row))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return { items };
+  }
+
+  async getLatestBugFlag(taskId: string): Promise<{ flag: AnalyticsBugFlagDossier | null }> {
+    const row = await this.bugFlagRepository.findOne({
+      where: { taskId },
+      relations: ['task', 'task.project'],
+      order: { createdAt: 'DESC' },
+    });
+    if (!row) {
+      const task = await this.tasksRepository.findOne({ where: { id: taskId } });
+      if (!task) {
+        throw appError('TASK_NOT_FOUND');
+      }
+      return { flag: null };
+    }
+    return { flag: this.toBugFlagRow(row) };
+  }
+
+  async createBugFlag(
+    userId: string,
+    dto: CreateBugFlagDossierDto,
+  ): Promise<AnalyticsBugFlagDossier> {
+    const fields = normalizeBugFlagFields(dto);
+    if (!fields.ok) {
+      throw appError('ANALYTICS_INVALID_BUG_FLAG');
+    }
+
+    const task = await this.tasksRepository.findOne({
+      where: { id: dto.taskId },
+      relations: ['project'],
+    });
+    if (!task?.project) {
+      throw appError('TASK_NOT_FOUND');
+    }
+
+    const saved = await this.bugFlagRepository.save(
+      this.bugFlagRepository.create({
+        taskId: task.id,
+        primary: fields.value.primary,
+        secondary: fields.value.secondary,
+        motivo: fields.value.motivo,
+        evidence: fields.value.evidence,
+        createdById: userId,
+      }),
+    );
+    saved.task = task;
+    return this.toBugFlagRow(saved);
+  }
+
+  private toBugFlagRow(row: TaskBugFlagDossier): AnalyticsBugFlagDossier {
+    const task = row.task;
+    const acronym = task?.project?.acronym ?? '';
+    const taskNumber = task?.taskNumber ?? 0;
+    return {
+      id: row.id,
+      taskId: row.taskId,
+      displayId: task ? formatTaskDisplayId(acronym, taskNumber) : row.taskId,
+      title: task?.title ?? '',
+      primary: row.primary,
+      secondary: row.secondary ?? [],
+      motivo: row.motivo,
+      evidence: row.evidence,
+      createdAt:
+        row.createdAt instanceof Date
+          ? row.createdAt.toISOString()
+          : new Date(row.createdAt).toISOString(),
+      createdById: row.createdById,
+    };
   }
 }

@@ -3884,5 +3884,154 @@
     "title": "MoveTaskInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "get_task_bug_flag": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "task_id"
+    ],
+    "title": "GetTaskBugFlagInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_task_bug_flag": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "primary": {
+        "description": "REAL_DEFECT | INSUFFICIENT_EVIDENCE",
+        "title": "Primary",
+        "type": "string"
+      },
+      "secondary": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional tags: regression, not_deployed, missing_evidence, missing_repro. Repeat tags are stored once.",
+        "title": "Secondary"
+      },
+      "motivo": {
+        "description": "Why this classification. Required. Not shown to members.",
+        "title": "Motivo",
+        "type": "string"
+      },
+      "evidence": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "What evidence was reviewed (filenames, timestamps, checklist). Use a short note like 'sem evidência' when none exists.",
+        "title": "Evidence"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "task_id",
+      "primary",
+      "motivo"
+    ],
+    "title": "CreateTaskBugFlagInput",
+    "type": "object",
+    "additionalProperties": false
   }
 }

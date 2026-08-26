@@ -220,6 +220,24 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 30,
   },
   {
+    key: 'get_task_bug_flag',
+    group: 'tasks',
+    displayName: 'Get task bug flag',
+    description:
+      'Check whether a Grok bug-flag dossier already exists for this task. Returns { flag: null } when none. Admin analytics only; never shown on the board. Friendly IDs like #arc-296 work. Pass arc_todo_token on Grok HTTP calls.',
+    defaultEnabled: true,
+    sortOrder: 31,
+  },
+  {
+    key: 'create_task_bug_flag',
+    group: 'tasks',
+    displayName: 'Create task bug flag',
+    description:
+      'File a Grok bug-report dossier on a task (primary REAL_DEFECT | INSUFFICIENT_EVIDENCE; secondary regression, not_deployed, missing_evidence, missing_repro; motivo; evidence). Stored for admin Analytics only. Friendly IDs like #arc-296. Pass arc_todo_token on Grok HTTP calls.',
+    defaultEnabled: true,
+    sortOrder: 32,
+  },
+  {
     key: 'list_organization_activity',
     group: 'activity',
     displayName: 'List organization activity',

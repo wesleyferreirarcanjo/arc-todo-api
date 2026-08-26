@@ -5,6 +5,7 @@ import { Organization } from '../organizations/organization.entity';
 import { ProjectAccessModule } from '../projects/project-access.module';
 import { Project } from '../projects/project.entity';
 import { TaskHistoryEntry } from '../tasks/task-history-entry.entity';
+import { TaskBugFlagDossier } from './task-bug-flag-dossier.entity';
 import { Task } from '../tasks/task.entity';
 import { UserActivity } from '../user-activity/user-activity.entity';
 import { User } from '../users/user.entity';
@@ -21,6 +22,7 @@ import { AnalyticsService } from './analytics.service';
       UserActivity,
       TaskHistoryEntry,
       BoardCycleHistoryEntry,
+      TaskBugFlagDossier,
     ]),
     ProjectAccessModule,
   ],

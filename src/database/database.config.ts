@@ -26,6 +26,7 @@ import { PushSubscription } from '../push/push-subscription.entity';
 import { TaskComment } from '../tasks/task-comment.entity';
 import { TaskEvidence } from '../tasks/task-evidence.entity';
 import { TaskHistoryEntry } from '../tasks/task-history-entry.entity';
+import { TaskBugFlagDossier } from '../analytics/task-bug-flag-dossier.entity';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
 import { UserActivity } from '../user-activity/user-activity.entity';
@@ -37,6 +38,7 @@ export const entities = [
   Project,
   ProjectMember,
   Task,
+  TaskBugFlagDossier,
   TaskComment,
   TaskEvidence,
   TaskHistoryEntry,
