@@ -32,6 +32,7 @@ import {
   closedBugSolves,
   closedTestDwells,
   countEventsIntoTrend,
+  countRecentWork,
   emptyTrendBuckets,
   fillTrendField,
   meanMs,
@@ -109,6 +110,14 @@ interface LastActivityRow {
   lastInteractedAt: Date | string;
   action: string;
   summary: string;
+}
+
+interface RecentActivityRow {
+  userId: string;
+  action: string;
+  entityId: string | null;
+  createdAt: Date | string;
+  checkedCount: string | number | null;
 }
 
 @Injectable()
@@ -761,17 +770,20 @@ export class AnalyticsService {
   private async loadLastInteractions(
     query: AnalyticsSummaryQueryDto,
   ): Promise<AnalyticsLastInteractionRow[]> {
-    const [members, activityRows] = await Promise.all([
+    const [members, activityRows, recentRows] = await Promise.all([
       this.loadScopedUsers(query),
       this.loadLatestActivityByUser(query),
+      this.loadRecentTaskWork(query),
     ]);
 
-    const extraIds = activityRows
-      .map((row) => row.userId)
-      .filter((userId) => !members.some((member) => member.userId === userId));
-    const extraUsers = extraIds.length
+    const extraIds = [
+      ...activityRows.map((row) => row.userId),
+      ...recentRows.map((row) => row.userId),
+    ].filter((userId) => !members.some((member) => member.userId === userId));
+    const uniqueExtra = [...new Set(extraIds)];
+    const extraUsers = uniqueExtra.length
       ? await this.usersRepository.find({
-          where: { id: In(extraIds) },
+          where: { id: In(uniqueExtra) },
           select: ['id', 'username'],
         })
       : [];
@@ -782,6 +794,7 @@ export class AnalyticsService {
         ...extraUsers.map((user) => ({ userId: user.id, username: user.username })),
       ],
       activityRows,
+      countRecentWork(recentRows, Date.now()),
     );
   }
 
@@ -842,6 +855,48 @@ export class AnalyticsService {
             : new Date(row.lastInteractedAt).toISOString(),
         action: row.action,
         summary: row.summary,
+      }));
+  }
+
+  private async loadRecentTaskWork(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<
+    Array<{
+      userId: string;
+      atMs: number;
+      action: string;
+      entityId: string | null;
+      checkedCount: number;
+    }>
+  > {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const qb = this.activityRepository
+      .createQueryBuilder('activity')
+      .select('activity.actorUserId', 'userId')
+      .addSelect('activity.action', 'action')
+      .addSelect('activity.entityId', 'entityId')
+      .addSelect('activity.createdAt', 'createdAt')
+      .addSelect("activity.metadata ->> 'checkedCount'", 'checkedCount')
+      .where('activity.createdAt >= :since', { since })
+      .andWhere('activity.action IN (:...taskActions)', {
+        taskActions: [
+          UserActivityAction.TASK_CREATED,
+          UserActivityAction.TASK_UPDATED,
+          UserActivityAction.TASK_STATUS_CHANGED,
+          UserActivityAction.TASK_DELETED,
+          UserActivityAction.TASK_CHECKLIST_CHECKED,
+        ],
+      });
+    this.applyInteractionScope(qb, query);
+    const rows = await qb.getRawMany<RecentActivityRow>();
+    return rows
+      .filter((row) => Boolean(row.userId))
+      .map((row) => ({
+        userId: row.userId,
+        atMs: new Date(row.createdAt).getTime(),
+        action: row.action,
+        entityId: row.entityId,
+        checkedCount: Number(row.checkedCount ?? 0) || 0,
       }));
   }
 

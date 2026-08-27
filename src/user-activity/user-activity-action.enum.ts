@@ -3,6 +3,7 @@ export enum UserActivityAction {
   TASK_UPDATED = 'task.updated',
   TASK_STATUS_CHANGED = 'task.status_changed',
   TASK_DELETED = 'task.deleted',
+  TASK_CHECKLIST_CHECKED = 'task.checklist_checked',
   MEMBER_ADDED = 'member.added',
   MEMBER_REMOVED = 'member.removed',
   MEMBER_ROLE_CHANGED = 'member.role_changed',

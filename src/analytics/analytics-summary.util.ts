@@ -301,11 +301,104 @@ export interface AnalyticsLastInteractionRow {
   lastInteractedAt: string | null;
   action: string | null;
   summary: string | null;
+  tasksLast24h: number;
+  checklistLast24h: number;
+  tasksLast7d: number;
+  checklistLast7d: number;
+}
+
+export const EMPTY_RECENT_WORK = {
+  tasksLast24h: 0,
+  checklistLast24h: 0,
+  tasksLast7d: 0,
+  checklistLast7d: 0,
+} as const;
+
+export interface RecentWorkCounts {
+  tasksLast24h: number;
+  checklistLast24h: number;
+  tasksLast7d: number;
+  checklistLast7d: number;
+}
+
+export interface RecentWorkEvent {
+  userId: string;
+  atMs: number;
+  action: string;
+  entityId: string | null;
+  checkedCount: number;
+}
+
+const TASK_WORK_ACTIONS = new Set([
+  'task.created',
+  'task.updated',
+  'task.status_changed',
+  'task.deleted',
+  'task.checklist_checked',
+]);
+
+export function countRecentWork(
+  events: RecentWorkEvent[],
+  nowMs: number,
+): Map<string, RecentWorkCounts> {
+  const last24hMs = nowMs - DAY_MS;
+  const last7dMs = nowMs - 7 * DAY_MS;
+  const tasks24h = new Map<string, Set<string>>();
+  const tasks7d = new Map<string, Set<string>>();
+  const checklist24h = new Map<string, number>();
+  const checklist7d = new Map<string, number>();
+
+  function taskSet(store: Map<string, Set<string>>, userId: string): Set<string> {
+    const existing = store.get(userId);
+    if (existing) {
+      return existing;
+    }
+    const created = new Set<string>();
+    store.set(userId, created);
+    return created;
+  }
+
+  for (const event of events) {
+    if (!TASK_WORK_ACTIONS.has(event.action) || event.atMs < last7dMs || event.atMs >= nowMs) {
+      continue;
+    }
+    if (event.entityId) {
+      taskSet(tasks7d, event.userId).add(event.entityId);
+      if (event.atMs >= last24hMs) {
+        taskSet(tasks24h, event.userId).add(event.entityId);
+      }
+    }
+    if (event.action === 'task.checklist_checked') {
+      const added = Number.isFinite(event.checkedCount) ? Math.max(0, event.checkedCount) : 0;
+      checklist7d.set(event.userId, (checklist7d.get(event.userId) ?? 0) + added);
+      if (event.atMs >= last24hMs) {
+        checklist24h.set(event.userId, (checklist24h.get(event.userId) ?? 0) + added);
+      }
+    }
+  }
+
+  const ids = new Set<string>([
+    ...tasks24h.keys(),
+    ...tasks7d.keys(),
+    ...checklist24h.keys(),
+    ...checklist7d.keys(),
+  ]);
+  const result = new Map<string, RecentWorkCounts>();
+  for (const userId of ids) {
+    result.set(userId, {
+      tasksLast24h: tasks24h.get(userId)?.size ?? 0,
+      checklistLast24h: checklist24h.get(userId) ?? 0,
+      tasksLast7d: tasks7d.get(userId)?.size ?? 0,
+      checklistLast7d: checklist7d.get(userId) ?? 0,
+    });
+  }
+  return result;
 }
 
 export function mergeLastInteractions(
   users: LastInteractionUser[],
   events: LastInteractionEvent[],
+  recentWork: Map<string, RecentWorkCounts> = new Map(),
 ): AnalyticsLastInteractionRow[] {
   const usernameById = new Map(users.map((user) => [user.userId, user.username]));
   const eventByUser = new Map(events.map((event) => [event.userId, event]));
@@ -319,15 +412,26 @@ export function mergeLastInteractions(
       usernameById.set(event.userId, event.userId);
     }
   }
+  for (const userId of recentWork.keys()) {
+    ids.add(userId);
+    if (!usernameById.has(userId)) {
+      usernameById.set(userId, userId);
+    }
+  }
 
   const rows = [...ids].map((userId) => {
     const event = eventByUser.get(userId);
+    const work = recentWork.get(userId) ?? EMPTY_RECENT_WORK;
     return {
       userId,
       username: usernameById.get(userId) ?? userId,
       lastInteractedAt: event?.lastInteractedAt ?? null,
       action: event?.action ?? null,
       summary: event?.summary ?? null,
+      tasksLast24h: work.tasksLast24h,
+      checklistLast24h: work.checklistLast24h,
+      tasksLast7d: work.tasksLast7d,
+      checklistLast7d: work.checklistLast7d,
     };
   });
 
@@ -580,4 +684,52 @@ if (require.main === module) {
   console.assert(last[0].userId === 'u3' && last[0].username === 'u3', 'most recent first');
   console.assert(last[1].userId === 'u1' && last[1].summary === 'Created task "Old"', 'older activity next');
   console.assert(last[2].userId === 'u2' && last[2].lastInteractedAt === null, 'never-active last');
+  console.assert(last[2].tasksLast24h === 0 && last[2].checklistLast7d === 0, 'missing work is zero');
+
+  const now = Date.UTC(2026, 7, 27, 12);
+  const recent = countRecentWork(
+    [
+      {
+        userId: 'u1',
+        atMs: now - 2 * 60 * 60 * 1000,
+        action: 'task.status_changed',
+        entityId: 't1',
+        checkedCount: 0,
+      },
+      {
+        userId: 'u1',
+        atMs: now - 3 * 60 * 60 * 1000,
+        action: 'task.checklist_checked',
+        entityId: 't1',
+        checkedCount: 2,
+      },
+      {
+        userId: 'u1',
+        atMs: now - 3 * DAY_MS,
+        action: 'task.created',
+        entityId: 't2',
+        checkedCount: 0,
+      },
+      {
+        userId: 'u1',
+        atMs: now - 3 * DAY_MS,
+        action: 'task.checklist_checked',
+        entityId: 't2',
+        checkedCount: 4,
+      },
+      {
+        userId: 'u1',
+        atMs: now - 8 * DAY_MS,
+        action: 'task.created',
+        entityId: 't3',
+        checkedCount: 0,
+      },
+    ],
+    now,
+  );
+  const wesleyWork = recent.get('u1');
+  console.assert(wesleyWork?.tasksLast24h === 1, '24h unique tasks');
+  console.assert(wesleyWork?.checklistLast24h === 2, '24h checklist items');
+  console.assert(wesleyWork?.tasksLast7d === 2, '7d unique tasks include 24h');
+  console.assert(wesleyWork?.checklistLast7d === 6, '7d checklist includes 24h');
 }

@@ -39,6 +39,7 @@ import {
   SubtaskProgress,
 } from './task-hierarchy.util';
 import {
+  addedCheckedItemIds,
   computeQaChecklistProgress,
   normalizeQaChecklistState,
   type QaChecklistProgress,
@@ -550,10 +551,12 @@ export class TasksService {
       task.bugReason = dto.bugReason?.trim() || null;
     }
 
+    let newlyChecked: string[] = [];
     if (dto.qaChecklistState !== undefined) {
-      task.qaChecklistState = normalizeQaChecklistState(
-        dto.qaChecklistState,
-      ) as unknown as Record<string, unknown>;
+      const previousChecklist = normalizeQaChecklistState(task.qaChecklistState);
+      const nextChecklist = normalizeQaChecklistState(dto.qaChecklistState);
+      newlyChecked = addedCheckedItemIds(previousChecklist, nextChecklist);
+      task.qaChecklistState = nextChecklist as unknown as Record<string, unknown>;
     }
 
     if (dto.assigneeId !== undefined) {
@@ -665,6 +668,26 @@ export class TasksService {
         entityId: taskId,
         summary: `Updated task "${saved.title}" (${enriched.displayId})`,
         metadata: { displayId: enriched.displayId, projectId },
+      });
+    }
+
+    if (newlyChecked.length > 0) {
+      this.userActivityService.record({
+        organizationId: orgId,
+        actorUserId: userId,
+        action: UserActivityAction.TASK_CHECKLIST_CHECKED,
+        entityType: 'task',
+        entityId: taskId,
+        summary:
+          newlyChecked.length === 1
+            ? `Checked 1 checklist item on task "${saved.title}" (${enriched.displayId})`
+            : `Checked ${newlyChecked.length} checklist items on task "${saved.title}" (${enriched.displayId})`,
+        metadata: {
+          displayId: enriched.displayId,
+          projectId,
+          checkedAdded: newlyChecked,
+          checkedCount: newlyChecked.length,
+        },
       });
     }
 

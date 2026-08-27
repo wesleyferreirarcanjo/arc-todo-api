@@ -158,6 +158,23 @@ export function normalizeQaChecklistState(
   };
 }
 
+export function addedCheckedItemIds(
+  previous: QaChecklistState,
+  next: QaChecklistState,
+): string[] {
+  const already = new Set(previous.checkedItemIds);
+  const added: string[] = [];
+  const seen = new Set<string>();
+  for (const id of next.checkedItemIds) {
+    if (already.has(id) || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    added.push(id);
+  }
+  return added;
+}
+
 function normalizeHeadingTitle(title: string): string {
   return title.replace(/\s+/g, ' ').trim().toLowerCase();
 }
@@ -323,4 +340,16 @@ All good.`;
       withImprovements.improvementItemTasks['item-1'] === undefined,
     'expected one valid per-item improvement ref and drop of malformed',
   );
+  const emptyChecklist = {
+    checkedItemIds: [] as string[],
+    buggedItemIds: [] as string[],
+    buggedItemNotes: {},
+    improvementTasks: [],
+    improvementItemTasks: {},
+  };
+  const added = addedCheckedItemIds(
+    { ...emptyChecklist, checkedItemIds: ['item-1'] },
+    { ...emptyChecklist, checkedItemIds: ['item-1', 'item-2', 'item-2'] },
+  );
+  console.assert(added.length === 1 && added[0] === 'item-2', 'only newly checked ids');
 }
