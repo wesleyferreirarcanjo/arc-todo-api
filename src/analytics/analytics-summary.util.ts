@@ -303,22 +303,28 @@ export interface AnalyticsLastInteractionRow {
   summary: string | null;
   tasksLast24h: number;
   checklistLast24h: number;
+  bugsLast24h: number;
   tasksLast7d: number;
   checklistLast7d: number;
+  bugsLast7d: number;
 }
 
 export const EMPTY_RECENT_WORK = {
   tasksLast24h: 0,
   checklistLast24h: 0,
+  bugsLast24h: 0,
   tasksLast7d: 0,
   checklistLast7d: 0,
+  bugsLast7d: 0,
 } as const;
 
 export interface RecentWorkCounts {
   tasksLast24h: number;
   checklistLast24h: number;
+  bugsLast24h: number;
   tasksLast7d: number;
   checklistLast7d: number;
+  bugsLast7d: number;
 }
 
 export interface RecentWorkEvent {
@@ -326,7 +332,14 @@ export interface RecentWorkEvent {
   atMs: number;
   action: string;
   entityId: string | null;
-  checkedCount: number;
+  checkedCount?: number;
+  metadata?: unknown;
+  summary?: string | null;
+}
+
+export interface RecentBugFlagEvent {
+  userId: string;
+  atMs: number;
 }
 
 const TASK_WORK_ACTIONS = new Set([
@@ -337,9 +350,59 @@ const TASK_WORK_ACTIONS = new Set([
   'task.checklist_checked',
 ]);
 
+const CHECKED_SUMMARY = /Checked (\d+) checklist/i;
+
+function asMetadata(value: unknown): Record<string, unknown> {
+  if (!value) {
+    return {};
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+    return {};
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function positiveInt(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) {
+    return 0;
+  }
+  return Math.trunc(n);
+}
+
+export function checklistItemsFromActivity(event: {
+  action: string;
+  checkedCount?: unknown;
+  metadata?: unknown;
+  summary?: string | null;
+}): number {
+  const metadata = asMetadata(event.metadata);
+  const fromSummary = event.summary ? Number(event.summary.match(CHECKED_SUMMARY)?.[1]) : 0;
+  const added = metadata.checkedAdded;
+  return Math.max(
+    positiveInt(event.checkedCount),
+    positiveInt(metadata.checkedCount),
+    Array.isArray(added) ? added.length : 0,
+    positiveInt(fromSummary),
+    event.action === 'task.checklist_checked' ? 1 : 0,
+  );
+}
+
 export function countRecentWork(
   events: RecentWorkEvent[],
   nowMs: number,
+  bugFlags: RecentBugFlagEvent[] = [],
 ): Map<string, RecentWorkCounts> {
   const last24hMs = nowMs - DAY_MS;
   const last7dMs = nowMs - 7 * DAY_MS;
@@ -347,6 +410,8 @@ export function countRecentWork(
   const tasks7d = new Map<string, Set<string>>();
   const checklist24h = new Map<string, number>();
   const checklist7d = new Map<string, number>();
+  const bugs24h = new Map<string, number>();
+  const bugs7d = new Map<string, number>();
 
   function taskSet(store: Map<string, Set<string>>, userId: string): Set<string> {
     const existing = store.get(userId);
@@ -369,11 +434,21 @@ export function countRecentWork(
       }
     }
     if (event.action === 'task.checklist_checked') {
-      const added = Number.isFinite(event.checkedCount) ? Math.max(0, event.checkedCount) : 0;
+      const added = checklistItemsFromActivity(event);
       checklist7d.set(event.userId, (checklist7d.get(event.userId) ?? 0) + added);
       if (event.atMs >= last24hMs) {
         checklist24h.set(event.userId, (checklist24h.get(event.userId) ?? 0) + added);
       }
+    }
+  }
+
+  for (const flag of bugFlags) {
+    if (!flag.userId || flag.atMs < last7dMs || flag.atMs >= nowMs) {
+      continue;
+    }
+    bugs7d.set(flag.userId, (bugs7d.get(flag.userId) ?? 0) + 1);
+    if (flag.atMs >= last24hMs) {
+      bugs24h.set(flag.userId, (bugs24h.get(flag.userId) ?? 0) + 1);
     }
   }
 
@@ -382,14 +457,18 @@ export function countRecentWork(
     ...tasks7d.keys(),
     ...checklist24h.keys(),
     ...checklist7d.keys(),
+    ...bugs24h.keys(),
+    ...bugs7d.keys(),
   ]);
   const result = new Map<string, RecentWorkCounts>();
   for (const userId of ids) {
     result.set(userId, {
       tasksLast24h: tasks24h.get(userId)?.size ?? 0,
       checklistLast24h: checklist24h.get(userId) ?? 0,
+      bugsLast24h: bugs24h.get(userId) ?? 0,
       tasksLast7d: tasks7d.get(userId)?.size ?? 0,
       checklistLast7d: checklist7d.get(userId) ?? 0,
+      bugsLast7d: bugs7d.get(userId) ?? 0,
     });
   }
   return result;
@@ -430,8 +509,10 @@ export function mergeLastInteractions(
       summary: event?.summary ?? null,
       tasksLast24h: work.tasksLast24h,
       checklistLast24h: work.checklistLast24h,
+      bugsLast24h: work.bugsLast24h,
       tasksLast7d: work.tasksLast7d,
       checklistLast7d: work.checklistLast7d,
+      bugsLast7d: work.bugsLast7d,
     };
   });
 
@@ -684,7 +765,10 @@ if (require.main === module) {
   console.assert(last[0].userId === 'u3' && last[0].username === 'u3', 'most recent first');
   console.assert(last[1].userId === 'u1' && last[1].summary === 'Created task "Old"', 'older activity next');
   console.assert(last[2].userId === 'u2' && last[2].lastInteractedAt === null, 'never-active last');
-  console.assert(last[2].tasksLast24h === 0 && last[2].checklistLast7d === 0, 'missing work is zero');
+  console.assert(
+    last[2].tasksLast24h === 0 && last[2].checklistLast7d === 0 && last[2].bugsLast7d === 0,
+    'missing work is zero',
+  );
 
   const now = Date.UTC(2026, 7, 27, 12);
   const recent = countRecentWork(
@@ -724,12 +808,46 @@ if (require.main === module) {
         entityId: 't3',
         checkedCount: 0,
       },
+      {
+        userId: 'u1',
+        atMs: now - 90 * 60 * 1000,
+        action: 'task.checklist_checked',
+        entityId: 't4',
+        summary: 'Checked 3 checklist items on task "QA"',
+      },
+      {
+        userId: 'u1',
+        atMs: now - 2 * DAY_MS,
+        action: 'task.checklist_checked',
+        entityId: 't5',
+        metadata: { checkedAdded: ['item-1', 'item-2'] },
+      },
     ],
     now,
+    [
+      { userId: 'u1', atMs: now - 60 * 60 * 1000 },
+      { userId: 'u1', atMs: now - 2 * DAY_MS },
+      { userId: 'u1', atMs: now - 8 * DAY_MS },
+    ],
   );
   const wesleyWork = recent.get('u1');
-  console.assert(wesleyWork?.tasksLast24h === 1, '24h unique tasks');
-  console.assert(wesleyWork?.checklistLast24h === 2, '24h checklist items');
-  console.assert(wesleyWork?.tasksLast7d === 2, '7d unique tasks include 24h');
-  console.assert(wesleyWork?.checklistLast7d === 6, '7d checklist includes 24h');
+  console.assert(wesleyWork?.tasksLast24h === 2, '24h unique tasks include checklist cards');
+  console.assert(wesleyWork?.checklistLast24h === 5, '24h checklist uses count, summary, and default');
+  console.assert(wesleyWork?.bugsLast24h === 1, '24h bug flags');
+  console.assert(wesleyWork?.tasksLast7d === 4, '7d unique tasks include 24h');
+  console.assert(wesleyWork?.checklistLast7d === 11, '7d checklist includes metadata arrays');
+  console.assert(wesleyWork?.bugsLast7d === 2, '7d bug flags include 24h');
+
+  console.assert(checklistItemsFromActivity({ action: 'task.updated' }) === 0, 'non-check is zero');
+  console.assert(
+    checklistItemsFromActivity({ action: 'task.checklist_checked' }) === 1,
+    'checklist action without count is one',
+  );
+  console.assert(
+    checklistItemsFromActivity({
+      action: 'task.checklist_checked',
+      metadata: '{"checkedCount":4}',
+    }) === 4,
+    'json metadata string',
+  );
 }

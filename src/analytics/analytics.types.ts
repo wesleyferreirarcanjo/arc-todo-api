@@ -29,8 +29,10 @@ export interface AnalyticsLastInteractionRow {
   summary: string | null;
   tasksLast24h: number;
   checklistLast24h: number;
+  bugsLast24h: number;
   tasksLast7d: number;
   checklistLast7d: number;
+  bugsLast7d: number;
 }
 
 export interface AnalyticsPeriodInfo {

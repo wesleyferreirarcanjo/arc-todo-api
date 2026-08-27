@@ -117,7 +117,13 @@ interface RecentActivityRow {
   action: string;
   entityId: string | null;
   createdAt: Date | string;
-  checkedCount: string | number | null;
+  summary: string | null;
+  metadata: unknown;
+}
+
+interface RecentBugFlagRow {
+  userId: string | null;
+  createdAt: Date | string;
 }
 
 @Injectable()
@@ -770,15 +776,17 @@ export class AnalyticsService {
   private async loadLastInteractions(
     query: AnalyticsSummaryQueryDto,
   ): Promise<AnalyticsLastInteractionRow[]> {
-    const [members, activityRows, recentRows] = await Promise.all([
+    const [members, activityRows, recentRows, bugRows] = await Promise.all([
       this.loadScopedUsers(query),
       this.loadLatestActivityByUser(query),
       this.loadRecentTaskWork(query),
+      this.loadRecentBugFlags(query),
     ]);
 
     const extraIds = [
       ...activityRows.map((row) => row.userId),
       ...recentRows.map((row) => row.userId),
+      ...bugRows.map((row) => row.userId),
     ].filter((userId) => !members.some((member) => member.userId === userId));
     const uniqueExtra = [...new Set(extraIds)];
     const extraUsers = uniqueExtra.length
@@ -794,7 +802,7 @@ export class AnalyticsService {
         ...extraUsers.map((user) => ({ userId: user.id, username: user.username })),
       ],
       activityRows,
-      countRecentWork(recentRows, Date.now()),
+      countRecentWork(recentRows, Date.now(), bugRows),
     );
   }
 
@@ -866,7 +874,8 @@ export class AnalyticsService {
       atMs: number;
       action: string;
       entityId: string | null;
-      checkedCount: number;
+      metadata: unknown;
+      summary: string | null;
     }>
   > {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -876,7 +885,8 @@ export class AnalyticsService {
       .addSelect('activity.action', 'action')
       .addSelect('activity.entityId', 'entityId')
       .addSelect('activity.createdAt', 'createdAt')
-      .addSelect("activity.metadata ->> 'checkedCount'", 'checkedCount')
+      .addSelect('activity.summary', 'summary')
+      .addSelect('activity.metadata', 'metadata')
       .where('activity.createdAt >= :since', { since })
       .andWhere('activity.action IN (:...taskActions)', {
         taskActions: [
@@ -896,7 +906,32 @@ export class AnalyticsService {
         atMs: new Date(row.createdAt).getTime(),
         action: row.action,
         entityId: row.entityId,
-        checkedCount: Number(row.checkedCount ?? 0) || 0,
+        metadata: row.metadata,
+        summary: row.summary,
+      }));
+  }
+
+  private async loadRecentBugFlags(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<Array<{ userId: string; atMs: number }>> {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const qb = this.historyRepository
+      .createQueryBuilder('history')
+      .innerJoin(Task, 'task', 'task.id = history.task_id')
+      .innerJoin(Project, 'project', 'project.id = task.project_id')
+      .select('history.changed_by_id', 'userId')
+      .addSelect('history.created_at', 'createdAt')
+      .where('history.field = :field', { field: TaskHistoryField.IS_BUG })
+      .andWhere('history.new_value = :newValue', { newValue: 'true' })
+      .andWhere('history.created_at >= :since', { since })
+      .andWhere('history.changed_by_id IS NOT NULL');
+    this.applyTaskScope(qb, query);
+    const rows = await qb.getRawMany<RecentBugFlagRow>();
+    return rows
+      .filter((row) => Boolean(row.userId))
+      .map((row) => ({
+        userId: row.userId as string,
+        atMs: new Date(row.createdAt).getTime(),
       }));
   }
 
