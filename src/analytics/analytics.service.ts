@@ -35,6 +35,7 @@ import {
   emptyTrendBuckets,
   fillTrendField,
   meanMs,
+  mergeLastInteractions,
   mergePersonIds,
   timestampMs,
 } from './analytics-summary.util';
@@ -47,6 +48,7 @@ import type {
   AnalyticsBugFlagDossier,
   AnalyticsByStatus,
   AnalyticsDwellByStatus,
+  AnalyticsLastInteractionRow,
   AnalyticsLongestStay,
   AnalyticsPersonRow,
   AnalyticsSummary,
@@ -102,6 +104,13 @@ interface BugEventRow {
   newValue: string | null;
 }
 
+interface LastActivityRow {
+  userId: string;
+  lastInteractedAt: Date | string;
+  action: string;
+  summary: string;
+}
+
 @Injectable()
 export class AnalyticsService {
   constructor(
@@ -145,6 +154,7 @@ export class AnalyticsService {
       personCreated,
       personOpenBugs,
       createdSeries,
+      lastInteractions,
     ] = await Promise.all([
       this.loadSnapshot(query),
       this.loadCreatedCount(query, period.current, 'createdCurrent'),
@@ -158,6 +168,7 @@ export class AnalyticsService {
       this.loadPersonCreated(query, period.current),
       this.loadPersonOpenBugs(query),
       this.loadCreatedSeries(query, period.current, granularity, 'createdSeries'),
+      this.loadLastInteractions(query),
     ]);
 
     const mappedEvents = statusEvents.map((row) => ({
@@ -300,6 +311,7 @@ export class AnalyticsService {
       longestStay,
       ...checklist,
       byPerson,
+      lastInteractions,
       trend: {
         granularity,
         buckets,
@@ -383,6 +395,13 @@ export class AnalyticsService {
     qb.andWhere('activity.action = :action', {
       action: UserActivityAction.TASK_STATUS_CHANGED,
     });
+    this.applyInteractionScope(qb, query);
+  }
+
+  private applyInteractionScope(
+    qb: SelectQueryBuilder<UserActivity>,
+    query: AnalyticsSummaryQueryDto,
+  ): void {
     if (query.organizationId) {
       qb.andWhere('activity.organizationId = :organizationId', {
         organizationId: query.organizationId,
@@ -737,6 +756,93 @@ export class AnalyticsService {
       return left.username.localeCompare(right.username);
     });
     return rows;
+  }
+
+  private async loadLastInteractions(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<AnalyticsLastInteractionRow[]> {
+    const [members, activityRows] = await Promise.all([
+      this.loadScopedUsers(query),
+      this.loadLatestActivityByUser(query),
+    ]);
+
+    const extraIds = activityRows
+      .map((row) => row.userId)
+      .filter((userId) => !members.some((member) => member.userId === userId));
+    const extraUsers = extraIds.length
+      ? await this.usersRepository.find({
+          where: { id: In(extraIds) },
+          select: ['id', 'username'],
+        })
+      : [];
+
+    return mergeLastInteractions(
+      [
+        ...members,
+        ...extraUsers.map((user) => ({ userId: user.id, username: user.username })),
+      ],
+      activityRows,
+    );
+  }
+
+  private async loadScopedUsers(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<Array<{ userId: string; username: string }>> {
+    const qb = this.usersRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.username'])
+      .orderBy('user.username', 'ASC');
+
+    if (query.projectId) {
+      qb.innerJoin('user.projectMemberships', 'membership').andWhere(
+        'membership.projectId = :projectId',
+        { projectId: query.projectId },
+      );
+    } else if (query.organizationId) {
+      qb.innerJoin('user.projectMemberships', 'membership')
+        .innerJoin('membership.project', 'project')
+        .andWhere('project.organizationId = :organizationId', {
+          organizationId: query.organizationId,
+        })
+        .distinct(true);
+    }
+
+    const rows = await qb.getMany();
+    return rows.map((user) => ({ userId: user.id, username: user.username }));
+  }
+
+  private async loadLatestActivityByUser(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<
+    Array<{
+      userId: string;
+      lastInteractedAt: string;
+      action: string;
+      summary: string;
+    }>
+  > {
+    const qb = this.activityRepository
+      .createQueryBuilder('activity')
+      .distinctOn(['activity.actorUserId'])
+      .select('activity.actorUserId', 'userId')
+      .addSelect('activity.createdAt', 'lastInteractedAt')
+      .addSelect('activity.action', 'action')
+      .addSelect('activity.summary', 'summary')
+      .orderBy('activity.actorUserId')
+      .addOrderBy('activity.createdAt', 'DESC');
+    this.applyInteractionScope(qb, query);
+    const rows = await qb.getRawMany<LastActivityRow>();
+    return rows
+      .filter((row) => Boolean(row.userId))
+      .map((row) => ({
+        userId: row.userId,
+        lastInteractedAt:
+          row.lastInteractedAt instanceof Date
+            ? row.lastInteractedAt.toISOString()
+            : new Date(row.lastInteractedAt).toISOString(),
+        action: row.action,
+        summary: row.summary,
+      }));
   }
 
   async listBugFlags(

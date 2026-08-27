@@ -283,6 +283,69 @@ export function mergePersonIds(
   return result;
 }
 
+export interface LastInteractionUser {
+  userId: string;
+  username: string;
+}
+
+export interface LastInteractionEvent {
+  userId: string;
+  lastInteractedAt: string;
+  action: string;
+  summary: string;
+}
+
+export interface AnalyticsLastInteractionRow {
+  userId: string;
+  username: string;
+  lastInteractedAt: string | null;
+  action: string | null;
+  summary: string | null;
+}
+
+export function mergeLastInteractions(
+  users: LastInteractionUser[],
+  events: LastInteractionEvent[],
+): AnalyticsLastInteractionRow[] {
+  const usernameById = new Map(users.map((user) => [user.userId, user.username]));
+  const eventByUser = new Map(events.map((event) => [event.userId, event]));
+  const ids = new Set<string>();
+  for (const user of users) {
+    ids.add(user.userId);
+  }
+  for (const event of events) {
+    ids.add(event.userId);
+    if (!usernameById.has(event.userId)) {
+      usernameById.set(event.userId, event.userId);
+    }
+  }
+
+  const rows = [...ids].map((userId) => {
+    const event = eventByUser.get(userId);
+    return {
+      userId,
+      username: usernameById.get(userId) ?? userId,
+      lastInteractedAt: event?.lastInteractedAt ?? null,
+      action: event?.action ?? null,
+      summary: event?.summary ?? null,
+    };
+  });
+
+  rows.sort((left, right) => {
+    if (left.lastInteractedAt === right.lastInteractedAt) {
+      return left.username.localeCompare(right.username);
+    }
+    if (left.lastInteractedAt === null) {
+      return 1;
+    }
+    if (right.lastInteractedAt === null) {
+      return -1;
+    }
+    return right.lastInteractedAt.localeCompare(left.lastInteractedAt);
+  });
+  return rows;
+}
+
 export function analyticsTrendGranularity(
   key: AnalyticsPeriodKey,
   window: TimeWindow,
@@ -492,4 +555,29 @@ if (require.main === module) {
   );
   console.assert(archivedWithoutMoves.byStatus.done[0] === 5_000, 'archived Done without status events still counts');
   console.assert(timestampMs('2026-08-25T12:00:00.000Z') === Date.parse('2026-08-25T12:00:00.000Z'), 'iso timestamp');
+
+  const last = mergeLastInteractions(
+    [
+      { userId: 'u1', username: 'wesley' },
+      { userId: 'u2', username: 'arthura' },
+    ],
+    [
+      {
+        userId: 'u1',
+        lastInteractedAt: '2026-08-20T12:00:00.000Z',
+        action: 'task.created',
+        summary: 'Created task "Old"',
+      },
+      {
+        userId: 'u3',
+        lastInteractedAt: '2026-08-27T09:00:00.000Z',
+        action: 'task.status_changed',
+        summary: 'Moved task "New"',
+      },
+    ],
+  );
+  console.assert(last.length === 3, 'members plus leftover actors');
+  console.assert(last[0].userId === 'u3' && last[0].username === 'u3', 'most recent first');
+  console.assert(last[1].userId === 'u1' && last[1].summary === 'Created task "Old"', 'older activity next');
+  console.assert(last[2].userId === 'u2' && last[2].lastInteractedAt === null, 'never-active last');
 }

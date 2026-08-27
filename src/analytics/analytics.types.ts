@@ -21,6 +21,14 @@ export interface AnalyticsPersonRow {
   sampleSizeTestDwells: number;
 }
 
+export interface AnalyticsLastInteractionRow {
+  userId: string;
+  username: string;
+  lastInteractedAt: string | null;
+  action: string | null;
+  summary: string | null;
+}
+
 export interface AnalyticsPeriodInfo {
   key: AnalyticsPeriodKey;
   label: string;
@@ -94,6 +102,7 @@ export interface AnalyticsSummary {
   checklistCompleteTasks: number;
   checklistOpenBugs: number;
   byPerson: AnalyticsPersonRow[];
+  lastInteractions: AnalyticsLastInteractionRow[];
   trend: AnalyticsTrend;
 }
 
