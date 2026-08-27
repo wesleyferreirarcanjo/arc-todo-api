@@ -26,6 +26,8 @@ import { PushSubscription } from '../push/push-subscription.entity';
 import { TaskComment } from '../tasks/task-comment.entity';
 import { TaskEvidence } from '../tasks/task-evidence.entity';
 import { TaskHistoryEntry } from '../tasks/task-history-entry.entity';
+import { TaskLog } from '../tasks/task-log.entity';
+import { QaQueueItem } from '../qa-queue/qa-queue-item.entity';
 import { TaskBugFlagDossier } from '../analytics/task-bug-flag-dossier.entity';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
@@ -42,6 +44,8 @@ export const entities = [
   TaskComment,
   TaskEvidence,
   TaskHistoryEntry,
+  TaskLog,
+  QaQueueItem,
   BoardCycle,
   BoardCycleHistoryEntry,
   Person,

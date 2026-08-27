@@ -24,6 +24,15 @@ export function buildTaskEvidenceObjectKey(
   return `tasks/${taskId}/evidence/${evidenceId}/${safeName}`;
 }
 
+export function buildTaskLogObjectKey(
+  taskId: string,
+  logId: string,
+  originalFilename: string,
+): string {
+  const safeName = sanitizeFilename(originalFilename);
+  return `tasks/${taskId}/logs/${logId}/${safeName}`;
+}
+
 export function newAttachmentId(): string {
   return randomUUID();
 }

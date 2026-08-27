@@ -1524,6 +1524,120 @@
     "type": "object",
     "additionalProperties": false
   },
+  "list_task_logs": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "task_id"
+    ],
+    "title": "OptionalTaskScopeInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "download_task_logs": {
+    "properties": {
+      "organization_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Organization Id"
+      },
+      "project_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project UUID. Required when task_id is a UUID; omit for friendly IDs like arc-1 or #arc-1.",
+        "title": "Project Id"
+      },
+      "task_id": {
+        "description": "Task UUID or friendly ID like arc-1 or #arc-1",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "log_id": {
+        "description": "Task session log UUID",
+        "title": "Log Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "task_id",
+      "log_id"
+    ],
+    "title": "DownloadTaskLogInput",
+    "type": "object",
+    "additionalProperties": false
+  },
   "list_organization_activity": {
     "properties": {
       "organization_id": {

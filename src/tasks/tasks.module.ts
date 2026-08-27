@@ -8,6 +8,9 @@ import { TaskComment } from './task-comment.entity';
 import { TaskEvidence } from './task-evidence.entity';
 import { TaskEvidenceController } from './task-evidence.controller';
 import { TaskEvidenceService } from './task-evidence.service';
+import { TaskLog } from './task-log.entity';
+import { TaskLogController } from './task-log.controller';
+import { TaskLogService } from './task-log.service';
 import { EvidenceRetentionSchedulerService } from './evidence-retention-scheduler.service';
 import { TaskHistoryEntry } from './task-history-entry.entity';
 import { Task } from './task.entity';
@@ -24,6 +27,7 @@ import { TasksService } from './tasks.service';
       TaskComment,
       TaskHistoryEntry,
       TaskEvidence,
+      TaskLog,
     ]),
     OrganizationsModule,
     ProjectsModule,
@@ -34,14 +38,21 @@ import { TasksService } from './tasks.service';
     TasksController,
     TasksGlobalController,
     TaskEvidenceController,
+    TaskLogController,
     StorageController,
   ],
   providers: [
     TasksService,
     TaskActivityService,
     TaskEvidenceService,
+    TaskLogService,
     EvidenceRetentionSchedulerService,
   ],
-  exports: [TasksService, TaskActivityService, TaskEvidenceService],
+  exports: [
+    TasksService,
+    TaskActivityService,
+    TaskEvidenceService,
+    TaskLogService,
+  ],
 })
 export class TasksModule {}

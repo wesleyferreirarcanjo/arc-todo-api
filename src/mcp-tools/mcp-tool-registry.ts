@@ -211,13 +211,31 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 29,
   },
   {
+    key: 'list_task_logs',
+    group: 'tasks',
+    displayName: 'List task logs',
+    description:
+      'List QA session log JSON files on a task. Supports friendly task IDs. Pass arc_todo_token on Grok HTTP calls.',
+    defaultEnabled: true,
+    sortOrder: 30,
+  },
+  {
+    key: 'download_task_logs',
+    group: 'tasks',
+    displayName: 'Download task logs',
+    description:
+      'Download one QA session log as JSON text. Supports friendly task IDs. Pass arc_todo_token on Grok HTTP calls.',
+    defaultEnabled: true,
+    sortOrder: 31,
+  },
+  {
     key: 'list_task_history',
     group: 'tasks',
     displayName: 'List task history',
     description:
       'List field-change history for a task (title, description, dueDate, isBug, bugReason). Use only when is_bug is true or the user asked. Supports friendly task IDs.',
     defaultEnabled: true,
-    sortOrder: 30,
+    sortOrder: 32,
   },
   {
     key: 'get_task_bug_flag',
@@ -226,7 +244,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     description:
       'Check whether a Grok bug-flag dossier already exists for this task. Returns { flag: null } when none. Admin analytics only; never shown on the board. Friendly IDs like #arc-296 work. Pass arc_todo_token on Grok HTTP calls.',
     defaultEnabled: true,
-    sortOrder: 31,
+    sortOrder: 33,
   },
   {
     key: 'create_task_bug_flag',
@@ -235,7 +253,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     description:
       'File a Grok bug-report dossier on a task (primary REAL_DEFECT | INSUFFICIENT_EVIDENCE; secondary regression, not_deployed, missing_evidence, missing_repro; motivo; evidence; task_score 1-10; flag_score 1-10). Stored for admin Analytics only. Friendly IDs like #arc-296. Pass arc_todo_token on Grok HTTP calls.',
     defaultEnabled: true,
-    sortOrder: 32,
+    sortOrder: 34,
   },
   {
     key: 'list_organization_activity',

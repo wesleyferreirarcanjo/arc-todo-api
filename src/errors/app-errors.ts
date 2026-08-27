@@ -297,6 +297,16 @@ export const APP_ERRORS = {
     status: HttpStatus.BAD_REQUEST,
     message: 'That checklist item id is too long.',
   },
+  FILE_LOG_TYPE: {
+    code: 'ERR-ARC-FILE-09',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'QA session logs need to be a JSON file.',
+  },
+  FILE_LOG_NOT_FOUND: {
+    code: 'ERR-ARC-FILE-10',
+    status: HttpStatus.NOT_FOUND,
+    message: 'That session log is gone. Refresh the task and try again.',
+  },
   FILE_ATTACHMENT_NOT_FOUND: {
     code: 'ERR-ARC-FILE-08',
     status: HttpStatus.NOT_FOUND,
@@ -416,6 +426,22 @@ export const APP_ERRORS = {
     status: HttpStatus.BAD_REQUEST,
     message:
       'QA info could not be saved. Check environment names and URLs, and give each test user a label.',
+  },
+  QA_QUEUE_PROJECT_CONFLICT: {
+    code: 'ERR-ARC-QA-03',
+    status: HttpStatus.CONFLICT,
+    message:
+      'Your QA queue already has tasks from another project. Confirm switching projects to replace that batch, or keep the current queue.',
+  },
+  QA_QUEUE_DUPLICATE: {
+    code: 'ERR-ARC-QA-04',
+    status: HttpStatus.CONFLICT,
+    message: 'That task is already in your QA queue.',
+  },
+  QA_QUEUE_ITEM_NOT_FOUND: {
+    code: 'ERR-ARC-QA-05',
+    status: HttpStatus.NOT_FOUND,
+    message: 'That task is not in your QA queue. Refresh and try again.',
   },
 
   WIRE_TITLE_REQUIRED: {
@@ -567,12 +593,17 @@ export type AppErrorKey = keyof typeof APP_ERRORS;
 export class AppHttpException extends HttpException {
   readonly appCode: string;
 
-  constructor(def: AppErrorDef, message = def.message) {
+  constructor(
+    def: AppErrorDef,
+    message = def.message,
+    extra?: Record<string, unknown>,
+  ) {
     super(
       {
         statusCode: def.status,
         code: def.code,
         message,
+        ...extra,
       },
       def.status,
     );
@@ -580,9 +611,13 @@ export class AppHttpException extends HttpException {
   }
 }
 
-export function appError(key: AppErrorKey, message?: string): AppHttpException {
+export function appError(
+  key: AppErrorKey,
+  message?: string,
+  extra?: Record<string, unknown>,
+): AppHttpException {
   const def = APP_ERRORS[key];
-  return new AppHttpException(def, message ?? def.message);
+  return new AppHttpException(def, message ?? def.message, extra);
 }
 
 export function isAppErrorPayload(

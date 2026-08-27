@@ -9,6 +9,7 @@ import { AppExceptionFilter } from './errors/app-exception.filter';
 import { BoardCyclesModule } from './board-cycles/board-cycles.module';
 import { DiagramsModule } from './diagrams/diagrams.module';
 import { QaInfoModule } from './qa-info/qa-info.module';
+import { QaQueueModule } from './qa-queue/qa-queue.module';
 import { WireframesModule } from './wireframes/wireframes.module';
 import { NameSessionsModule } from './name-sessions/name-sessions.module';
 import { HealthModule } from './health/health.module';
@@ -50,6 +51,7 @@ import { UsersModule } from './users/users.module';
     KnowledgeModule,
     DiagramsModule,
     QaInfoModule,
+    QaQueueModule,
     WireframesModule,
     NameSessionsModule,
     McpToolsModule,

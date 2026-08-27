@@ -5,6 +5,7 @@ import { formatTaskDisplayId } from '../common/utils/acronym.util';
 import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { TaskEvidenceService } from '../tasks/task-evidence.service';
+import { TaskLogService } from '../tasks/task-log.service';
 import { Task } from '../tasks/task.entity';
 import { TaskStatus } from '../tasks/task.enums';
 import { TaskResponse, TasksService } from '../tasks/tasks.service';
@@ -85,6 +86,7 @@ export class BoardCyclesService {
     private readonly projectsService: ProjectsService,
     private readonly tasksService: TasksService,
     private readonly evidenceService: TaskEvidenceService,
+    private readonly logService: TaskLogService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -385,9 +387,10 @@ export class BoardCyclesService {
     for (const taskId of uniqueTaskIds) {
       try {
         await this.evidenceService.cleanupForTask(taskId);
+        await this.logService.cleanupForTask(taskId);
       } catch (error) {
         this.logger.warn(
-          `Failed to purge QA evidence for archived task ${taskId}: ${String(error)}`,
+          `Failed to purge QA evidence/logs for archived task ${taskId}: ${String(error)}`,
         );
       }
     }
