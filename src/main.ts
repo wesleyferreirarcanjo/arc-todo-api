@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { isAllowedCorsOrigin } from './cors-origin.util';
 import { appError } from './errors/app-errors';
 
 async function bootstrap() {
@@ -21,7 +22,9 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+    origin: (origin, callback) => {
+      callback(null, isAllowedCorsOrigin(origin));
+    },
     credentials: true,
   });
 
