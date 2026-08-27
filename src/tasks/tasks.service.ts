@@ -657,7 +657,7 @@ export class TasksService {
       dto.criticity !== undefined ||
       dto.dueDate !== undefined ||
       dto.category !== undefined ||
-      dto.isBug !== undefined ||
+      dto.isBug === true ||
       dto.assigneeId !== undefined
     ) {
       this.userActivityService.record({

@@ -350,6 +350,16 @@ const TASK_WORK_ACTIONS = new Set([
   'task.checklist_checked',
 ]);
 
+const CHECKLIST_CREDIT_ACTIONS = new Set([
+  'task.updated',
+  'task.checklist_checked',
+]);
+
+export interface LiveChecklistTask {
+  taskId: string;
+  checkedCount: number;
+}
+
 const CHECKED_SUMMARY = /Checked (\d+) checklist/i;
 
 function asMetadata(value: unknown): Record<string, unknown> {
@@ -399,10 +409,65 @@ export function checklistItemsFromActivity(event: {
   );
 }
 
+export function attributeLiveChecklistCounts(
+  liveChecks: LiveChecklistTask[],
+  events: RecentWorkEvent[],
+  nowMs: number,
+): Map<string, { checklistLast24h: number; checklistLast7d: number }> {
+  const last24hMs = nowMs - DAY_MS;
+  const last7dMs = nowMs - 7 * DAY_MS;
+  const latestByTask = new Map<string, RecentWorkEvent>();
+
+  for (const event of events) {
+    if (
+      !event.entityId ||
+      !CHECKLIST_CREDIT_ACTIONS.has(event.action) ||
+      event.atMs < last7dMs ||
+      event.atMs >= nowMs
+    ) {
+      continue;
+    }
+    const current = latestByTask.get(event.entityId);
+    if (!current || event.atMs > current.atMs) {
+      latestByTask.set(event.entityId, event);
+    }
+  }
+
+  const checklist24h = new Map<string, number>();
+  const checklist7d = new Map<string, number>();
+  for (const live of liveChecks) {
+    if (live.checkedCount <= 0) {
+      continue;
+    }
+    const credit = latestByTask.get(live.taskId);
+    if (!credit) {
+      continue;
+    }
+    checklist7d.set(credit.userId, (checklist7d.get(credit.userId) ?? 0) + live.checkedCount);
+    if (credit.atMs >= last24hMs) {
+      checklist24h.set(
+        credit.userId,
+        (checklist24h.get(credit.userId) ?? 0) + live.checkedCount,
+      );
+    }
+  }
+
+  const ids = new Set<string>([...checklist24h.keys(), ...checklist7d.keys()]);
+  const result = new Map<string, { checklistLast24h: number; checklistLast7d: number }>();
+  for (const userId of ids) {
+    result.set(userId, {
+      checklistLast24h: checklist24h.get(userId) ?? 0,
+      checklistLast7d: checklist7d.get(userId) ?? 0,
+    });
+  }
+  return result;
+}
+
 export function countRecentWork(
   events: RecentWorkEvent[],
   nowMs: number,
   bugFlags: RecentBugFlagEvent[] = [],
+  liveChecks: LiveChecklistTask[] = [],
 ): Map<string, RecentWorkCounts> {
   const last24hMs = nowMs - DAY_MS;
   const last7dMs = nowMs - 7 * DAY_MS;
@@ -450,6 +515,18 @@ export function countRecentWork(
     if (flag.atMs >= last24hMs) {
       bugs24h.set(flag.userId, (bugs24h.get(flag.userId) ?? 0) + 1);
     }
+  }
+
+  const attributed = attributeLiveChecklistCounts(liveChecks, events, nowMs);
+  for (const [userId, counts] of attributed) {
+    checklist24h.set(
+      userId,
+      Math.max(checklist24h.get(userId) ?? 0, counts.checklistLast24h),
+    );
+    checklist7d.set(
+      userId,
+      Math.max(checklist7d.get(userId) ?? 0, counts.checklistLast7d),
+    );
   }
 
   const ids = new Set<string>([
@@ -849,5 +926,41 @@ if (require.main === module) {
       metadata: '{"checkedCount":4}',
     }) === 4,
     'json metadata string',
+  );
+
+  const attributed = countRecentWork(
+    [
+      {
+        userId: 'arthura',
+        atMs: now - 2 * 60 * 60 * 1000,
+        action: 'task.updated',
+        entityId: 't23',
+      },
+      {
+        userId: 'admin',
+        atMs: now - 60 * 60 * 1000,
+        action: 'task.status_changed',
+        entityId: 't23',
+      },
+      {
+        userId: 'arthura',
+        atMs: now - 3 * DAY_MS,
+        action: 'task.updated',
+        entityId: 't40',
+      },
+    ],
+    now,
+    [],
+    [
+      { taskId: 't23', checkedCount: 8 },
+      { taskId: 't40', checkedCount: 5 },
+    ],
+  );
+  const arthura = attributed.get('arthura');
+  console.assert(arthura?.checklistLast24h === 8, 'live checks credit last updater not mover');
+  console.assert(arthura?.checklistLast7d === 13, '7d live checks include older updater');
+  console.assert(
+    (attributed.get('admin')?.checklistLast24h ?? 0) === 0,
+    'column moves do not steal checklist credit',
   );
 }

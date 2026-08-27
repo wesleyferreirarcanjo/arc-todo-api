@@ -112,15 +112,6 @@ interface LastActivityRow {
   summary: string;
 }
 
-interface RecentActivityRow {
-  userId: string;
-  action: string;
-  entityId: string | null;
-  createdAt: Date | string;
-  summary: string | null;
-  metadata: unknown;
-}
-
 interface RecentBugFlagRow {
   userId: string | null;
   createdAt: Date | string;
@@ -592,7 +583,6 @@ export class AnalyticsService {
     const qb = this.tasksRepository
       .createQueryBuilder('task')
       .innerJoin('task.project', 'project')
-      .select(['task.id', 'task.testDescription', 'task.qaChecklistState'])
       .where('task.parentTaskId IS NULL')
       .andWhere('task.archivedInCycleId IS NULL');
     this.applyTaskScope(qb, query);
@@ -776,11 +766,12 @@ export class AnalyticsService {
   private async loadLastInteractions(
     query: AnalyticsSummaryQueryDto,
   ): Promise<AnalyticsLastInteractionRow[]> {
-    const [members, activityRows, recentRows, bugRows] = await Promise.all([
+    const [members, activityRows, recentRows, bugRows, liveChecks] = await Promise.all([
       this.loadScopedUsers(query),
       this.loadLatestActivityByUser(query),
       this.loadRecentTaskWork(query),
       this.loadRecentBugFlags(query),
+      this.loadLiveChecklistByTask(query),
     ]);
 
     const extraIds = [
@@ -802,7 +793,7 @@ export class AnalyticsService {
         ...extraUsers.map((user) => ({ userId: user.id, username: user.username })),
       ],
       activityRows,
-      countRecentWork(recentRows, Date.now(), bugRows),
+      countRecentWork(recentRows, Date.now(), bugRows, liveChecks),
     );
   }
 
@@ -881,12 +872,6 @@ export class AnalyticsService {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const qb = this.activityRepository
       .createQueryBuilder('activity')
-      .select('activity.actorUserId', 'userId')
-      .addSelect('activity.action', 'action')
-      .addSelect('activity.entityId', 'entityId')
-      .addSelect('activity.createdAt', 'createdAt')
-      .addSelect('activity.summary', 'summary')
-      .addSelect('activity.metadata', 'metadata')
       .where('activity.createdAt >= :since', { since })
       .andWhere('activity.action IN (:...taskActions)', {
         taskActions: [
@@ -898,17 +883,39 @@ export class AnalyticsService {
         ],
       });
     this.applyInteractionScope(qb, query);
-    const rows = await qb.getRawMany<RecentActivityRow>();
+    const rows = await qb.getMany();
     return rows
-      .filter((row) => Boolean(row.userId))
+      .filter((row) => Boolean(row.actorUserId))
       .map((row) => ({
-        userId: row.userId,
+        userId: row.actorUserId,
         atMs: new Date(row.createdAt).getTime(),
         action: row.action,
         entityId: row.entityId,
         metadata: row.metadata,
         summary: row.summary,
       }));
+  }
+
+  private async loadLiveChecklistByTask(
+    query: AnalyticsSummaryQueryDto,
+  ): Promise<Array<{ taskId: string; checkedCount: number }>> {
+    const qb = this.tasksRepository
+      .createQueryBuilder('task')
+      .innerJoin('task.project', 'project')
+      .where('task.parentTaskId IS NULL')
+      .andWhere('task.archivedInCycleId IS NULL');
+    this.applyTaskScope(qb, query);
+    const parents = await qb.getMany();
+    const live: Array<{ taskId: string; checkedCount: number }> = [];
+    for (const task of parents) {
+      const state = normalizeQaChecklistState(task.qaChecklistState);
+      const progress = computeQaChecklistProgress(task.testDescription, state);
+      if (!progress || progress.done <= 0) {
+        continue;
+      }
+      live.push({ taskId: task.id, checkedCount: progress.done });
+    }
+    return live;
   }
 
   private async loadRecentBugFlags(
