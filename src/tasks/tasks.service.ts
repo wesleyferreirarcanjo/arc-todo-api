@@ -15,6 +15,10 @@ import { UserActivityAction } from '../user-activity/user-activity-action.enum';
 import { UserActivityService } from '../user-activity/user-activity.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
+import {
+  ASSIGNED_TO_ME_SQL,
+  shouldFilterAssignedToMe,
+} from './list-tasks-assigned-to-me.util';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { Task } from './task.entity';
 import { TaskEvidence } from './task-evidence.entity';
@@ -193,6 +197,10 @@ export class TasksService {
 
     if (query.createdByMe) {
       qb.andWhere('task.createdById = :userId', { userId });
+    }
+
+    if (shouldFilterAssignedToMe(query.assignedToMe)) {
+      qb.andWhere(ASSIGNED_TO_ME_SQL, { userId });
     }
 
     this.applyListFilters(qb, query);

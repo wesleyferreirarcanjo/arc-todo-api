@@ -10,6 +10,7 @@ import {
   Min,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { parseAssignedToMeFlag } from '../list-tasks-assigned-to-me.util';
 import { TaskCriticity, TaskStatus } from '../task.enums';
 
 export class ListTasksQueryDto {
@@ -46,6 +47,11 @@ export class ListTasksQueryDto {
   @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   createdByMe?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => parseAssignedToMeFlag(value))
+  @IsBoolean()
+  assignedToMe?: boolean;
 
   @IsOptional()
   @IsString()
