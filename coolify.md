@@ -92,6 +92,7 @@ Secrets are stored in Coolify only. Do not commit real values.
 
 ## Notes
 
+- Coolify **v4.2+** deploy is **POST** `/api/v1/deploy?uuid=lmsx2avrg1k29ex12w6e3gce&force=true`. GET fails. Cursor `user-coolify` `deploy` needs `@masonator/coolify-mcp` **2.19.4+** (reload the MCP session after upgrade).
 - TypeORM migrations run automatically on startup when `DB_MIGRATE_ON_START=true`. Keep `DB_SYNCHRONIZE=false` in production.
 - MinIO is internal-only; knowledge attachment downloads are streamed through the authenticated API, not via public MinIO URLs.
 - The API auto-creates the `arc-todo` bucket on startup if it does not exist.
