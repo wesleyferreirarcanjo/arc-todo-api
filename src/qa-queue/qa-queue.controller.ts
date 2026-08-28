@@ -3,16 +3,21 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
+  MessageEvent,
   Param,
   Patch,
   Post,
   Req,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { Observable } from 'rxjs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AddQaQueueItemsDto } from './dto/add-qa-queue-items.dto';
 import { ReorderQaQueueDto } from './dto/reorder-qa-queue.dto';
+import { QaQueueEventsService } from './qa-queue-events.service';
 import { QaQueueService } from './qa-queue.service';
 
 interface AuthRequest extends Request {
@@ -22,11 +27,20 @@ interface AuthRequest extends Request {
 @Controller('qa-queue')
 @UseGuards(JwtAuthGuard)
 export class QaQueueController {
-  constructor(private readonly qaQueueService: QaQueueService) {}
+  constructor(
+    private readonly qaQueueService: QaQueueService,
+    private readonly qaQueueEvents: QaQueueEventsService,
+  ) {}
 
   @Get()
   list(@Req() req: AuthRequest) {
     return this.qaQueueService.listForUser(req.user.id);
+  }
+
+  @Sse('stream')
+  @Header('X-Accel-Buffering', 'no')
+  stream(@Req() req: AuthRequest): Observable<MessageEvent> {
+    return this.qaQueueEvents.stream(req.user.id);
   }
 
   @Post('items')

@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { PushModule } from '../push/push.module';
+import { QaQueueModule } from '../qa-queue/qa-queue.module';
 import { UserActivityModule } from '../user-activity/user-activity.module';
 import { TaskComment } from './task-comment.entity';
 import { TaskEvidence } from './task-evidence.entity';
@@ -33,6 +34,7 @@ import { TasksService } from './tasks.service';
     ProjectsModule,
     UserActivityModule,
     forwardRef(() => PushModule),
+    QaQueueModule,
   ],
   controllers: [
     TasksController,

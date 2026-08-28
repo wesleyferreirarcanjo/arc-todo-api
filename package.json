@@ -30,7 +30,7 @@
     "test:assigned-to-me": "npm run build && node dist/tasks/list-tasks-assigned-to-me.util.js",
     "test:cors-origin": "npm run build && node dist/cors-origin.util.js",
     "test:task-logs": "npm run build && node dist/tasks/task-log.util.js",
-    "test:qa-queue": "npm run build && node dist/qa-queue/qa-queue.util.js && node dist/qa-queue/qa-queue.routes.util.js"
+    "test:qa-queue": "npm run build && node dist/qa-queue/qa-queue.util.js && node dist/qa-queue/qa-queue.routes.util.js && node dist/qa-queue/qa-queue-sse.util.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

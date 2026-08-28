@@ -11,6 +11,8 @@ import { Project } from '../projects/project.entity';
 import { ProjectsService } from '../projects/projects.service';
 import { MinioStorageService } from '../storage/minio-storage.service';
 import { PushService } from '../push/push.service';
+import { QaQueueEventsService } from '../qa-queue/qa-queue-events.service';
+import { queuedTaskFieldsChanged } from '../qa-queue/qa-queue-sse.util';
 import { UserActivityAction } from '../user-activity/user-activity-action.enum';
 import { UserActivityService } from '../user-activity/user-activity.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -127,6 +129,7 @@ export class TasksService {
     private readonly storageService: MinioStorageService,
     private readonly userActivityService: UserActivityService,
     private readonly pushService: PushService,
+    private readonly qaQueueEvents: QaQueueEventsService,
   ) {}
 
   async findAll(
@@ -696,6 +699,15 @@ export class TasksService {
           checkedAdded: newlyChecked,
           checkedCount: newlyChecked.length,
         },
+      });
+    }
+
+    if (queuedTaskFieldsChanged(dto)) {
+      void this.qaQueueEvents.emitTaskIfQueued(saved.id, {
+        status: saved.status,
+        qaChecklistState: saved.qaChecklistState,
+        assigneeId: saved.assigneeId ?? null,
+        isBug: saved.isBug ?? false,
       });
     }
 

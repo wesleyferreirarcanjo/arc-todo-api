@@ -6,6 +6,7 @@ import { appError } from '../errors/app-errors';
 import { ProjectsService } from '../projects/projects.service';
 import { Task } from '../tasks/task.entity';
 import { AddQaQueueItemsDto } from './dto/add-qa-queue-items.dto';
+import { QaQueueEventsService } from './qa-queue-events.service';
 import { QaQueueItem } from './qa-queue-item.entity';
 import {
   assertSingleIncomingProject,
@@ -27,6 +28,7 @@ export class QaQueueService {
     @InjectRepository(Task)
     private readonly tasksRepository: Repository<Task>,
     private readonly projectsService: ProjectsService,
+    private readonly qaQueueEvents: QaQueueEventsService,
   ) {}
 
   async listForUser(userId: string): Promise<QaQueueListResponse> {
@@ -71,7 +73,7 @@ export class QaQueueService {
       sample.projectId,
     );
 
-    return this.queueRepository.manager.transaction(async (manager) => {
+    const result = await this.queueRepository.manager.transaction(async (manager) => {
       const repo = manager.getRepository(QaQueueItem);
       const existing = await repo.find({
         where: { userId },
@@ -129,10 +131,12 @@ export class QaQueueService {
       });
       return this.toListResponse(rows);
     });
+    this.qaQueueEvents.emitQueue(userId, result);
+    return result;
   }
 
   async remove(userId: string, taskId: string): Promise<QaQueueListResponse> {
-    return this.queueRepository.manager.transaction(async (manager) => {
+    const result = await this.queueRepository.manager.transaction(async (manager) => {
       const repo = manager.getRepository(QaQueueItem);
       const existing = await repo.findOne({ where: { userId, taskId } });
       if (!existing) {
@@ -151,13 +155,15 @@ export class QaQueueService {
       });
       return this.toListResponse(rows);
     });
+    this.qaQueueEvents.emitQueue(userId, result);
+    return result;
   }
 
   async reorder(
     userId: string,
     itemIds: string[],
   ): Promise<QaQueueListResponse> {
-    return this.queueRepository.manager.transaction(async (manager) => {
+    const result = await this.queueRepository.manager.transaction(async (manager) => {
       const repo = manager.getRepository(QaQueueItem);
       const existing = await repo.find({
         where: { userId },
@@ -176,11 +182,15 @@ export class QaQueueService {
       });
       return this.toListResponse(rows);
     });
+    this.qaQueueEvents.emitQueue(userId, result);
+    return result;
   }
 
   async clear(userId: string): Promise<QaQueueListResponse> {
     await this.queueRepository.delete({ userId });
-    return emptyQueueResponse();
+    const result = emptyQueueResponse();
+    this.qaQueueEvents.emitQueue(userId, result);
+    return result;
   }
 
   private async loadRows(userId: string): Promise<QaQueueItem[]> {
