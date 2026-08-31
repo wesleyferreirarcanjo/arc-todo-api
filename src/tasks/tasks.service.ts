@@ -12,7 +12,9 @@ import { ProjectsService } from '../projects/projects.service';
 import { MinioStorageService } from '../storage/minio-storage.service';
 import { PushService } from '../push/push.service';
 import { QaQueueEventsService } from '../qa-queue/qa-queue-events.service';
+import { QaQueueService } from '../qa-queue/qa-queue.service';
 import { queuedTaskFieldsChanged } from '../qa-queue/qa-queue-sse.util';
+import { statusLeftQaTest } from '../qa-queue/qa-queue.util';
 import { UserActivityAction } from '../user-activity/user-activity-action.enum';
 import { UserActivityService } from '../user-activity/user-activity.service';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -130,6 +132,7 @@ export class TasksService {
     private readonly userActivityService: UserActivityService,
     private readonly pushService: PushService,
     private readonly qaQueueEvents: QaQueueEventsService,
+    private readonly qaQueueService: QaQueueService,
   ) {}
 
   async findAll(
@@ -598,6 +601,10 @@ export class TasksService {
 
     const saved = await this.tasksRepository.save(task);
 
+    if (statusLeftQaTest(previousStatus, saved.status)) {
+      await this.qaQueueService.removeTaskFromAllQueues(saved.id);
+    }
+
     if (historyDrafts.length > 0) {
       const entries = historyDrafts.map((draft) =>
         this.historyRepository.create({
@@ -850,8 +857,12 @@ export class TasksService {
 
     if (shouldCompleteParent(siblings)) {
       if (parent.status !== TaskStatus.DONE) {
+        const previousParentStatus = parent.status;
         parent.status = TaskStatus.DONE;
         await this.tasksRepository.save(parent);
+        if (statusLeftQaTest(previousParentStatus, TaskStatus.DONE)) {
+          await this.qaQueueService.removeTaskFromAllQueues(parent.id);
+        }
       }
       return;
     }

@@ -13,6 +13,7 @@ import {
   currentProjectIdForUser,
   detectProjectConflict,
   emptyQueueResponse,
+  enqueueParentsOnly,
   findDuplicateTaskIds,
   nextPosition,
   normalizeAddItemsDto,
@@ -55,6 +56,9 @@ export class QaQueueService {
 
     const byId = new Map(tasks.map((task) => [task.id, task]));
     const orderedTasks = normalized.taskIds.map((id) => byId.get(id)!);
+    if (!enqueueParentsOnly(orderedTasks)) {
+      throw appError('VAL_REQUEST');
+    }
     const projectCheck = assertSingleIncomingProject(
       orderedTasks.map((task) => task.projectId),
     );
@@ -191,6 +195,28 @@ export class QaQueueService {
     const result = emptyQueueResponse();
     this.qaQueueEvents.emitQueue(userId, result);
     return result;
+  }
+
+  async removeTaskFromAllQueues(taskId: string): Promise<void> {
+    const affected = await this.queueRepository.find({ where: { taskId } });
+    if (affected.length === 0) {
+      return;
+    }
+    const userIds = [...new Set(affected.map((row) => row.userId))];
+    await this.queueRepository.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(QaQueueItem);
+      await repo.delete({ taskId });
+      for (const userId of userIds) {
+        const remaining = await repo.find({
+          where: { userId },
+          order: { position: 'ASC' },
+        });
+        await this.rewritePositions(repo, remaining);
+      }
+    });
+    for (const userId of userIds) {
+      this.qaQueueEvents.emitQueue(userId, await this.listForUser(userId));
+    }
   }
 
   private async loadRows(userId: string): Promise<QaQueueItem[]> {

@@ -33,6 +33,17 @@ export function statusMayBeEnqueued(_status: string): boolean {
   return true;
 }
 
+/** BR-QA-06: leaving QA Test drops the card from every personal queue. */
+export function statusLeftQaTest(previous: string, next: string): boolean {
+  return previous === 'qa_test' && next !== 'qa_test';
+}
+
+export function enqueueParentsOnly(
+  tasks: readonly { parentTaskId?: string | null }[],
+): boolean {
+  return tasks.every((task) => !task.parentTaskId);
+}
+
 export function normalizeAddItemsDto(dto: {
   taskId?: string;
   taskIds?: string[];
@@ -220,6 +231,11 @@ if (require.main === module) {
     ['todo may enqueue', statusMayBeEnqueued('todo')],
     ['qa_test may enqueue', statusMayBeEnqueued('qa_test')],
     ['in_progress may enqueue', statusMayBeEnqueued('in_progress')],
+    ['left qa_test', statusLeftQaTest('qa_test', 'done')],
+    ['stayed qa_test', statusLeftQaTest('qa_test', 'qa_test') === false],
+    ['todo is not leaving qa_test', statusLeftQaTest('todo', 'done') === false],
+    ['parents only ok', enqueueParentsOnly([{ parentTaskId: null }])],
+    ['nested rejected', enqueueParentsOnly([{ parentTaskId: 'p1' }]) === false],
     ['current project', currentProjectIdForUser(rows) === p1],
     ['current project empty', currentProjectIdForUser([]) === null],
   ];
