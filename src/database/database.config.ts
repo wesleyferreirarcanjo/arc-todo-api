@@ -32,6 +32,12 @@ import { TaskBugFlagDossier } from '../analytics/task-bug-flag-dossier.entity';
 import { Task } from '../tasks/task.entity';
 import { User } from '../users/user.entity';
 import { UserActivity } from '../user-activity/user-activity.entity';
+import { ProjectSeoAuditPage } from '../seo/project-seo-audit-page.entity';
+import { ProjectSeoAuditRun } from '../seo/project-seo-audit-run.entity';
+import { ProjectSeoGscRow } from '../seo/project-seo-gsc-row.entity';
+import { ProjectSeoLighthouseRun } from '../seo/project-seo-lighthouse-run.entity';
+import { ProjectSeoSite } from '../seo/project-seo-site.entity';
+import { SeoSetting } from '../seo/seo-setting.entity';
 
 export const entities = [
   User,
@@ -66,6 +72,12 @@ export const entities = [
   UserActivity,
   PushSubscription,
   PushPreference,
+  ProjectSeoSite,
+  ProjectSeoAuditRun,
+  ProjectSeoAuditPage,
+  ProjectSeoLighthouseRun,
+  ProjectSeoGscRow,
+  SeoSetting,
 ];
 
 export function getDatabaseConfig(

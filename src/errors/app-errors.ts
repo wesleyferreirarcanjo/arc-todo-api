@@ -557,6 +557,66 @@ export const APP_ERRORS = {
     message: 'That MCP tool is not in the catalog. Refresh Settings and try again.',
   },
 
+  SEO_INVALID_HOST: {
+    code: 'ERR-ARC-SEO-01',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Enter a site address to continue.',
+  },
+  SEO_SSRF_BLOCKED: {
+    code: 'ERR-ARC-SEO-02',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'That address is not allowed to be crawled. Use a public http(s) site.',
+  },
+  SEO_ROBOTS_DISALLOWED: {
+    code: 'ERR-ARC-SEO-03',
+    status: HttpStatus.BAD_REQUEST,
+    message: "The site's robots.txt disallows this crawl.",
+  },
+  SEO_CRAWL_FAILED: {
+    code: 'ERR-ARC-SEO-04',
+    status: HttpStatus.BAD_GATEWAY,
+    message: 'The crawl did not finish. Try again in a moment.',
+  },
+  SEO_CHROME_MISSING: {
+    code: 'ERR-ARC-SEO-05',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      'Chrome is not available on the server for Lighthouse. Ask an administrator.',
+  },
+  SEO_GSC_NOT_CONNECTED: {
+    code: 'ERR-ARC-SEO-06',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Connect Search Console for this site first.',
+  },
+  SEO_GSC_OAUTH_FAILED: {
+    code: 'ERR-ARC-SEO-07',
+    status: HttpStatus.UNAUTHORIZED,
+    message:
+      'Search Console sign-in did not complete. Try Connect Search Console again.',
+  },
+  SEO_SITE_NOT_FOUND: {
+    code: 'ERR-ARC-SEO-08',
+    status: HttpStatus.NOT_FOUND,
+    message: 'That SEO site was not found. Refresh the project and try again.',
+  },
+  SEO_AUDIT_NOT_FOUND: {
+    code: 'ERR-ARC-SEO-09',
+    status: HttpStatus.NOT_FOUND,
+    message: 'That audit run was not found. Refresh and try again.',
+  },
+  SEO_AUDIT_BUSY: {
+    code: 'ERR-ARC-SEO-10',
+    status: HttpStatus.CONFLICT,
+    message: 'An audit is already running. Wait for it to finish.',
+  },
+  SEO_GSC_NOT_CONFIGURED: {
+    code: 'ERR-ARC-SEO-11',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'Search Console OAuth is not set up on the server. Ask an administrator.',
+  },
+
   PUSH_NOT_CONFIGURED: {
     code: 'ERR-ARC-PUSH-01',
     status: HttpStatus.SERVICE_UNAVAILABLE,

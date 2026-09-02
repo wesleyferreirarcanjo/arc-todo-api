@@ -4,6 +4,9 @@ WORKDIR /app
 
 RUN apk add --no-cache python3 make g++
 
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    CRAWLEE_SKIP_BROWSER_INSTALL=1
+
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -15,8 +18,13 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont fontconfig
+
 ENV NODE_ENV=production \
-    PORT=3000
+    PORT=3000 \
+    CHROME_PATH=/usr/bin/chromium-browser \
+    PUPPETEER_SKIP_DOWNLOAD=true \
+    CRAWLEE_SKIP_BROWSER_INSTALL=1
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
