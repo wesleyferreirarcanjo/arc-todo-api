@@ -33,6 +33,14 @@ import {
   NameHistoryService,
   type DomainHistory,
 } from './name-history.service';
+import { NameOrganicService } from './name-organic.service';
+import {
+  buildOrganicCompetition,
+  existingAutocomplete,
+  historyStatusForOrganic,
+  withoutWaveHandles,
+  type OrganicCompetition,
+} from './name-organic.util';
 import { ProjectNameSession } from './project-name-session.entity';
 
 const CHECK_BATCH_CONCURRENCY = 4;
@@ -70,6 +78,7 @@ export class NameSessionsService {
     private readonly projectAccess: ProjectAccessService,
     private readonly nameCheckService: NameCheckService,
     private readonly nameHistoryService: NameHistoryService,
+    private readonly nameOrganicService: NameOrganicService,
   ) {}
 
   private requireTitle(title: string): string {
@@ -265,7 +274,7 @@ export class NameSessionsService {
     if (!name) {
       throw appError('NAME_REQUIRED');
     }
-    const evidence = await this.collectDomainEvidence(name);
+    const evidence = await this.collectCheckEvidence(name);
     const candidate = this.upsertCandidate(session, {
       name,
       source,
@@ -273,10 +282,11 @@ export class NameSessionsService {
       domainHistory: evidence.domainHistory,
       takenEndingCount: evidence.takenEndingCount,
       comIncumbency: evidence.comIncumbency,
+      organicCompetition: evidence.organicCompetition,
       googleQueryUrl: googleQueryUrl(name),
     });
     await this.sessionRepository.save(session);
-    return candidate;
+    return withoutWaveHandles(session.shortlistIds, candidate);
   }
 
   async checkBatch(
@@ -301,7 +311,7 @@ export class NameSessionsService {
     const evidenceByName = await this.mapPool(
       names,
       CHECK_BATCH_CONCURRENCY,
-      async (name) => ({ name, evidence: await this.collectDomainEvidence(name) }),
+      async (name) => ({ name, evidence: await this.collectCheckEvidence(name) }),
     );
     const candidates = evidenceByName.map(({ name, evidence }) =>
       this.upsertCandidate(session, {
@@ -311,11 +321,16 @@ export class NameSessionsService {
         domainHistory: evidence.domainHistory,
         takenEndingCount: evidence.takenEndingCount,
         comIncumbency: evidence.comIncumbency,
+        organicCompetition: evidence.organicCompetition,
         googleQueryUrl: googleQueryUrl(name),
       }),
     );
     await this.sessionRepository.save(session);
-    return { candidates };
+    return {
+      candidates: candidates.map((candidate) =>
+        withoutWaveHandles(session.shortlistIds, candidate),
+      ),
+    };
   }
 
   async checkHistory(
@@ -335,7 +350,11 @@ export class NameSessionsService {
       throw appError('NAME_CHECK_FIRST');
     }
     const domainChecks = Array.isArray(existing.domainChecks)
-      ? (existing.domainChecks as Array<{ host?: string; availability?: string }>)
+      ? (existing.domainChecks as Array<{
+          host?: string;
+          tld?: string;
+          availability?: string;
+        }>)
       : [];
     const hosts = domainChecks
       .filter(
@@ -354,6 +373,43 @@ export class NameSessionsService {
     }
     const domainHistory = await this.nameHistoryService.checkHistory(hosts);
     existing.domainHistory = domainHistory;
+    const comTaken = domainChecks.some(
+      (check) => check.tld === 'com' && check.availability === 'taken',
+    );
+    existing.organicCompetition = buildOrganicCompetition(
+      existingAutocomplete(existing.organicCompetition),
+      historyStatusForOrganic(comTaken, domainHistory[0]?.status),
+    );
+    session.candidates = candidates;
+    await this.sessionRepository.save(session);
+    return withoutWaveHandles(session.shortlistIds, existing);
+  }
+
+  async checkHandles(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    dto: CheckNameDto,
+  ) {
+    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    const name = dto.name.trim();
+    const candidates = this.asCandidates(session.candidates);
+    const existing = candidates.find(
+      (item) => normalizeNameKey(item.name) === normalizeNameKey(name),
+    );
+    if (!existing) {
+      throw appError('NAME_CANDIDATE_NOT_FOUND');
+    }
+    const shortlistIds = Array.isArray(session.shortlistIds)
+      ? session.shortlistIds
+      : [];
+    if (!shortlistIds.includes(existing.id)) {
+      throw appError('NAME_HANDLES_NOT_KEPT');
+    }
+    existing.handleChecks = await this.nameOrganicService.probeHandles(
+      existing.name,
+    );
     session.candidates = candidates;
     await this.sessionRepository.save(session);
     return existing;
@@ -592,6 +648,33 @@ export class NameSessionsService {
     };
   }
 
+  private async collectCheckEvidence(name: string): Promise<{
+    domainChecks: DomainCheck[];
+    domainHistory: DomainHistory[];
+    takenEndingCount: number;
+    comIncumbency: {
+      grade: IncumbencyGrade;
+      parking: ParkingSignal;
+      gradedAt: string;
+    } | null;
+    organicCompetition: OrganicCompetition;
+  }> {
+    const [domain, autocomplete] = await Promise.all([
+      this.collectDomainEvidence(name),
+      this.nameOrganicService.lookupAutocomplete(name),
+    ]);
+    const comTaken = domain.domainChecks.some(
+      (check) => check.tld === 'com' && check.availability === 'taken',
+    );
+    return {
+      ...domain,
+      organicCompetition: buildOrganicCompetition(
+        autocomplete,
+        historyStatusForOrganic(comTaken, domain.domainHistory[0]?.status),
+      ),
+    };
+  }
+
   private async mapPool<T, R>(
     items: T[],
     concurrency: number,
@@ -627,6 +710,8 @@ export class NameSessionsService {
       domainHistory?: unknown;
       takenEndingCount?: number;
       comIncumbency?: unknown;
+      organicCompetition?: unknown;
+      handleChecks?: unknown;
       googleQueryUrl?: string;
     },
   ): CandidateRecord {
@@ -653,6 +738,8 @@ export class NameSessionsService {
         domainHistory: [],
         takenEndingCount: 0,
         comIncumbency: null,
+        organicCompetition: null,
+        handleChecks: [],
         visualConcerns: { flags: [], note: '' },
         messaging: {},
         languageChecks: { aiAssisted: null, manual: [] },
@@ -687,6 +774,12 @@ export class NameSessionsService {
     }
     if (input.comIncumbency !== undefined) {
       existing.comIncumbency = input.comIncumbency;
+    }
+    if (input.organicCompetition !== undefined) {
+      existing.organicCompetition = input.organicCompetition;
+    }
+    if (input.handleChecks !== undefined) {
+      existing.handleChecks = input.handleChecks;
     }
     session.candidates = candidates;
     return existing;
@@ -729,6 +822,8 @@ export class NameSessionsService {
       domainHistory: [],
       takenEndingCount: 0,
       comIncumbency: null,
+      organicCompetition: null,
+      handleChecks: [],
       visualConcerns: { flags: [], note: '' },
       messaging: {},
       languageChecks: { aiAssisted: null, manual: [] },
@@ -809,6 +904,9 @@ export class NameSessionsService {
           : candidate,
       );
     }
+    candidates = candidates.map((candidate) =>
+      withoutWaveHandles(session.shortlistIds, candidate),
+    );
 
     const feedback = rounds.map((round) => {
       const roundRows = allRows.filter((row) => row.roundId === round.id);

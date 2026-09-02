@@ -397,6 +397,12 @@ export const APP_ERRORS = {
     status: HttpStatus.BAD_REQUEST,
     message: 'That candidate is not part of this feedback round.',
   },
+  NAME_HANDLES_NOT_KEPT: {
+    code: 'ERR-ARC-NAME-13',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'Check social handles only after keeping this name on the shortlist.',
+  },
 
   DIAG_TITLE_REQUIRED: {
     code: 'ERR-ARC-DIAG-01',

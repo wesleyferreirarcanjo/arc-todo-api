@@ -133,6 +133,23 @@ export class NameSessionsController {
     );
   }
 
+  @Post(':sessionId/check-handles')
+  checkHandles(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CheckNameDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.checkHandles(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      dto,
+    );
+  }
+
   @Post(':sessionId/check-history')
   checkHistory(
     @Param('orgId') orgId: string,
