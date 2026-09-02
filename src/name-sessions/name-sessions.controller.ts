@@ -16,6 +16,7 @@ import { CreateNameSessionDto } from './dto/create-name-session.dto';
 import {
   AddNameCandidatesDto,
   CheckNameDto,
+  CheckNamesBatchDto,
   RecommendNameDto,
   StartFeedbackRoundDto,
   UpsertFeedbackResponseDto,
@@ -107,6 +108,23 @@ export class NameSessionsController {
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.check(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      dto,
+    );
+  }
+
+  @Post(':sessionId/check-batch')
+  checkBatch(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Body() dto: CheckNamesBatchDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.checkBatch(
       req.user.id,
       orgId,
       projectId,

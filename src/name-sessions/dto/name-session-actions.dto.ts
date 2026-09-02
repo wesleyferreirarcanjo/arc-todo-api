@@ -20,6 +20,15 @@ export class CheckNameDto {
   name: string;
 }
 
+export class CheckNamesBatchDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  names: string[];
+}
+
 export class RecommendNameDto {
   @IsUUID()
   candidateId: string;

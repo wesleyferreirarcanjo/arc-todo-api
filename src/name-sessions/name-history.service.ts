@@ -1,7 +1,23 @@
 import { Injectable } from '@nestjs/common';
+import type { ParkingSignal } from './name-check.util';
 
 const TIMEOUT_MS = 7000;
+const PARKING_TIMEOUT_MS = 4000;
 const USER_AGENT = 'ArcTodo-NameCheck/1.0 (https://arc-todo)';
+
+const PARKING_MARKERS = [
+  'domain is for sale',
+  'buy this domain',
+  'this domain is parked',
+  'parked domain',
+  'domain parking',
+  'hugedomains',
+  'sedo.com',
+  'afternic',
+  'godaddy.com/domainsearch',
+  'dan.com',
+  'related searches',
+];
 
 export type HistoryStatus = 'history_found' | 'no_history_found' | 'unknown';
 
@@ -128,6 +144,42 @@ export class NameHistoryService {
       };
     } catch {
       return empty;
+    }
+  }
+
+  /**
+   * Best-effort parked-vs-content probe for a taken host. Timeouts and fetch
+   * errors stay `unknown` — never treated as clear content (BR-NAME-03).
+   */
+  async probeParking(host: string): Promise<ParkingSignal> {
+    if (!host) return 'unknown';
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PARKING_TIMEOUT_MS);
+    try {
+      const response = await fetch(`https://${host}/`, {
+        method: 'GET',
+        redirect: 'follow',
+        signal: controller.signal,
+        headers: {
+          'User-Agent': USER_AGENT,
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+      if (!response.ok) {
+        return 'unknown';
+      }
+      const text = (await response.text()).slice(0, 80_000).toLowerCase();
+      if (!text.trim()) {
+        return 'unknown';
+      }
+      if (PARKING_MARKERS.some((marker) => text.includes(marker))) {
+        return 'parked';
+      }
+      return 'content';
+    } catch {
+      return 'unknown';
+    } finally {
+      clearTimeout(timer);
     }
   }
 

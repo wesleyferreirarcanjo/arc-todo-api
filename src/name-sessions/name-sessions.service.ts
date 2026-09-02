@@ -9,23 +9,33 @@ import { CreateNameSessionDto } from './dto/create-name-session.dto';
 import {
   AddNameCandidatesDto,
   CheckNameDto,
+  CheckNamesBatchDto,
   RecommendNameDto,
   StartFeedbackRoundDto,
   UpsertFeedbackResponseDto,
 } from './dto/name-session-actions.dto';
 import { UpdateNameSessionDto } from './dto/update-name-session.dto';
 import { NameCandidateFeedback } from './name-candidate-feedback.entity';
-import { NameCheckService } from './name-check.service';
+import { NameCheckService, type DomainCheck } from './name-check.service';
 import {
   CandidateSource,
   DEFAULT_NAMING_GOAL,
+  countTakenEndings,
+  gradeComIncumbency,
   googleQueryUrl,
   isNamingGoal,
   median,
   normalizeNameKey,
+  type IncumbencyGrade,
+  type ParkingSignal,
 } from './name-check.util';
-import { NameHistoryService } from './name-history.service';
+import {
+  NameHistoryService,
+  type DomainHistory,
+} from './name-history.service';
 import { ProjectNameSession } from './project-name-session.entity';
+
+const CHECK_BATCH_CONCURRENCY = 4;
 
 export type ProjectNameSessionSummary = {
   id: string;
@@ -255,15 +265,57 @@ export class NameSessionsService {
     if (!name) {
       throw appError('NAME_REQUIRED');
     }
-    const domainChecks = await this.nameCheckService.checkName(name);
+    const evidence = await this.collectDomainEvidence(name);
     const candidate = this.upsertCandidate(session, {
       name,
       source,
-      domainChecks,
+      domainChecks: evidence.domainChecks,
+      domainHistory: evidence.domainHistory,
+      takenEndingCount: evidence.takenEndingCount,
+      comIncumbency: evidence.comIncumbency,
       googleQueryUrl: googleQueryUrl(name),
     });
     await this.sessionRepository.save(session);
     return candidate;
+  }
+
+  async checkBatch(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    dto: CheckNamesBatchDto,
+    source: CandidateSource = 'human',
+  ) {
+    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    const names = [
+      ...new Set(
+        dto.names
+          .map((name) => name.trim())
+          .filter(Boolean),
+      ),
+    ].slice(0, 20);
+    if (!names.length) {
+      throw appError('NAME_REQUIRED');
+    }
+    const evidenceByName = await this.mapPool(
+      names,
+      CHECK_BATCH_CONCURRENCY,
+      async (name) => ({ name, evidence: await this.collectDomainEvidence(name) }),
+    );
+    const candidates = evidenceByName.map(({ name, evidence }) =>
+      this.upsertCandidate(session, {
+        name,
+        source,
+        domainChecks: evidence.domainChecks,
+        domainHistory: evidence.domainHistory,
+        takenEndingCount: evidence.takenEndingCount,
+        comIncumbency: evidence.comIncumbency,
+        googleQueryUrl: googleQueryUrl(name),
+      }),
+    );
+    await this.sessionRepository.save(session);
+    return { candidates };
   }
 
   async checkHistory(
@@ -493,6 +545,76 @@ export class NameSessionsService {
       .filter((item) => item.name);
   }
 
+  private async collectDomainEvidence(name: string): Promise<{
+    domainChecks: DomainCheck[];
+    domainHistory: DomainHistory[];
+    takenEndingCount: number;
+    comIncumbency: {
+      grade: IncumbencyGrade;
+      parking: ParkingSignal;
+      gradedAt: string;
+    } | null;
+  }> {
+    const domainChecks = await this.nameCheckService.checkName(name);
+    const takenEndingCount = countTakenEndings(domainChecks);
+    const comCheck = domainChecks.find((check) => check.tld === 'com');
+    if (!comCheck || comCheck.availability !== 'taken') {
+      return {
+        domainChecks,
+        domainHistory: [],
+        takenEndingCount,
+        comIncumbency: null,
+      };
+    }
+    const [domainHistory, parking] = await Promise.all([
+      this.nameHistoryService.checkHistory([comCheck.host]),
+      this.nameHistoryService.probeParking(comCheck.host),
+    ]);
+    const history = domainHistory[0];
+    const grade = gradeComIncumbency({
+      comAvailability: comCheck.availability,
+      historyStatus: history?.status ?? 'unknown',
+      lastCapture: history?.wayback.lastCapture ?? null,
+      captureCount: history?.wayback.captureCount ?? null,
+      ctLatest: history?.ct.latest ?? null,
+      ctCount: history?.ct.count ?? null,
+      parking,
+    });
+    return {
+      domainChecks,
+      domainHistory,
+      takenEndingCount,
+      comIncumbency: {
+        grade,
+        parking,
+        gradedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  private async mapPool<T, R>(
+    items: T[],
+    concurrency: number,
+    worker: (item: T) => Promise<R>,
+  ): Promise<R[]> {
+    if (!items.length) return [];
+    const results = new Array<R>(items.length);
+    let next = 0;
+    const run = async () => {
+      while (next < items.length) {
+        const index = next;
+        next += 1;
+        results[index] = await worker(items[index]);
+      }
+    };
+    const runners = Array.from(
+      { length: Math.min(concurrency, items.length) },
+      () => run(),
+    );
+    await Promise.all(runners);
+    return results;
+  }
+
   private upsertCandidate(
     session: ProjectNameSession,
     input: {
@@ -502,6 +624,9 @@ export class NameSessionsService {
       laneId?: string;
       rationale?: string;
       domainChecks?: unknown;
+      domainHistory?: unknown;
+      takenEndingCount?: number;
+      comIncumbency?: unknown;
       googleQueryUrl?: string;
     },
   ): CandidateRecord {
@@ -526,6 +651,8 @@ export class NameSessionsService {
         googleQueryUrl: input.googleQueryUrl ?? googleQueryUrl(input.name),
         brandChecks: [],
         domainHistory: [],
+        takenEndingCount: 0,
+        comIncumbency: null,
         visualConcerns: { flags: [], note: '' },
         messaging: {},
         languageChecks: { aiAssisted: null, manual: [] },
@@ -551,6 +678,15 @@ export class NameSessionsService {
       existing.domainChecks = input.domainChecks;
       existing.googleQueryUrl =
         input.googleQueryUrl ?? googleQueryUrl(existing.name);
+    }
+    if (input.domainHistory !== undefined) {
+      existing.domainHistory = input.domainHistory;
+    }
+    if (input.takenEndingCount !== undefined) {
+      existing.takenEndingCount = input.takenEndingCount;
+    }
+    if (input.comIncumbency !== undefined) {
+      existing.comIncumbency = input.comIncumbency;
     }
     session.candidates = candidates;
     return existing;
@@ -591,6 +727,8 @@ export class NameSessionsService {
       googleQueryUrl: '',
       brandChecks: [],
       domainHistory: [],
+      takenEndingCount: 0,
+      comIncumbency: null,
       visualConcerns: { flags: [], note: '' },
       messaging: {},
       languageChecks: { aiAssisted: null, manual: [] },
