@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateSeoSiteDto } from './dto/create-seo-site.dto';
 import { SeoKeywordsDto } from './dto/seo-keywords.dto';
+import { UpdateSeoOfferingsDto } from './dto/update-seo-offerings.dto';
 import { UpdateSeoSiteDto } from './dto/update-seo-site.dto';
 import { SeoSitesService } from './seo-sites.service';
 
@@ -152,6 +154,38 @@ export class SeoSitesController {
     @Req() req: AuthRequest,
   ) {
     return this.seoSitesService.fetchKeywords(
+      req.user.id,
+      orgId,
+      projectId,
+      siteId,
+      dto,
+    );
+  }
+
+  @Get(':siteId/offerings')
+  getOfferings(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('siteId') siteId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.seoSitesService.getOfferings(
+      req.user.id,
+      orgId,
+      projectId,
+      siteId,
+    );
+  }
+
+  @Put(':siteId/offerings')
+  putOfferings(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('siteId') siteId: string,
+    @Body() dto: UpdateSeoOfferingsDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.seoSitesService.putOfferings(
       req.user.id,
       orgId,
       projectId,

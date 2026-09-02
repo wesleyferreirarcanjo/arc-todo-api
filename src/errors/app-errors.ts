@@ -616,6 +616,12 @@ export const APP_ERRORS = {
     message:
       'Search Console OAuth is not set up on the server. Ask an administrator.',
   },
+  SEO_TOO_MANY_OFFERINGS: {
+    code: 'ERR-ARC-SEO-12',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'A site can keep at most five offerings. Remove one and try again.',
+  },
 
   PUSH_NOT_CONFIGURED: {
     code: 'ERR-ARC-PUSH-01',

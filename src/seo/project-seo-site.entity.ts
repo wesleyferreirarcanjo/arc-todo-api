@@ -40,6 +40,9 @@ export class ProjectSeoSite {
   @Column({ name: 'gsc_property_uri', type: 'text', nullable: true })
   gscPropertyUri: string | null;
 
+  @Column({ type: 'jsonb', default: [] })
+  offerings: string[];
+
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'project_id' })
   project: Project;

@@ -5,6 +5,7 @@ import { appError } from '../errors/app-errors';
 import { ProjectsService } from '../projects/projects.service';
 import { CreateSeoSiteDto } from './dto/create-seo-site.dto';
 import { SeoKeywordsDto } from './dto/seo-keywords.dto';
+import { UpdateSeoOfferingsDto } from './dto/update-seo-offerings.dto';
 import { UpdateSeoSiteDto } from './dto/update-seo-site.dto';
 import { ProjectSeoSite } from './project-seo-site.entity';
 import { SeoAuditService } from './seo-audit.service';
@@ -58,6 +59,7 @@ export class SeoSitesService {
       createdById: userId,
       gscRefreshToken: null,
       gscPropertyUri: null,
+      offerings: [],
     });
     try {
       const saved = await this.sitesRepository.save(site);
@@ -168,6 +170,33 @@ export class SeoSitesService {
     return this.gscService.fetchKeywords(siteId, dto);
   }
 
+  async getOfferings(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    siteId: string,
+  ): Promise<{ offerings: string[] }> {
+    const site = await this.requireSite(userId, orgId, projectId, siteId);
+    return { offerings: this.normalizeOfferings(site.offerings) };
+  }
+
+  async putOfferings(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    siteId: string,
+    dto: UpdateSeoOfferingsDto,
+  ): Promise<{ offerings: string[] }> {
+    const site = await this.requireSite(userId, orgId, projectId, siteId);
+    const offerings = this.normalizeOfferings(dto.offerings);
+    if (offerings.length > 5) {
+      throw appError('SEO_TOO_MANY_OFFERINGS');
+    }
+    site.offerings = offerings;
+    await this.sitesRepository.save(site);
+    return { offerings };
+  }
+
   private async requireSite(
     userId: string,
     orgId: string,
@@ -194,6 +223,14 @@ export class SeoSitesService {
       qb.andWhere('site.id = :id', { id: where.id });
     }
     return qb.getMany();
+  }
+
+  private normalizeOfferings(values: string[] | null | undefined): string[] {
+    if (!Array.isArray(values)) return [];
+    return values
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter(Boolean);
   }
 
   private requireHostname(input: string): string {
