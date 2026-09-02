@@ -507,6 +507,51 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     defaultEnabled: true,
     sortOrder: 81,
   },
+  {
+    key: 'list_project_seo_sites',
+    group: 'seo',
+    displayName: 'List project SEO sites',
+    description:
+      'List SEO sites for a project (hostname, title, gscConnected). Never returns Search Console tokens.',
+    defaultEnabled: true,
+    sortOrder: 90,
+  },
+  {
+    key: 'get_seo_site',
+    group: 'seo',
+    displayName: 'Get SEO site',
+    description:
+      'Fetch one project SEO site. Never returns the Search Console refresh token.',
+    defaultEnabled: true,
+    sortOrder: 91,
+  },
+  {
+    key: 'create_seo_site',
+    group: 'seo',
+    displayName: 'Create SEO site',
+    description:
+      'Create a project SEO site from a public hostname. Empty or private addresses are refused.',
+    defaultEnabled: true,
+    sortOrder: 92,
+  },
+  {
+    key: 'run_seo_audit',
+    group: 'seo',
+    displayName: 'Run SEO audit',
+    description:
+      'Enqueue a same-host crawl plus homepage Lighthouse for a SEO site. Returns a run id to poll.',
+    defaultEnabled: true,
+    sortOrder: 93,
+  },
+  {
+    key: 'list_seo_keywords',
+    group: 'seo',
+    displayName: 'List SEO keywords',
+    description:
+      'Fetch Search Console queries and pages for a connected site. Returns the not-connected error when disconnected.',
+    defaultEnabled: true,
+    sortOrder: 94,
+  },
 ];
 
 export const MCP_TOOL_GROUPS = [
@@ -519,6 +564,7 @@ export const MCP_TOOL_GROUPS = [
   'wireframes',
   'names',
   'qa',
+  'seo',
 ] as const;
 
 export type McpToolGroup = (typeof MCP_TOOL_GROUPS)[number];

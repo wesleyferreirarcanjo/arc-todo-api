@@ -1217,7 +1217,7 @@
       },
       "include": {
         "default": "ack",
-        "description": "Response shape: ack | summary | plan | qa | full. Default ack (id/title/status only). Do not use this tool to only change status \u2014 use move_task.",
+        "description": "Response shape: ack | summary | plan | qa | full. Default ack (id/title/status only). Do not use this tool to only change status — use move_task.",
         "title": "Include",
         "type": "string"
       },
@@ -3166,7 +3166,7 @@
           }
         ],
         "default": null,
-        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted \u2192 two-screen starter.",
+        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted → two-screen starter.",
         "title": "Html"
       },
       "arc_todo_token": {
@@ -4161,6 +4161,213 @@
       "flag_score"
     ],
     "title": "CreateTaskBugFlagInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_project_seo_sites": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
+    "title": "ListProjectSeoSitesInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "get_seo_site": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "site_id": {
+        "description": "SEO site UUID",
+        "title": "Site Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "site_id"
+    ],
+    "title": "GetSeoSiteInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "create_seo_site": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "hostname": {
+        "description": "Public site hostname or URL, e.g. example.com",
+        "title": "Hostname",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional display title. Omitted defaults to the hostname.",
+        "title": "Title"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "hostname"
+    ],
+    "title": "CreateSeoSiteInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "run_seo_audit": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "site_id": {
+        "description": "SEO site UUID",
+        "title": "Site Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "site_id"
+    ],
+    "title": "RunSeoAuditInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "list_seo_keywords": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "site_id": {
+        "description": "SEO site UUID",
+        "title": "Site Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id",
+      "site_id"
+    ],
+    "title": "ListSeoKeywordsInput",
     "type": "object",
     "additionalProperties": false
   }

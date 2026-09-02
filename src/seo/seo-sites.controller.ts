@@ -96,6 +96,21 @@ export class SeoSitesController {
     );
   }
 
+  @Get(':siteId/audits')
+  getLatestAudit(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('siteId') siteId: string,
+    @Req() req: AuthRequest,
+  ) {
+    return this.seoSitesService.getLatestAudit(
+      req.user.id,
+      orgId,
+      projectId,
+      siteId,
+    );
+  }
+
   @Get(':siteId/audits/:runId')
   getAudit(
     @Param('orgId') orgId: string,

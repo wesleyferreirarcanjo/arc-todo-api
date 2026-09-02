@@ -70,6 +70,15 @@ export class SeoAuditService {
     return this.toView(run, pages, lighthouse);
   }
 
+  async getLatest(siteId: string): Promise<SeoAuditView> {
+    const run = await this.runsRepository.findOne({
+      where: { siteId },
+      order: { createdAt: 'DESC' },
+    });
+    if (!run) throw appError('SEO_AUDIT_NOT_FOUND');
+    return this.getRun(siteId, run.id);
+  }
+
   private async startRun(
     site: ProjectSeoSite,
   ): Promise<{ id: string; status: string }> {

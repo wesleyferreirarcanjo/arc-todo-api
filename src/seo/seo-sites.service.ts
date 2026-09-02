@@ -131,6 +131,16 @@ export class SeoSitesService {
     return this.auditService.getRun(siteId, runId);
   }
 
+  async getLatestAudit(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    siteId: string,
+  ) {
+    await this.requireSite(userId, orgId, projectId, siteId);
+    return this.auditService.getLatest(siteId);
+  }
+
   async connectSearchConsole(
     userId: string,
     orgId: string,
