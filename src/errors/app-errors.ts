@@ -97,7 +97,7 @@ export const APP_ERRORS = {
     code: 'ERR-ARC-ACL-05',
     status: HttpStatus.FORBIDDEN,
     message:
-      'Only the session owner or an administrator can start or close a feedback round.',
+      'Only the session owner or an administrator can start or close a feedback round, pick finalists, or crown a winner.',
   },
   ACL_COMMENT_AUTHOR: {
     code: 'ERR-ARC-ACL-06',
@@ -402,6 +402,63 @@ export const APP_ERRORS = {
     status: HttpStatus.BAD_REQUEST,
     message:
       'Check social handles only after keeping this name on the shortlist.',
+  },
+  NAME_BATCH_SIZE: {
+    code: 'ERR-ARC-NAME-14',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Start a batch with 10 to 20 new names.',
+  },
+  NAME_BATCH_UNKNOWN: {
+    code: 'ERR-ARC-NAME-15',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'One of those names is not in this session. Refresh and try again.',
+  },
+  NAME_BATCH_ALREADY: {
+    code: 'ERR-ARC-NAME-16',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'One of those names is already in a batch. Pick names that are still waiting.',
+  },
+  NAME_BATCH_OPEN: {
+    code: 'ERR-ARC-NAME-17',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'A batch is already open. Crown its winner before starting another.',
+  },
+  NAME_BATCH_DECIDED: {
+    code: 'ERR-ARC-NAME-18',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'This batch already has a winner.',
+  },
+  NAME_BATCH_NOT_FOUND: {
+    code: 'ERR-ARC-NAME-19',
+    status: HttpStatus.NOT_FOUND,
+    message: 'That batch is gone. Refresh the session and try again.',
+  },
+  NAME_BATCH_WINNER: {
+    code: 'ERR-ARC-NAME-20',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Pick a winner from the names in this batch.',
+  },
+  NAME_BALLOT_INCOMPLETE: {
+    code: 'ERR-ARC-NAME-21',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'This ballot is incomplete. Add a Pass, Like or Love for every name, and how you would spell it plus what you think it does for every name you did not Pass.',
+  },
+  NAME_FINALISTS: {
+    code: 'ERR-ARC-NAME-22',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Pick exactly two names from this batch as finalists.',
+  },
+  NAME_FINALISTS_ROUND_OPEN: {
+    code: 'ERR-ARC-NAME-23',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Close the feedback round before picking finalists.',
+  },
+  NAME_BELOW_TOP: {
+    code: 'ERR-ARC-NAME-24',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'Write a reason to recommend a name that is not the top result.',
   },
 
   DIAG_TITLE_REQUIRED: {

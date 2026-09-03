@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseIntPipe,
   Patch,
   Post,
   Put,
@@ -17,7 +18,11 @@ import {
   AddNameCandidatesDto,
   CheckNameDto,
   CheckNamesBatchDto,
+  CrownBatchWinnerDto,
   RecommendNameDto,
+  SetBatchFinalistsDto,
+  SetCandidateReactionDto,
+  StartBatchDto,
   StartFeedbackRoundDto,
   UpsertCandidateRatingDto,
   UpsertFeedbackResponseDto,
@@ -200,6 +205,80 @@ export class NameSessionsController {
       projectId,
       sessionId,
       candidateId,
+      dto,
+    );
+  }
+
+  @Put(':sessionId/candidates/:candidateId/reaction')
+  setCandidateReaction(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('candidateId') candidateId: string,
+    @Body() dto: SetCandidateReactionDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.setCandidateReaction(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      candidateId,
+      dto,
+    );
+  }
+
+  @Post(':sessionId/batches')
+  startBatch(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Body() dto: StartBatchDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.startBatch(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      dto,
+    );
+  }
+
+  @Post(':sessionId/batches/:batchNumber/winner')
+  crownBatchWinner(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('batchNumber', ParseIntPipe) batchNumber: number,
+    @Body() dto: CrownBatchWinnerDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.crownBatchWinner(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      batchNumber,
+      dto,
+    );
+  }
+
+  @Post(':sessionId/batches/:batchNumber/finalists')
+  setBatchFinalists(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('batchNumber', ParseIntPipe) batchNumber: number,
+    @Body() dto: SetBatchFinalistsDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.setBatchFinalists(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      batchNumber,
       dto,
     );
   }

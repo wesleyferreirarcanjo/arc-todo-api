@@ -10,37 +10,56 @@ import {
   AddNameCandidatesDto,
   CheckNameDto,
   CheckNamesBatchDto,
+  CrownBatchWinnerDto,
   RecommendNameDto,
+  SetBatchFinalistsDto,
+  SetCandidateReactionDto,
+  StartBatchDto,
   StartFeedbackRoundDto,
   UpsertCandidateRatingDto,
   UpsertFeedbackResponseDto,
 } from './dto/name-session-actions.dto';
 import { UpdateNameSessionDto } from './dto/update-name-session.dto';
+import {
+  asBatches,
+  batchValidationAppError,
+  canCrown,
+  decideBatch,
+  hasOpenBatch,
+  stampOpenBatch,
+  validateNewBatch,
+} from './name-batch.util';
 import { NameCandidateFeedback } from './name-candidate-feedback.entity';
-import { NameCheckService, type DomainCheck } from './name-check.service';
+import { NameCheckService } from './name-check.service';
 import {
   CandidateSource,
   DEFAULT_NAMING_GOAL,
-  countTakenEndings,
-  gradeComIncumbency,
   googleQueryUrl,
   isNamingGoal,
-  median,
   normalizeNameKey,
-  type IncumbencyGrade,
-  type ParkingSignal,
 } from './name-check.util';
 import {
-  NameHistoryService,
-  type DomainHistory,
-} from './name-history.service';
+  shapeCheckEvidence,
+  shapeDomainEvidence,
+  shapeOrganicCompetition,
+} from './name-evidence.util';
+import {
+  asRounds,
+  ballotGapMessage,
+  ballotGaps,
+  finalistAppError,
+  isBelowTopPick,
+  patchFeedbackRow,
+  redactCandidate,
+  shapeSessionDecision,
+  validateFinalists,
+  winnerReactionPoints,
+} from './name-feedback.util';
+import { NameHistoryService } from './name-history.service';
 import { NameOrganicService } from './name-organic.service';
 import {
-  buildOrganicCompetition,
   existingAutocomplete,
-  historyStatusForOrganic,
   withoutWaveHandles,
-  type OrganicCompetition,
 } from './name-organic.util';
 import {
   asUserRatings,
@@ -65,14 +84,6 @@ export type ProjectNameSessionSummary = {
 type CandidateRecord = Record<string, unknown> & {
   id: string;
   name: string;
-};
-
-type FeedbackRound = {
-  id: string;
-  candidateIds: string[];
-  status: 'open' | 'closed';
-  createdAt: string;
-  closedAt: string | null;
 };
 
 @Injectable()
@@ -105,17 +116,6 @@ export class NameSessionsService {
         typeof item === 'object' &&
         typeof (item as CandidateRecord).id === 'string' &&
         typeof (item as CandidateRecord).name === 'string',
-    );
-  }
-
-  private asRounds(value: unknown): FeedbackRound[] {
-    if (!Array.isArray(value)) return [];
-    return value.filter(
-      (item): item is FeedbackRound =>
-        !!item &&
-        typeof item === 'object' &&
-        typeof (item as FeedbackRound).id === 'string' &&
-        Array.isArray((item as FeedbackRound).candidateIds),
     );
   }
 
@@ -394,12 +394,10 @@ export class NameSessionsService {
     }
     const domainHistory = await this.nameHistoryService.checkHistory(hosts);
     existing.domainHistory = domainHistory;
-    const comTaken = domainChecks.some(
-      (check) => check.tld === 'com' && check.availability === 'taken',
-    );
-    existing.organicCompetition = buildOrganicCompetition(
+    existing.organicCompetition = shapeOrganicCompetition(
+      domainChecks,
+      domainHistory,
       existingAutocomplete(existing.organicCompetition),
-      historyStatusForOrganic(comTaken, domainHistory[0]?.status),
     );
     session.candidates = candidates;
     await this.sessionRepository.save(session);
@@ -476,6 +474,33 @@ export class NameSessionsService {
     candidateId: string,
     dto: UpsertCandidateRatingDto,
   ) {
+    return this.patchUserRating(userId, orgId, projectId, sessionId, candidateId, {
+      ...(dto.overall !== undefined ? { overall: dto.overall } : {}),
+      ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+    });
+  }
+
+  async setCandidateReaction(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    candidateId: string,
+    dto: SetCandidateReactionDto,
+  ) {
+    return this.patchUserRating(userId, orgId, projectId, sessionId, candidateId, {
+      reaction: dto.reaction,
+    });
+  }
+
+  private async patchUserRating(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    candidateId: string,
+    patch: { overall?: number; notes?: string; reaction?: 'passed' | 'liked' | 'loved' | null },
+  ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
     const candidates = this.asCandidates(session.candidates);
     const target = candidates.find((item) => item.id === candidateId);
@@ -485,13 +510,82 @@ export class NameSessionsService {
     target.userRatings = upsertUserRating(
       asUserRatings(target.userRatings),
       userId,
-      {
-        ...(dto.overall !== undefined ? { overall: dto.overall } : {}),
-        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
-      },
+      patch,
       new Date().toISOString(),
     );
     session.candidates = candidates;
+    const saved = await this.sessionRepository.save(session);
+    return this.toView(saved, userId);
+  }
+
+  async startBatch(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    dto: StartBatchDto,
+  ) {
+    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    await this.assertCanManageFeedback(userId, session);
+    const batches = asBatches(session.batches);
+    if (hasOpenBatch(batches)) {
+      throw appError('NAME_BATCH_OPEN');
+    }
+    const candidates = this.asCandidates(session.candidates);
+    const parsed = validateNewBatch(
+      dto.candidateIds,
+      candidates,
+      session.recommendedCandidateId,
+    );
+    if (!parsed.ok) {
+      throw appError(batchValidationAppError(parsed.error));
+    }
+    stampOpenBatch(
+      candidates,
+      batches,
+      parsed,
+      new Date().toISOString(),
+    );
+    session.candidates = candidates;
+    session.batches = batches;
+    const saved = await this.sessionRepository.save(session);
+    return this.toView(saved, userId);
+  }
+
+  async crownBatchWinner(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    batchNumber: number,
+    dto: CrownBatchWinnerDto,
+  ) {
+    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    await this.assertCanManageFeedback(userId, session);
+    const batches = asBatches(session.batches);
+    const batch = batches.find((item) => item.number === batchNumber);
+    if (!batch) {
+      throw appError('NAME_BATCH_NOT_FOUND');
+    }
+    const crown = canCrown(batch, batches);
+    if (!crown.ok) {
+      throw appError(
+        crown.error === 'decided' ? 'NAME_BATCH_DECIDED' : 'NAME_BATCH_OPEN',
+      );
+    }
+    if (!batch.candidateIds.includes(dto.candidateId)) {
+      throw appError('NAME_BATCH_WINNER');
+    }
+    await this.assertWinnerReason(
+      session,
+      dto.candidateId,
+      dto.decisionNote,
+      batch.candidateIds,
+    );
+    const now = new Date().toISOString();
+    decideBatch(batch, dto.candidateId, dto.decisionNote, now);
+    session.batches = batches;
+    this.applyRecommend(session, dto);
     const saved = await this.sessionRepository.save(session);
     return this.toView(saved, userId);
   }
@@ -504,6 +598,20 @@ export class NameSessionsService {
     dto: RecommendNameDto,
   ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
+    await this.assertWinnerReason(
+      session,
+      dto.candidateId,
+      dto.decisionNote,
+    );
+    this.applyRecommend(session, dto);
+    const saved = await this.sessionRepository.save(session);
+    return this.toView(saved, userId);
+  }
+
+  private applyRecommend(
+    session: ProjectNameSession,
+    dto: RecommendNameDto | CrownBatchWinnerDto,
+  ) {
     const candidates = this.asCandidates(session.candidates);
     const target = candidates.find((item) => item.id === dto.candidateId);
     if (!target) {
@@ -521,6 +629,60 @@ export class NameSessionsService {
     if (dto.decisionNote !== undefined) {
       session.decisionNote = dto.decisionNote;
     }
+  }
+
+  private async assertWinnerReason(
+    session: ProjectNameSession,
+    candidateId: string,
+    decisionNote: string | undefined,
+    scopeIds?: string[],
+  ) {
+    const candidates = this.asCandidates(session.candidates);
+    const batches = asBatches(session.batches);
+    const batch =
+      batches.find((item) => item.candidateIds.includes(candidateId)) ??
+      null;
+    const ids =
+      scopeIds ??
+      batch?.candidateIds ??
+      candidates.map((candidate) => candidate.id);
+    const rows = await this.feedbackRepository.find({
+      where: { sessionId: session.id },
+    });
+    const points = winnerReactionPoints(rows, candidates, ids);
+    if (isBelowTopPick(candidateId, ids, points, decisionNote)) {
+      throw appError('NAME_BELOW_TOP');
+    }
+  }
+
+  async setBatchFinalists(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    batchNumber: number,
+    dto: SetBatchFinalistsDto,
+  ) {
+    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    await this.assertCanManageFeedback(userId, session);
+    const batches = asBatches(session.batches);
+    const batch = batches.find((item) => item.number === batchNumber);
+    if (!batch) {
+      throw appError('NAME_BATCH_NOT_FOUND');
+    }
+    const roundOpen = asRounds(session.feedbackRounds).some(
+      (round) => round.status === 'open',
+    );
+    const parsed = validateFinalists(
+      dto.candidateIds,
+      batch.candidateIds,
+      roundOpen,
+    );
+    if (!parsed.ok) {
+      throw appError(finalistAppError(parsed.error));
+    }
+    batch.finalistCandidateIds = parsed.ids;
+    session.batches = batches;
     const saved = await this.sessionRepository.save(session);
     return this.toView(saved, userId);
   }
@@ -544,7 +706,7 @@ export class NameSessionsService {
         throw appError('NAME_ROUND_UNKNOWN');
       }
     }
-    const rounds = this.asRounds(session.feedbackRounds);
+    const rounds = asRounds(session.feedbackRounds);
     if (rounds.some((round) => round.status === 'open')) {
       throw appError('NAME_ROUND_OPEN');
     }
@@ -569,7 +731,7 @@ export class NameSessionsService {
     dto: UpsertFeedbackResponseDto,
   ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
-    const round = this.asRounds(session.feedbackRounds).find(
+    const round = asRounds(session.feedbackRounds).find(
       (item) => item.id === roundId,
     );
     if (!round) {
@@ -578,36 +740,41 @@ export class NameSessionsService {
     if (round.status !== 'open') {
       throw appError('NAME_ROUND_CLOSED');
     }
-    if (!round.candidateIds.includes(dto.candidateId)) {
+    const entries = dto.responses?.length
+      ? dto.responses
+      : dto.candidateId
+        ? [dto]
+        : [];
+    if (!entries.length || !entries[0].candidateId) {
       throw appError('NAME_CANDIDATE_NOT_IN_ROUND');
     }
-    let row = await this.feedbackRepository.findOne({
-      where: { roundId, candidateId: dto.candidateId, userId },
-    });
-    if (!row) {
-      row = this.feedbackRepository.create({
-        sessionId: session.id,
-        roundId,
-        candidateId: dto.candidateId,
-        userId,
+    if (dto.responses?.length) {
+      const gaps = ballotGaps(round.candidateIds, dto.responses);
+      if (gaps.missingReactions.length || gaps.missingDepth.length) {
+        throw appError('NAME_BALLOT_INCOMPLETE', ballotGapMessage(gaps), {
+          missingReactions: gaps.missingReactions,
+          missingDepth: gaps.missingDepth,
+        });
+      }
+    }
+    for (const entry of entries) {
+      if (!entry.candidateId || !round.candidateIds.includes(entry.candidateId)) {
+        throw appError('NAME_CANDIDATE_NOT_IN_ROUND');
+      }
+      let row = await this.feedbackRepository.findOne({
+        where: { roundId, candidateId: entry.candidateId, userId },
       });
+      if (!row) {
+        row = this.feedbackRepository.create({
+          sessionId: session.id,
+          roundId,
+          candidateId: entry.candidateId,
+          userId,
+        });
+      }
+      patchFeedbackRow(row, entry);
+      await this.feedbackRepository.save(row);
     }
-    if (dto.firstImpression !== undefined) {
-      row.firstImpression = dto.firstImpression;
-    }
-    if (dto.rememberedSpelling !== undefined) {
-      row.rememberedSpelling = dto.rememberedSpelling;
-    }
-    if (dto.perceivedPurpose !== undefined) {
-      row.perceivedPurpose = dto.perceivedPurpose;
-    }
-    if (dto.ratings !== undefined) {
-      row.ratings = { ...dto.ratings };
-    }
-    if (dto.concern !== undefined) {
-      row.concern = dto.concern;
-    }
-    await this.feedbackRepository.save(row);
     return this.toView(session, userId);
   }
 
@@ -620,7 +787,7 @@ export class NameSessionsService {
   ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
     await this.assertCanManageFeedback(userId, session);
-    const rounds = this.asRounds(session.feedbackRounds);
+    const rounds = asRounds(session.feedbackRounds);
     const round = rounds.find((item) => item.id === roundId);
     if (!round) {
       throw appError('NAME_ROUND_NOT_FOUND');
@@ -645,78 +812,25 @@ export class NameSessionsService {
     return projectMyRating(candidate, userId);
   }
 
-  private async collectDomainEvidence(name: string): Promise<{
-    domainChecks: DomainCheck[];
-    domainHistory: DomainHistory[];
-    takenEndingCount: number;
-    comIncumbency: {
-      grade: IncumbencyGrade;
-      parking: ParkingSignal;
-      gradedAt: string;
-    } | null;
-  }> {
+  private async collectDomainEvidence(name: string) {
     const domainChecks = await this.nameCheckService.checkName(name);
-    const takenEndingCount = countTakenEndings(domainChecks);
     const comCheck = domainChecks.find((check) => check.tld === 'com');
     if (!comCheck || comCheck.availability !== 'taken') {
-      return {
-        domainChecks,
-        domainHistory: [],
-        takenEndingCount,
-        comIncumbency: null,
-      };
+      return shapeDomainEvidence({ domainChecks });
     }
     const [domainHistory, parking] = await Promise.all([
       this.nameHistoryService.checkHistory([comCheck.host]),
       this.nameHistoryService.probeParking(comCheck.host),
     ]);
-    const history = domainHistory[0];
-    const grade = gradeComIncumbency({
-      comAvailability: comCheck.availability,
-      historyStatus: history?.status ?? 'unknown',
-      lastCapture: history?.wayback.lastCapture ?? null,
-      captureCount: history?.wayback.captureCount ?? null,
-      ctLatest: history?.ct.latest ?? null,
-      ctCount: history?.ct.count ?? null,
-      parking,
-    });
-    return {
-      domainChecks,
-      domainHistory,
-      takenEndingCount,
-      comIncumbency: {
-        grade,
-        parking,
-        gradedAt: new Date().toISOString(),
-      },
-    };
+    return shapeDomainEvidence({ domainChecks, domainHistory, parking });
   }
 
-  private async collectCheckEvidence(name: string): Promise<{
-    domainChecks: DomainCheck[];
-    domainHistory: DomainHistory[];
-    takenEndingCount: number;
-    comIncumbency: {
-      grade: IncumbencyGrade;
-      parking: ParkingSignal;
-      gradedAt: string;
-    } | null;
-    organicCompetition: OrganicCompetition;
-  }> {
+  private async collectCheckEvidence(name: string) {
     const [domain, autocomplete] = await Promise.all([
       this.collectDomainEvidence(name),
       this.nameOrganicService.lookupAutocomplete(name),
     ]);
-    const comTaken = domain.domainChecks.some(
-      (check) => check.tld === 'com' && check.availability === 'taken',
-    );
-    return {
-      ...domain,
-      organicCompetition: buildOrganicCompetition(
-        autocomplete,
-        historyStatusForOrganic(comTaken, domain.domainHistory[0]?.status),
-      ),
-    };
+    return shapeCheckEvidence(domain, autocomplete);
   }
 
   private async mapPool<T, R>(
@@ -830,123 +944,27 @@ export class NameSessionsService {
     return existing;
   }
 
-  private hashSeed(value: string): number {
-    let hash = 0;
-    for (let i = 0; i < value.length; i++) {
-      hash = (hash * 31 + value.charCodeAt(i)) | 0;
-    }
-    return Math.abs(hash);
-  }
-
-  private shuffledIds(ids: string[], seed: string): string[] {
-    const copy = [...ids];
-    let n = this.hashSeed(seed) + 1;
-    for (let i = copy.length - 1; i > 0; i--) {
-      n = (n * 1103515245 + 12345) & 0x7fffffff;
-      const j = n % (i + 1);
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  }
-
-  private redactCandidate(candidate: CandidateRecord): CandidateRecord {
-    return {
-      id: candidate.id,
-      name: candidate.name,
-      status: 'active',
-      sources: [],
-      family: null,
-      laneId: candidate.laneId ?? null,
-      namingGoal: null,
-      derivedFromCandidateId: null,
-      rationale: '',
-      notes: '',
-      domainChecks: [],
-      googleQueryUrl: '',
-      brandChecks: [],
-      domainHistory: [],
-      takenEndingCount: 0,
-      comIncumbency: null,
-      organicCompetition: null,
-      handleChecks: [],
-      visualConcerns: { flags: [], note: '' },
-      messaging: {},
-      languageChecks: { aiAssisted: null, manual: [] },
-      pronunciation: {},
-      ratings: {},
-    };
-  }
-
-  private aggregateRound(rows: NameCandidateFeedback[]) {
-    const participantIds = new Set(rows.map((row) => row.userId));
-    const byCandidate: Record<
-      string,
-      {
-        responses: number;
-        easyToSay: number | null;
-        memorable: number | null;
-        fitsProduct: number | null;
-        repeatedConcerns: string[];
-      }
-    > = {};
-    const grouped = new Map<string, NameCandidateFeedback[]>();
-    for (const row of rows) {
-      const list = grouped.get(row.candidateId) ?? [];
-      list.push(row);
-      grouped.set(row.candidateId, list);
-    }
-    for (const [candidateId, list] of grouped) {
-      const num = (key: string) =>
-        list
-          .map((row) => {
-            const value = (row.ratings ?? {})[key];
-            return typeof value === 'number' ? value : null;
-          })
-          .filter((value): value is number => value != null);
-      const concernCounts = new Map<string, number>();
-      for (const row of list) {
-        const concern = row.concern.trim().toLowerCase();
-        if (!concern) continue;
-        concernCounts.set(concern, (concernCounts.get(concern) ?? 0) + 1);
-      }
-      byCandidate[candidateId] = {
-        responses: list.length,
-        easyToSay: median(num('easyToSay')),
-        memorable: median(num('memorable')),
-        fitsProduct: median(num('fitsProduct')),
-        repeatedConcerns: [...concernCounts.entries()]
-          .filter(([, count]) => count >= 2)
-          .map(([text]) => text),
-      };
-    }
-    return {
-      participantCount: participantIds.size,
-      byCandidate,
-    };
-  }
-
   private async toView(session: ProjectNameSession, userId: string) {
     const isOwner =
       session.createdById === userId ||
       (await this.projectAccess.isAdmin(userId));
-    const rounds = this.asRounds(session.feedbackRounds);
-    const openRound = rounds.find((round) => round.status === 'open');
+    const rounds = asRounds(session.feedbackRounds);
     const allRows = await this.feedbackRepository.find({
       where: { sessionId: session.id },
     });
-    const mine = allRows.filter((row) => row.userId === userId);
-    const submittedOpen =
-      !!openRound &&
-      openRound.candidateIds.every((id) =>
-        mine.some((row) => row.roundId === openRound.id && row.candidateId === id),
-      );
+    const decision = shapeSessionDecision({
+      rounds,
+      allRows,
+      userId,
+      isOwner,
+      batches: asBatches(session.batches),
+    });
 
     let candidates = this.asCandidates(session.candidates);
-    if (openRound && !isOwner && !submittedOpen) {
+    if (decision.redactCandidateIds) {
+      const hide = new Set(decision.redactCandidateIds);
       candidates = candidates.map((candidate) =>
-        openRound.candidateIds.includes(candidate.id)
-          ? this.redactCandidate(candidate)
-          : candidate,
+        hide.has(candidate.id) ? redactCandidate(candidate) : candidate,
       );
     }
     candidates = candidates.map((candidate) =>
@@ -955,32 +973,6 @@ export class NameSessionsService {
         userId,
       ),
     );
-
-    const feedback = rounds.map((round) => {
-      const roundRows = allRows.filter((row) => row.roundId === round.id);
-      const myRows = roundRows.filter((row) => row.userId === userId);
-      const reveal =
-        round.status === 'closed' ||
-        isOwner ||
-        (round.status === 'open' &&
-          round.candidateIds.every((id) =>
-            myRows.some((row) => row.candidateId === id),
-          ));
-      return {
-        ...round,
-        order: this.shuffledIds(round.candidateIds, `${round.id}:${userId}`),
-        mine: myRows.map((row) => ({
-          candidateId: row.candidateId,
-          firstImpression: row.firstImpression,
-          rememberedSpelling: row.rememberedSpelling,
-          perceivedPurpose: row.perceivedPurpose,
-          ratings: row.ratings,
-          concern: row.concern,
-          updatedAt: row.updatedAt,
-        })),
-        aggregate: reveal ? this.aggregateRound(roundRows) : null,
-      };
-    });
 
     return {
       id: session.id,
@@ -995,11 +987,13 @@ export class NameSessionsService {
       recommendedCandidateId: session.recommendedCandidateId,
       runnerUpCandidateId: session.runnerUpCandidateId,
       decisionNote: session.decisionNote,
+      batches: decision.batches,
+      decisionPhase: decision.decisionPhase,
       createdById: session.createdById,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       canManageFeedback: isOwner,
-      feedback,
+      feedback: decision.feedback,
     };
   }
 }

@@ -50,6 +50,9 @@ export class NameCandidateFeedback {
   @Column({ type: 'text', default: '' })
   concern: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  reaction: string | null;
+
   @ManyToOne(() => ProjectNameSession, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'session_id' })
   session: ProjectNameSession;

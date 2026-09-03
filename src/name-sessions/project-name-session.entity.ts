@@ -51,6 +51,9 @@ export class ProjectNameSession {
   @Column({ name: 'feedback_rounds', type: 'jsonb', default: [] })
   feedbackRounds: unknown[];
 
+  @Column({ type: 'jsonb', default: [] })
+  batches: unknown[];
+
   @Column({ name: 'created_by_id' })
   createdById: string;
 

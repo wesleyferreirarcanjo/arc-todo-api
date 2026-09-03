@@ -11,6 +11,7 @@ import {
   IsUUID,
   Max,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 
@@ -109,9 +110,12 @@ export class UpsertCandidateRatingDto {
   notes?: string;
 }
 
-export class UpsertFeedbackResponseDto {
+export class FeedbackBallotEntryDto {
   @IsUUID()
   candidateId: string;
+
+  @IsIn(['passed', 'liked', 'loved'])
+  reaction: 'passed' | 'liked' | 'loved';
 
   @IsOptional()
   @IsString()
@@ -133,4 +137,74 @@ export class UpsertFeedbackResponseDto {
   @IsOptional()
   @IsString()
   concern?: string;
+}
+
+export class UpsertFeedbackResponseDto {
+  @IsOptional()
+  @IsUUID()
+  candidateId?: string;
+
+  @IsOptional()
+  @IsIn(['passed', 'liked', 'loved'])
+  reaction?: 'passed' | 'liked' | 'loved';
+
+  @IsOptional()
+  @IsString()
+  firstImpression?: string;
+
+  @IsOptional()
+  @IsString()
+  rememberedSpelling?: string;
+
+  @IsOptional()
+  @IsString()
+  perceivedPurpose?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => FeedbackRatingsDto)
+  ratings?: FeedbackRatingsDto;
+
+  @IsOptional()
+  @IsString()
+  concern?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(5)
+  @ValidateNested({ each: true })
+  @Type(() => FeedbackBallotEntryDto)
+  responses?: FeedbackBallotEntryDto[];
+}
+
+export class SetCandidateReactionDto {
+  @ValidateIf((_, value) => value !== null)
+  @IsIn(['passed', 'liked', 'loved'])
+  reaction: 'passed' | 'liked' | 'loved' | null;
+}
+
+export class StartBatchDto {
+  @IsArray()
+  @ArrayMinSize(10)
+  @ArrayMaxSize(21)
+  @IsUUID('4', { each: true })
+  candidateIds: string[];
+}
+
+export class CrownBatchWinnerDto {
+  @IsUUID()
+  candidateId: string;
+
+  @IsOptional()
+  @IsString()
+  decisionNote?: string;
+}
+
+export class SetBatchFinalistsDto {
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(2)
+  @IsUUID('4', { each: true })
+  candidateIds: string[];
 }
