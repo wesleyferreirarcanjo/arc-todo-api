@@ -433,7 +433,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'names',
     displayName: 'List project name sessions',
     description:
-      'List naming sessions for a project (id, title, recommendedName, timestamps; omits bulky candidates).',
+      'List naming sessions for a project (id, title, recommendedName, candidateCount, timestamps; omits bulky candidates).',
     defaultEnabled: true,
     sortOrder: 70,
   },
@@ -445,14 +445,6 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
       'Fetch one naming session including product description, lanes, candidates, evidence, and recommendation.',
     defaultEnabled: true,
     sortOrder: 71,
-  },
-  {
-    key: 'create_name_session',
-    group: 'names',
-    displayName: 'Create name session',
-    description: 'Create a project naming session with a required title.',
-    defaultEnabled: true,
-    sortOrder: 72,
   },
   {
     key: 'update_name_session',

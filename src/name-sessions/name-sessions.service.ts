@@ -50,6 +50,7 @@ export type ProjectNameSessionSummary = {
   title: string;
   namingGoal: string | null;
   recommendedName: string | null;
+  candidateCount: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -143,6 +144,7 @@ export class NameSessionsService {
       title: row.title,
       namingGoal: row.namingGoal,
       recommendedName: this.recommendedName(row),
+      candidateCount: this.asCandidates(row.candidates).length,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
