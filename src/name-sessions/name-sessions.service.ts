@@ -12,6 +12,7 @@ import {
   CheckNamesBatchDto,
   RecommendNameDto,
   StartFeedbackRoundDto,
+  UpsertCandidateRatingDto,
   UpsertFeedbackResponseDto,
 } from './dto/name-session-actions.dto';
 import { UpdateNameSessionDto } from './dto/update-name-session.dto';
@@ -41,6 +42,12 @@ import {
   withoutWaveHandles,
   type OrganicCompetition,
 } from './name-organic.util';
+import {
+  asUserRatings,
+  mergeIncomingCandidates,
+  projectMyRating,
+  upsertUserRating,
+} from './name-user-rating.util';
 import { ProjectNameSession } from './project-name-session.entity';
 
 const CHECK_BATCH_CONCURRENCY = 4;
@@ -238,7 +245,13 @@ export class NameSessionsService {
       session.lanes = dto.lanes;
     }
     if (dto.candidates !== undefined) {
-      session.candidates = this.sanitizeCandidates(dto.candidates);
+      session.candidates = mergeIncomingCandidates(
+        this.asCandidates(session.candidates),
+        dto.candidates,
+        userId,
+        () => randomUUID(),
+        new Date().toISOString(),
+      );
     }
     if (dto.shortlistIds !== undefined) {
       session.shortlistIds = dto.shortlistIds.slice(0, 5);
@@ -288,7 +301,10 @@ export class NameSessionsService {
       googleQueryUrl: googleQueryUrl(name),
     });
     await this.sessionRepository.save(session);
-    return withoutWaveHandles(session.shortlistIds, candidate);
+    return this.exposeCandidate(
+      withoutWaveHandles(session.shortlistIds, candidate),
+      userId,
+    );
   }
 
   async checkBatch(
@@ -330,7 +346,10 @@ export class NameSessionsService {
     await this.sessionRepository.save(session);
     return {
       candidates: candidates.map((candidate) =>
-        withoutWaveHandles(session.shortlistIds, candidate),
+        this.exposeCandidate(
+          withoutWaveHandles(session.shortlistIds, candidate),
+          userId,
+        ),
       ),
     };
   }
@@ -384,7 +403,10 @@ export class NameSessionsService {
     );
     session.candidates = candidates;
     await this.sessionRepository.save(session);
-    return withoutWaveHandles(session.shortlistIds, existing);
+    return this.exposeCandidate(
+      withoutWaveHandles(session.shortlistIds, existing),
+      userId,
+    );
   }
 
   async checkHandles(
@@ -414,7 +436,7 @@ export class NameSessionsService {
     );
     session.candidates = candidates;
     await this.sessionRepository.save(session);
-    return existing;
+    return this.exposeCandidate(existing, userId);
   }
 
   async addCandidates(
@@ -439,7 +461,39 @@ export class NameSessionsService {
       );
     }
     await this.sessionRepository.save(session);
-    return { candidates: added };
+    return {
+      candidates: added.map((candidate) =>
+        this.exposeCandidate(candidate, userId),
+      ),
+    };
+  }
+
+  async upsertCandidateRating(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    candidateId: string,
+    dto: UpsertCandidateRatingDto,
+  ) {
+    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    const candidates = this.asCandidates(session.candidates);
+    const target = candidates.find((item) => item.id === candidateId);
+    if (!target) {
+      throw appError('NAME_CANDIDATE_NOT_FOUND');
+    }
+    target.userRatings = upsertUserRating(
+      asUserRatings(target.userRatings),
+      userId,
+      {
+        ...(dto.overall !== undefined ? { overall: dto.overall } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+      },
+      new Date().toISOString(),
+    );
+    session.candidates = candidates;
+    const saved = await this.sessionRepository.save(session);
+    return this.toView(saved, userId);
   }
 
   async recommend(
@@ -587,20 +641,8 @@ export class NameSessionsService {
     throw appError('ACL_NAME_FEEDBACK');
   }
 
-  private sanitizeCandidates(value: unknown[]): CandidateRecord[] {
-    return value
-      .filter(
-        (item): item is CandidateRecord =>
-          !!item &&
-          typeof item === 'object' &&
-          typeof (item as CandidateRecord).name === 'string',
-      )
-      .map((item) => ({
-        ...item,
-        id: typeof item.id === 'string' && item.id ? item.id : randomUUID(),
-        name: String(item.name).trim(),
-      }))
-      .filter((item) => item.name);
+  private exposeCandidate(candidate: CandidateRecord, userId: string) {
+    return projectMyRating(candidate, userId);
   }
 
   private async collectDomainEvidence(name: string): Promise<{
@@ -747,6 +789,7 @@ export class NameSessionsService {
         languageChecks: { aiAssisted: null, manual: [] },
         pronunciation: {},
         ratings: {},
+        userRatings: {},
       };
       candidates.push(existing);
     } else {
@@ -907,7 +950,10 @@ export class NameSessionsService {
       );
     }
     candidates = candidates.map((candidate) =>
-      withoutWaveHandles(session.shortlistIds, candidate),
+      this.exposeCandidate(
+        withoutWaveHandles(session.shortlistIds, candidate),
+        userId,
+      ),
     );
 
     const feedback = rounds.map((round) => {

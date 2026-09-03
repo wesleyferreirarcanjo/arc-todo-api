@@ -97,6 +97,18 @@ export class FeedbackRatingsDto {
   fitsProduct?: number;
 }
 
+export class UpsertCandidateRatingDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  overall?: number;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
 export class UpsertFeedbackResponseDto {
   @IsUUID()
   candidateId: string;

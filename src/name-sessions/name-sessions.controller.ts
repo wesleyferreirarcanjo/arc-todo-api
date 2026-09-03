@@ -19,6 +19,7 @@ import {
   CheckNamesBatchDto,
   RecommendNameDto,
   StartFeedbackRoundDto,
+  UpsertCandidateRatingDto,
   UpsertFeedbackResponseDto,
 } from './dto/name-session-actions.dto';
 import { UpdateNameSessionDto } from './dto/update-name-session.dto';
@@ -180,6 +181,25 @@ export class NameSessionsController {
       orgId,
       projectId,
       sessionId,
+      dto,
+    );
+  }
+
+  @Put(':sessionId/candidates/:candidateId/rating')
+  upsertCandidateRating(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('candidateId') candidateId: string,
+    @Body() dto: UpsertCandidateRatingDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.upsertCandidateRating(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      candidateId,
       dto,
     );
   }
