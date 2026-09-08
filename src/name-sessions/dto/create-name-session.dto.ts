@@ -14,6 +14,10 @@ export class CreateNameSessionDto {
   namingGoal?: string;
 
   @IsOptional()
+  @IsString()
+  participationMode?: string;
+
+  @IsOptional()
   @IsObject()
   productDescription?: Record<string, unknown>;
 }

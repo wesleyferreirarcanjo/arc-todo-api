@@ -55,6 +55,16 @@ import {
   validateFinalists,
   winnerReactionPoints,
 } from './name-feedback.util';
+import {
+  canStartFeedbackRound,
+  DEFAULT_PARTICIPATION_MODE,
+  isParticipationMode,
+  participationSwitchAppError,
+  resolveParticipationMode,
+  shapeParticipationProgress,
+  validateParticipationSwitch,
+  winnerScopeIds,
+} from './name-participation.util';
 import { NameHistoryService } from './name-history.service';
 import { NameOrganicService } from './name-organic.service';
 import {
@@ -75,6 +85,7 @@ export type ProjectNameSessionSummary = {
   id: string;
   title: string;
   namingGoal: string | null;
+  participationMode: 'solo' | 'team';
   recommendedName: string | null;
   candidateCount: number;
   createdAt: Date;
@@ -139,6 +150,8 @@ export class NameSessionsService {
         'id',
         'title',
         'namingGoal',
+        'participationMode',
+        'feedbackRounds',
         'candidates',
         'recommendedCandidateId',
         'createdAt',
@@ -150,6 +163,10 @@ export class NameSessionsService {
       id: row.id,
       title: row.title,
       namingGoal: row.namingGoal,
+      participationMode: resolveParticipationMode(
+        row.participationMode,
+        row.feedbackRounds,
+      ),
       recommendedName: this.recommendedName(row),
       candidateCount: this.asCandidates(row.candidates).length,
       createdAt: row.createdAt,
@@ -171,11 +188,19 @@ export class NameSessionsService {
       }
       namingGoal = dto.namingGoal;
     }
+    let participationMode = DEFAULT_PARTICIPATION_MODE;
+    if (dto.participationMode) {
+      if (!isParticipationMode(dto.participationMode)) {
+        throw appError('NAME_PARTICIPATION_INVALID');
+      }
+      participationMode = dto.participationMode;
+    }
     const session = this.sessionRepository.create({
       projectId,
       title: this.requireTitle(dto.title),
       brief: dto.brief?.trim() ?? '',
       namingGoal,
+      participationMode,
       productDescription: dto.productDescription ?? {},
       lanes: [],
       candidates: [],
@@ -237,6 +262,18 @@ export class NameSessionsService {
       } else {
         session.namingGoal = dto.namingGoal;
       }
+    }
+    if (dto.participationMode !== undefined) {
+      await this.assertCanManageFeedback(userId, session);
+      const parsed = validateParticipationSwitch({
+        stored: session.participationMode,
+        rounds: session.feedbackRounds,
+        next: dto.participationMode,
+      });
+      if (!parsed.ok) {
+        throw appError(participationSwitchAppError(parsed.error));
+      }
+      session.participationMode = parsed.mode;
     }
     if (dto.productDescription !== undefined) {
       session.productDescription = dto.productDescription;
@@ -598,6 +635,7 @@ export class NameSessionsService {
     dto: RecommendNameDto,
   ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
+    await this.assertCanManageFeedback(userId, session);
     await this.assertWinnerReason(
       session,
       dto.candidateId,
@@ -639,13 +677,12 @@ export class NameSessionsService {
   ) {
     const candidates = this.asCandidates(session.candidates);
     const batches = asBatches(session.batches);
-    const batch =
-      batches.find((item) => item.candidateIds.includes(candidateId)) ??
-      null;
-    const ids =
-      scopeIds ??
-      batch?.candidateIds ??
-      candidates.map((candidate) => candidate.id);
+    const ids = winnerScopeIds(
+      candidateId,
+      batches,
+      candidates.map((candidate) => candidate.id),
+      scopeIds,
+    );
     const rows = await this.feedbackRepository.find({
       where: { sessionId: session.id },
     });
@@ -696,6 +733,13 @@ export class NameSessionsService {
   ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
     await this.assertCanManageFeedback(userId, session);
+    const mode = resolveParticipationMode(
+      session.participationMode,
+      session.feedbackRounds,
+    );
+    if (!canStartFeedbackRound(mode)) {
+      throw appError('NAME_PARTICIPATION_SOLO');
+    }
     const ids = [...new Set(dto.candidateIds)];
     if (ids.length < 2 || ids.length > 5) {
       throw appError('NAME_ROUND_SIZE');
@@ -959,6 +1003,19 @@ export class NameSessionsService {
       isOwner,
       batches: asBatches(session.batches),
     });
+    const participationMode = resolveParticipationMode(
+      session.participationMode,
+      rounds,
+    );
+    const eligibleCount = await this.projectAccess.countProjectMembers(
+      session.projectId,
+    );
+    const openRound = rounds.find((round) => round.status === 'open');
+    const participationProgress = shapeParticipationProgress({
+      openRound,
+      allRows,
+      eligibleCount,
+    });
 
     let candidates = this.asCandidates(session.candidates);
     if (decision.redactCandidateIds) {
@@ -980,6 +1037,8 @@ export class NameSessionsService {
       title: session.title,
       brief: session.brief,
       namingGoal: session.namingGoal,
+      participationMode,
+      participationProgress,
       productDescription: session.productDescription,
       lanes: session.lanes,
       candidates,

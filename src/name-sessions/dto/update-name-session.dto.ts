@@ -22,6 +22,10 @@ export class UpdateNameSessionDto {
   namingGoal?: string | null;
 
   @IsOptional()
+  @IsString()
+  participationMode?: string;
+
+  @IsOptional()
   @IsObject()
   productDescription?: Record<string, unknown>;
 

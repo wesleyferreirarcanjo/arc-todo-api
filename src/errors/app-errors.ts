@@ -460,6 +460,22 @@ export const APP_ERRORS = {
     message:
       'Write a reason to recommend a name that is not the top result.',
   },
+  NAME_PARTICIPATION_INVALID: {
+    code: 'ERR-ARC-NAME-25',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Choose on your own or with your team.',
+  },
+  NAME_PARTICIPATION_ROUND_OPEN: {
+    code: 'ERR-ARC-NAME-26',
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'A team round is open. Close it before switching to choosing on your own.',
+  },
+  NAME_PARTICIPATION_SOLO: {
+    code: 'ERR-ARC-NAME-27',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Switch this session to team before opening a voting round.',
+  },
 
   DIAG_TITLE_REQUIRED: {
     code: 'ERR-ARC-DIAG-01',

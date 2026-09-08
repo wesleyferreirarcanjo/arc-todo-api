@@ -122,6 +122,10 @@ export class ProjectAccessService {
     );
   }
 
+  async countProjectMembers(projectId: string): Promise<number> {
+    return this.projectMembersRepository.count({ where: { projectId } });
+  }
+
   async getProjectIdsForUser(userId: string): Promise<string[]> {
     const memberships = await this.projectMembersRepository.find({
       where: { userId },

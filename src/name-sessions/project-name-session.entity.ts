@@ -27,6 +27,9 @@ export class ProjectNameSession {
   @Column({ name: 'naming_goal', type: 'varchar', nullable: true })
   namingGoal: string | null;
 
+  @Column({ name: 'participation_mode', type: 'varchar', nullable: true })
+  participationMode: string | null;
+
   @Column({ name: 'product_description', type: 'jsonb', default: {} })
   productDescription: Record<string, unknown>;
 
