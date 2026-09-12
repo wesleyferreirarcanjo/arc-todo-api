@@ -13,6 +13,7 @@ import {
   CrownBatchWinnerDto,
   RecommendNameDto,
   SetBatchFinalistsDto,
+  SetCandidateFavoriteDto,
   SetCandidateReactionDto,
   StartBatchDto,
   StartFeedbackRoundDto,
@@ -71,6 +72,10 @@ import {
   existingAutocomplete,
   withoutWaveHandles,
 } from './name-organic.util';
+import {
+  collectOtherRaterIds,
+  projectMemberShortlists,
+} from './name-member-shortlists.util';
 import {
   asUserRatings,
   mergeIncomingCandidates,
@@ -530,13 +535,31 @@ export class NameSessionsService {
     });
   }
 
+  async setCandidateFavorite(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    candidateId: string,
+    dto: SetCandidateFavoriteDto,
+  ) {
+    return this.patchUserRating(userId, orgId, projectId, sessionId, candidateId, {
+      favorited: dto.favorited,
+    });
+  }
+
   private async patchUserRating(
     userId: string,
     orgId: string,
     projectId: string,
     sessionId: string,
     candidateId: string,
-    patch: { overall?: number; notes?: string; reaction?: 'passed' | 'liked' | 'loved' | null },
+    patch: {
+      overall?: number;
+      notes?: string;
+      reaction?: 'passed' | 'liked' | 'loved' | null;
+      favorited?: boolean;
+    },
   ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
     const candidates = this.asCandidates(session.candidates);
@@ -1017,7 +1040,21 @@ export class NameSessionsService {
       eligibleCount,
     });
 
-    let candidates = this.asCandidates(session.candidates);
+    const storedCandidates = this.asCandidates(session.candidates);
+    let memberShortlists: ReturnType<typeof projectMemberShortlists> | undefined;
+    if (participationMode === 'team') {
+      const otherIds = collectOtherRaterIds(storedCandidates, userId);
+      const names = otherIds.length
+        ? await this.projectAccess.findPublicUsersByIds(otherIds)
+        : new Map();
+      memberShortlists = projectMemberShortlists(
+        storedCandidates,
+        userId,
+        names,
+      );
+    }
+
+    let candidates = storedCandidates;
     if (decision.redactCandidateIds) {
       const hide = new Set(decision.redactCandidateIds);
       candidates = candidates.map((candidate) =>
@@ -1042,6 +1079,7 @@ export class NameSessionsService {
       productDescription: session.productDescription,
       lanes: session.lanes,
       candidates,
+      ...(memberShortlists ? { memberShortlists } : {}),
       shortlistIds: session.shortlistIds,
       recommendedCandidateId: session.recommendedCandidateId,
       runnerUpCandidateId: session.runnerUpCandidateId,

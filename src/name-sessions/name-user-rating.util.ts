@@ -5,6 +5,7 @@ export type UserRating = {
   notes?: string;
   reaction?: CandidateReaction;
   reactedAt?: string;
+  favorited?: boolean;
   updatedAt: string;
 };
 
@@ -33,12 +34,14 @@ export function asUserRatings(value: unknown): Record<string, UserRating> {
     const notes = row.notes;
     const reaction = row.reaction;
     const reactedAt = row.reactedAt;
+    const favorited = row.favorited;
     const updatedAt = row.updatedAt;
     out[userId] = {
       ...(isOverallScore(overall) ? { overall } : {}),
       ...(typeof notes === 'string' ? { notes } : {}),
       ...(isCandidateReaction(reaction) ? { reaction } : {}),
       ...(typeof reactedAt === 'string' ? { reactedAt } : {}),
+      ...(favorited === true ? { favorited: true } : {}),
       updatedAt: typeof updatedAt === 'string' ? updatedAt : '',
     };
   }
@@ -48,7 +51,12 @@ export function asUserRatings(value: unknown): Record<string, UserRating> {
 export function upsertUserRating(
   map: Record<string, UserRating>,
   userId: string,
-  patch: { overall?: number; notes?: string; reaction?: CandidateReaction | null },
+  patch: {
+    overall?: number;
+    notes?: string;
+    reaction?: CandidateReaction | null;
+    favorited?: boolean;
+  },
   at: string,
 ): Record<string, UserRating> {
   const prev = map[userId] ?? { updatedAt: at };
@@ -64,6 +72,11 @@ export function upsertUserRating(
   } else if (patch.reaction !== undefined) {
     next.reaction = patch.reaction;
     next.reactedAt = at;
+  }
+  if (patch.favorited === false) {
+    delete next.favorited;
+  } else if (patch.favorited === true) {
+    next.favorited = true;
   }
   return {
     ...map,
@@ -91,7 +104,13 @@ export function mergeIncomingCandidates<
     .map((item) => {
       const id = typeof item.id === 'string' && item.id ? item.id : newId();
       const prev = existingById.get(id);
-      const { userRatings: _ignored, ...rest } = item;
+      const {
+        userRatings: _ignored,
+        reaction: _reaction,
+        reactedAt: _reactedAt,
+        favorited: _favorited,
+        ...rest
+      } = item;
       const ratings = rest.ratings;
       const ratingRecord =
         ratings && typeof ratings === 'object' && !Array.isArray(ratings)
@@ -148,6 +167,7 @@ export function projectMyRating<T extends Record<string, unknown>>(
     notes,
     ...(mine?.reaction ? { reaction: mine.reaction } : {}),
     ...(mine?.reactedAt ? { reactedAt: mine.reactedAt } : {}),
+    ...(mine?.favorited ? { favorited: true } : {}),
   } as unknown as T;
 }
 
@@ -229,6 +249,37 @@ if (require.main === module) {
     'now',
   )[0];
   const cleared = upsertUserRating(reacted, alice, { reaction: null }, 'later');
+  const favorited = upsertUserRating(
+    reacted,
+    alice,
+    { favorited: true },
+    'now',
+  );
+  const bobHearted = upsertUserRating(favorited, bob, { favorited: true }, 'now');
+  const aliceHeartView = projectMyRating(
+    { id: 'n5', name: 'Kite', userRatings: bobHearted },
+    alice,
+  ) as { favorited?: boolean };
+  const bobNoHeartView = projectMyRating(
+    { id: 'n5', name: 'Kite', userRatings: favorited },
+    bob,
+  ) as { favorited?: boolean };
+  const unhearted = upsertUserRating(favorited, alice, { favorited: false }, 'later');
+  const mergedHeart = mergeIncomingCandidates(
+    [
+      {
+        id: 'n1',
+        name: 'Nova',
+        userRatings: {
+          [alice]: { favorited: true, reaction: 'loved', updatedAt: 't' },
+        },
+      },
+    ],
+    [{ id: 'n1', name: 'Nova', favorited: true, reaction: 'loved' }],
+    bob,
+    () => 'x',
+    'now',
+  )[0] as { favorited?: boolean; userRatings?: unknown };
   const checks: Array<[string, boolean]> = [
     ['alice sees her score', aliceView.ratings.overall === 9],
     ['alice sees her note', aliceView.notes === 'Alice note'],
@@ -246,6 +297,11 @@ if (require.main === module) {
     ['legacy candidate projects no reaction', !('reaction' in legacyNoMap)],
     ['redacted-like candidate projects no reaction', !('reaction' in redactedLike)],
     ['null reaction clears without dropping score', !cleared[alice]?.reaction && cleared[alice]?.overall === 9 && cleared[alice]?.notes === 'keep'],
+    ['favorite preserves reaction and score', favorited[alice]?.favorited === true && favorited[alice]?.reaction === 'loved' && favorited[alice]?.overall === 9],
+    ['caller only sees own heart', aliceHeartView.favorited === true && !('favorited' in bobNoHeartView)],
+    ['second user heart neither overwrites nor hides the first', bobHearted[alice]?.favorited === true && bobHearted[bob]?.favorited === true && aliceHeartView.favorited === true],
+    ['false favorite clears without dropping reaction', !unhearted[alice]?.favorited && unhearted[alice]?.reaction === 'loved' && unhearted[alice]?.overall === 9],
+    ['incoming GET projection does not become shared favorited', mergedHeart.favorited === undefined && asUserRatings(mergedHeart.userRatings)[alice]?.favorited === true && !asUserRatings(mergedHeart.userRatings)[bob]?.favorited],
   ];
   const failed = checks.filter(([, ok]) => !ok);
   if (failed.length) {

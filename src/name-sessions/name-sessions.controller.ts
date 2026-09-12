@@ -21,6 +21,7 @@ import {
   CrownBatchWinnerDto,
   RecommendNameDto,
   SetBatchFinalistsDto,
+  SetCandidateFavoriteDto,
   SetCandidateReactionDto,
   StartBatchDto,
   StartFeedbackRoundDto,
@@ -219,6 +220,25 @@ export class NameSessionsController {
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.setCandidateReaction(
+      req.user.id,
+      orgId,
+      projectId,
+      sessionId,
+      candidateId,
+      dto,
+    );
+  }
+
+  @Put(':sessionId/candidates/:candidateId/favorite')
+  setCandidateFavorite(
+    @Param('orgId') orgId: string,
+    @Param('projectId') projectId: string,
+    @Param('sessionId') sessionId: string,
+    @Param('candidateId') candidateId: string,
+    @Body() dto: SetCandidateFavoriteDto,
+    @Req() req: AuthRequest,
+  ) {
+    return this.nameSessionsService.setCandidateFavorite(
       req.user.id,
       orgId,
       projectId,

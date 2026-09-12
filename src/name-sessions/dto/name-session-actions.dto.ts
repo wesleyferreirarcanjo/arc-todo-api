@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -182,6 +183,11 @@ export class SetCandidateReactionDto {
   @ValidateIf((_, value) => value !== null)
   @IsIn(['passed', 'liked', 'loved'])
   reaction: 'passed' | 'liked' | 'loved' | null;
+}
+
+export class SetCandidateFavoriteDto {
+  @IsBoolean()
+  favorited: boolean;
 }
 
 export class StartBatchDto {
