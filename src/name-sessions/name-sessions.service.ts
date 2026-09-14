@@ -562,7 +562,9 @@ export class NameSessionsService {
     },
   ) {
     const session = await this.findOne(userId, orgId, projectId, sessionId);
-    const candidates = this.asCandidates(session.candidates);
+    const candidates = this.asCandidates(session.candidates).map((item) => ({
+      ...item,
+    }));
     const target = candidates.find((item) => item.id === candidateId);
     if (!target) {
       throw appError('NAME_CANDIDATE_NOT_FOUND');
@@ -573,6 +575,10 @@ export class NameSessionsService {
       patch,
       new Date().toISOString(),
     );
+    if (patch.reaction === null && target.status === 'rejected') {
+      target.status = 'active';
+      delete target.batchNumber;
+    }
     session.candidates = candidates;
     const saved = await this.sessionRepository.save(session);
     return this.toView(saved, userId);

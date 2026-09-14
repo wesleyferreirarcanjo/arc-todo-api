@@ -106,7 +106,7 @@ export function mergeIncomingCandidates<
       const prev = existingById.get(id);
       const {
         userRatings: _ignored,
-        reaction: _reaction,
+        reaction: incomingReaction,
         reactedAt: _reactedAt,
         favorited: _favorited,
         ...rest
@@ -117,6 +117,14 @@ export function mergeIncomingCandidates<
           ? (ratings as Record<string, unknown>)
           : {};
       let nextRatings = asUserRatings(prev?.userRatings);
+      if (incomingReaction === null) {
+        nextRatings = upsertUserRating(
+          nextRatings,
+          userId,
+          { reaction: null },
+          at,
+        );
+      }
       const overall = ratingRecord.overall;
       const notes = typeof rest.notes === 'string' ? rest.notes : undefined;
       if (isOverallScore(overall) || notes !== undefined) {
@@ -160,7 +168,13 @@ export function projectMyRating<T extends Record<string, unknown>>(
   } else {
     delete nextRatings.overall;
   }
-  const { userRatings: _omit, ...rest } = candidate;
+  const {
+    userRatings: _omit,
+    reaction: _legacyReaction,
+    reactedAt: _legacyReactedAt,
+    favorited: _legacyFavorited,
+    ...rest
+  } = candidate;
   return {
     ...rest,
     ratings: nextRatings,
@@ -280,6 +294,34 @@ if (require.main === module) {
     () => 'x',
     'now',
   )[0] as { favorited?: boolean; userRatings?: unknown };
+  const leftoverCleared = projectMyRating(
+    {
+      id: 'n6',
+      name: 'Ply',
+      reaction: 'liked',
+      reactedAt: 'old',
+      favorited: true,
+      userRatings: { [alice]: { overall: 8, updatedAt: 't' } },
+    },
+    alice,
+  ) as { reaction?: string; favorited?: boolean; ratings?: { overall?: number } };
+  const mergeUndo = mergeIncomingCandidates(
+    [
+      {
+        id: 'n1',
+        name: 'Nova',
+        status: 'rejected',
+        batchNumber: 2,
+        userRatings: {
+          [alice]: { reaction: 'liked', reactedAt: 't', updatedAt: 't' },
+        },
+      },
+    ],
+    [{ id: 'n1', name: 'Nova', status: 'active', reaction: null }],
+    alice,
+    () => 'x',
+    'now',
+  )[0] as { status?: string; userRatings?: unknown };
   const checks: Array<[string, boolean]> = [
     ['alice sees her score', aliceView.ratings.overall === 9],
     ['alice sees her note', aliceView.notes === 'Alice note'],
@@ -302,6 +344,8 @@ if (require.main === module) {
     ['second user heart neither overwrites nor hides the first', bobHearted[alice]?.favorited === true && bobHearted[bob]?.favorited === true && aliceHeartView.favorited === true],
     ['false favorite clears without dropping reaction', !unhearted[alice]?.favorited && unhearted[alice]?.reaction === 'loved' && unhearted[alice]?.overall === 9],
     ['incoming GET projection does not become shared favorited', mergedHeart.favorited === undefined && asUserRatings(mergedHeart.userRatings)[alice]?.favorited === true && !asUserRatings(mergedHeart.userRatings)[bob]?.favorited],
+    ['leftover top-level reaction does not survive a cleared map', !('reaction' in leftoverCleared) && !('favorited' in leftoverCleared) && leftoverCleared.ratings?.overall === 8],
+    ['incoming reaction null clears stored Like without a prior PUT', mergeUndo.status === 'active' && !asUserRatings(mergeUndo.userRatings)[alice]?.reaction],
   ];
   const failed = checks.filter(([, ok]) => !ok);
   if (failed.length) {
