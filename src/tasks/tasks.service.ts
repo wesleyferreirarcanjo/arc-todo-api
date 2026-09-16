@@ -42,8 +42,6 @@ import {
 import { resolveCreateAssigneeId } from './task-assignee.util';
 import {
   computeSubtaskProgress,
-  shouldCompleteParent,
-  shouldReopenParent,
   SubtaskProgress,
 } from './task-hierarchy.util';
 import {
@@ -618,16 +616,12 @@ export class TasksService {
       await this.historyRepository.save(entries);
     }
 
-    if (dto.status !== undefined) {
-      if (task.parentTaskId) {
-        await this.syncParentStatusFromSubtask(
-          task.parentTaskId,
-          previousStatus,
-          dto.status,
-        );
-      } else if (dto.status === TaskStatus.DONE) {
-        await this.completeAllSubtasks(taskId);
-      }
+    if (
+      dto.status !== undefined &&
+      !task.parentTaskId &&
+      dto.status === TaskStatus.DONE
+    ) {
+      await this.completeAllSubtasks(taskId);
     }
 
     const [enriched] = await this.enrichTaskResponses([saved], {
@@ -837,43 +831,6 @@ export class TasksService {
       subtask.status = TaskStatus.DONE;
     }
     await this.tasksRepository.save(openSubtasks);
-  }
-
-  private async syncParentStatusFromSubtask(
-    parentTaskId: string,
-    previousSubtaskStatus: TaskStatus,
-    nextSubtaskStatus: TaskStatus,
-  ): Promise<void> {
-    const parent = await this.tasksRepository.findOne({
-      where: { id: parentTaskId },
-    });
-    if (!parent) {
-      return;
-    }
-
-    const siblings = await this.tasksRepository.find({
-      where: { parentTaskId },
-    });
-
-    if (shouldCompleteParent(siblings)) {
-      if (parent.status !== TaskStatus.DONE) {
-        const previousParentStatus = parent.status;
-        parent.status = TaskStatus.DONE;
-        await this.tasksRepository.save(parent);
-        if (statusLeftQaTest(previousParentStatus, TaskStatus.DONE)) {
-          await this.qaQueueService.removeTaskFromAllQueues(parent.id);
-        }
-      }
-      return;
-    }
-
-    if (
-      shouldReopenParent(previousSubtaskStatus, nextSubtaskStatus) &&
-      parent.status === TaskStatus.DONE
-    ) {
-      parent.status = TaskStatus.IN_PROGRESS;
-      await this.tasksRepository.save(parent);
-    }
   }
 
   private toTaskResponse(

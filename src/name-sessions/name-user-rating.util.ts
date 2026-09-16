@@ -94,7 +94,7 @@ export function mergeIncomingCandidates<
   at: string,
 ): T[] {
   const existingById = new Map(stored.map((item) => [item.id, item]));
-  return incoming
+  const mapped = incoming
     .filter(
       (item): item is T =>
         Boolean(item) &&
@@ -146,6 +146,16 @@ export function mergeIncomingCandidates<
       } as unknown as T;
     })
     .filter((item) => item.name);
+  // Rejected undo PATCHes one existing id. Keep other stored names (and their
+  // Like/Love) instead of treating a subset as a full GET-shaped rewrite.
+  if (
+    mapped.length > 0 &&
+    mapped.every((item) => existingById.has(item.id))
+  ) {
+    const incomingById = new Map(mapped.map((item) => [item.id, item]));
+    return stored.map((item) => incomingById.get(item.id) ?? item);
+  }
+  return mapped;
 }
 
 export function projectMyRating<T extends Record<string, unknown>>(
@@ -321,7 +331,42 @@ if (require.main === module) {
     alice,
     () => 'x',
     'now',
-  )[0] as { status?: string; userRatings?: unknown };
+  )[0] as { status?: string; batchNumber?: number; userRatings?: unknown };
+  const restoreOnly = mergeIncomingCandidates(
+    [
+      {
+        id: 'liked',
+        name: 'Halo',
+        status: 'active',
+        batchNumber: 1,
+        userRatings: {
+          [alice]: { reaction: 'loved', reactedAt: 't', updatedAt: 't' },
+        },
+      },
+      {
+        id: 'rift',
+        name: 'Rift',
+        status: 'rejected',
+        batchNumber: 1,
+        userRatings: {
+          [alice]: { reaction: 'passed', reactedAt: 't', updatedAt: 't' },
+        },
+      },
+    ],
+    [{ id: 'rift', name: 'Rift', status: 'active', reaction: null }],
+    alice,
+    () => 'x',
+    'now',
+  );
+  const keptLike = restoreOnly.find((item) => item.id === 'liked') as {
+    batchNumber?: number;
+    userRatings?: unknown;
+  };
+  const restoredPass = restoreOnly.find((item) => item.id === 'rift') as {
+    status?: string;
+    batchNumber?: number;
+    userRatings?: unknown;
+  };
   const checks: Array<[string, boolean]> = [
     ['alice sees her score', aliceView.ratings.overall === 9],
     ['alice sees her note', aliceView.notes === 'Alice note'],
@@ -345,7 +390,8 @@ if (require.main === module) {
     ['false favorite clears without dropping reaction', !unhearted[alice]?.favorited && unhearted[alice]?.reaction === 'loved' && unhearted[alice]?.overall === 9],
     ['incoming GET projection does not become shared favorited', mergedHeart.favorited === undefined && asUserRatings(mergedHeart.userRatings)[alice]?.favorited === true && !asUserRatings(mergedHeart.userRatings)[bob]?.favorited],
     ['leftover top-level reaction does not survive a cleared map', !('reaction' in leftoverCleared) && !('favorited' in leftoverCleared) && leftoverCleared.ratings?.overall === 8],
-    ['incoming reaction null clears stored Like without a prior PUT', mergeUndo.status === 'active' && !asUserRatings(mergeUndo.userRatings)[alice]?.reaction],
+    ['incoming reaction null clears stored Like without a prior PUT', mergeUndo.status === 'active' && !asUserRatings(mergeUndo.userRatings)[alice]?.reaction && mergeUndo.batchNumber === undefined],
+    ['restore overlay keeps other names Like/Love and batch', restoreOnly.length === 2 && asUserRatings(keptLike.userRatings)[alice]?.reaction === 'loved' && keptLike.batchNumber === 1 && restoredPass.status === 'active' && !asUserRatings(restoredPass.userRatings)[alice]?.reaction && restoredPass.batchNumber === undefined],
   ];
   const failed = checks.filter(([, ok]) => !ok);
   if (failed.length) {

@@ -1050,6 +1050,13 @@ export class NameSessionsService {
     let memberShortlists: ReturnType<typeof projectMemberShortlists> | undefined;
     if (participationMode === 'team') {
       const otherIds = collectOtherRaterIds(storedCandidates, userId);
+      if (
+        session.createdById &&
+        session.createdById !== userId &&
+        !otherIds.includes(session.createdById)
+      ) {
+        otherIds.push(session.createdById);
+      }
       const names = otherIds.length
         ? await this.projectAccess.findPublicUsersByIds(otherIds)
         : new Map();
@@ -1057,6 +1064,7 @@ export class NameSessionsService {
         storedCandidates,
         userId,
         names,
+        session.createdById,
       );
     }
 
@@ -1085,7 +1093,9 @@ export class NameSessionsService {
       productDescription: session.productDescription,
       lanes: session.lanes,
       candidates,
-      ...(memberShortlists ? { memberShortlists } : {}),
+      ...(participationMode === 'team'
+        ? { memberShortlists: memberShortlists ?? [] }
+        : {}),
       shortlistIds: session.shortlistIds,
       recommendedCandidateId: session.recommendedCandidateId,
       runnerUpCandidateId: session.runnerUpCandidateId,
