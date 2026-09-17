@@ -245,6 +245,31 @@ export class NameSessionsService {
     return this.toView(session, userId);
   }
 
+  // Serializes read-modify-write on one session row so concurrent writes (a
+  // reaction PUT vs a candidates PATCH, or two members) cannot clobber each
+  // other's committed changes. Slow external probes must run before locking.
+  private async withSessionLock<T>(
+    userId: string,
+    orgId: string,
+    projectId: string,
+    sessionId: string,
+    work: (session: ProjectNameSession) => Promise<T> | T,
+  ): Promise<T> {
+    await this.projectsService.findOne(userId, orgId, projectId);
+    return this.sessionRepository.manager.transaction(async (manager) => {
+      const session = await manager.findOne(ProjectNameSession, {
+        where: { id: sessionId, projectId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!session) {
+        throw appError('NAME_SESSION_NOT_FOUND');
+      }
+      const result = await work(session);
+      await manager.save(session);
+      return result;
+    });
+  }
+
   async update(
     userId: string,
     orgId: string,
@@ -252,60 +277,66 @@ export class NameSessionsService {
     sessionId: string,
     dto: UpdateNameSessionDto,
   ): Promise<unknown> {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    if (dto.title !== undefined) {
-      session.title = this.requireTitle(dto.title);
-    }
-    if (dto.brief !== undefined) {
-      session.brief = dto.brief;
-    }
-    if (dto.namingGoal !== undefined) {
-      if (dto.namingGoal === null || dto.namingGoal === '') {
-        session.namingGoal = null;
-      } else if (!isNamingGoal(dto.namingGoal)) {
-        throw appError('NAME_INVALID_GOAL');
-      } else {
-        session.namingGoal = dto.namingGoal;
-      }
-    }
-    if (dto.participationMode !== undefined) {
-      await this.assertCanManageFeedback(userId, session);
-      const parsed = validateParticipationSwitch({
-        stored: session.participationMode,
-        rounds: session.feedbackRounds,
-        next: dto.participationMode,
-      });
-      if (!parsed.ok) {
-        throw appError(participationSwitchAppError(parsed.error));
-      }
-      session.participationMode = parsed.mode;
-    }
-    if (dto.productDescription !== undefined) {
-      session.productDescription = dto.productDescription;
-    }
-    if (dto.lanes !== undefined) {
-      session.lanes = dto.lanes;
-    }
-    if (dto.candidates !== undefined) {
-      session.candidates = mergeIncomingCandidates(
-        this.asCandidates(session.candidates),
-        dto.candidates,
-        userId,
-        () => randomUUID(),
-        new Date().toISOString(),
-      );
-    }
-    if (dto.shortlistIds !== undefined) {
-      session.shortlistIds = dto.shortlistIds.slice(0, 5);
-    }
-    if (dto.runnerUpCandidateId !== undefined) {
-      session.runnerUpCandidateId = dto.runnerUpCandidateId;
-    }
-    if (dto.decisionNote !== undefined) {
-      session.decisionNote = dto.decisionNote;
-    }
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      async (session) => {
+        if (dto.title !== undefined) {
+          session.title = this.requireTitle(dto.title);
+        }
+        if (dto.brief !== undefined) {
+          session.brief = dto.brief;
+        }
+        if (dto.namingGoal !== undefined) {
+          if (dto.namingGoal === null || dto.namingGoal === '') {
+            session.namingGoal = null;
+          } else if (!isNamingGoal(dto.namingGoal)) {
+            throw appError('NAME_INVALID_GOAL');
+          } else {
+            session.namingGoal = dto.namingGoal;
+          }
+        }
+        if (dto.participationMode !== undefined) {
+          await this.assertCanManageFeedback(userId, session);
+          const parsed = validateParticipationSwitch({
+            stored: session.participationMode,
+            rounds: session.feedbackRounds,
+            next: dto.participationMode,
+          });
+          if (!parsed.ok) {
+            throw appError(participationSwitchAppError(parsed.error));
+          }
+          session.participationMode = parsed.mode;
+        }
+        if (dto.productDescription !== undefined) {
+          session.productDescription = dto.productDescription;
+        }
+        if (dto.lanes !== undefined) {
+          session.lanes = dto.lanes;
+        }
+        if (dto.candidates !== undefined) {
+          session.candidates = mergeIncomingCandidates(
+            this.asCandidates(session.candidates),
+            dto.candidates,
+            userId,
+            () => randomUUID(),
+            new Date().toISOString(),
+          );
+        }
+        if (dto.shortlistIds !== undefined) {
+          session.shortlistIds = dto.shortlistIds.slice(0, 5);
+        }
+        if (dto.runnerUpCandidateId !== undefined) {
+          session.runnerUpCandidateId = dto.runnerUpCandidateId;
+        }
+        if (dto.decisionNote !== undefined) {
+          session.decisionNote = dto.decisionNote;
+        }
+        return this.toView(session, userId);
+      },
+    );
   }
 
   async remove(
@@ -326,26 +357,33 @@ export class NameSessionsService {
     dto: CheckNameDto,
     source: CandidateSource = 'human',
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    await this.findOne(userId, orgId, projectId, sessionId);
     const name = dto.name.trim();
     if (!name) {
       throw appError('NAME_REQUIRED');
     }
     const evidence = await this.collectCheckEvidence(name);
-    const candidate = this.upsertCandidate(session, {
-      name,
-      source,
-      domainChecks: evidence.domainChecks,
-      domainHistory: evidence.domainHistory,
-      takenEndingCount: evidence.takenEndingCount,
-      comIncumbency: evidence.comIncumbency,
-      organicCompetition: evidence.organicCompetition,
-      googleQueryUrl: googleQueryUrl(name),
-    });
-    await this.sessionRepository.save(session);
-    return this.exposeCandidate(
-      withoutWaveHandles(session.shortlistIds, candidate),
+    return this.withSessionLock(
       userId,
+      orgId,
+      projectId,
+      sessionId,
+      (session) => {
+        const candidate = this.upsertCandidate(session, {
+          name,
+          source,
+          domainChecks: evidence.domainChecks,
+          domainHistory: evidence.domainHistory,
+          takenEndingCount: evidence.takenEndingCount,
+          comIncumbency: evidence.comIncumbency,
+          organicCompetition: evidence.organicCompetition,
+          googleQueryUrl: googleQueryUrl(name),
+        });
+        return this.exposeCandidate(
+          withoutWaveHandles(session.shortlistIds, candidate),
+          userId,
+        );
+      },
     );
   }
 
@@ -357,7 +395,7 @@ export class NameSessionsService {
     dto: CheckNamesBatchDto,
     source: CandidateSource = 'human',
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    await this.findOne(userId, orgId, projectId, sessionId);
     const names = [
       ...new Set(
         dto.names
@@ -373,27 +411,34 @@ export class NameSessionsService {
       CHECK_BATCH_CONCURRENCY,
       async (name) => ({ name, evidence: await this.collectCheckEvidence(name) }),
     );
-    const candidates = evidenceByName.map(({ name, evidence }) =>
-      this.upsertCandidate(session, {
-        name,
-        source,
-        domainChecks: evidence.domainChecks,
-        domainHistory: evidence.domainHistory,
-        takenEndingCount: evidence.takenEndingCount,
-        comIncumbency: evidence.comIncumbency,
-        organicCompetition: evidence.organicCompetition,
-        googleQueryUrl: googleQueryUrl(name),
-      }),
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      (session) => {
+        const candidates = evidenceByName.map(({ name, evidence }) =>
+          this.upsertCandidate(session, {
+            name,
+            source,
+            domainChecks: evidence.domainChecks,
+            domainHistory: evidence.domainHistory,
+            takenEndingCount: evidence.takenEndingCount,
+            comIncumbency: evidence.comIncumbency,
+            organicCompetition: evidence.organicCompetition,
+            googleQueryUrl: googleQueryUrl(name),
+          }),
+        );
+        return {
+          candidates: candidates.map((candidate) =>
+            this.exposeCandidate(
+              withoutWaveHandles(session.shortlistIds, candidate),
+              userId,
+            ),
+          ),
+        };
+      },
     );
-    await this.sessionRepository.save(session);
-    return {
-      candidates: candidates.map((candidate) =>
-        this.exposeCandidate(
-          withoutWaveHandles(session.shortlistIds, candidate),
-          userId,
-        ),
-      ),
-    };
   }
 
   async checkHistory(
@@ -435,17 +480,37 @@ export class NameSessionsService {
       );
     }
     const domainHistory = await this.nameHistoryService.checkHistory(hosts);
-    existing.domainHistory = domainHistory;
-    existing.organicCompetition = shapeOrganicCompetition(
-      domainChecks,
-      domainHistory,
-      existingAutocomplete(existing.organicCompetition),
-    );
-    session.candidates = candidates;
-    await this.sessionRepository.save(session);
-    return this.exposeCandidate(
-      withoutWaveHandles(session.shortlistIds, existing),
+    return this.withSessionLock(
       userId,
+      orgId,
+      projectId,
+      sessionId,
+      (session) => {
+        const storedCandidates = this.asCandidates(session.candidates);
+        const target = storedCandidates.find(
+          (item) => normalizeNameKey(item.name) === normalizeNameKey(name),
+        );
+        if (!target) {
+          throw appError('NAME_CHECK_FIRST');
+        }
+        target.domainHistory = domainHistory;
+        target.organicCompetition = shapeOrganicCompetition(
+          Array.isArray(target.domainChecks)
+            ? (target.domainChecks as Array<{
+                host?: string;
+                tld?: string;
+                availability?: string;
+              }>)
+            : [],
+          domainHistory,
+          existingAutocomplete(target.organicCompetition),
+        );
+        session.candidates = storedCandidates;
+        return this.exposeCandidate(
+          withoutWaveHandles(session.shortlistIds, target),
+          userId,
+        );
+      },
     );
   }
 
@@ -471,12 +536,33 @@ export class NameSessionsService {
     if (!shortlistIds.includes(existing.id)) {
       throw appError('NAME_HANDLES_NOT_KEPT');
     }
-    existing.handleChecks = await this.nameOrganicService.probeHandles(
+    const handleChecks = await this.nameOrganicService.probeHandles(
       existing.name,
     );
-    session.candidates = candidates;
-    await this.sessionRepository.save(session);
-    return this.exposeCandidate(existing, userId);
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      (session) => {
+        const storedCandidates = this.asCandidates(session.candidates);
+        const target = storedCandidates.find(
+          (item) => normalizeNameKey(item.name) === normalizeNameKey(name),
+        );
+        if (!target) {
+          throw appError('NAME_CANDIDATE_NOT_FOUND');
+        }
+        const lockedShortlist = Array.isArray(session.shortlistIds)
+          ? session.shortlistIds
+          : [];
+        if (!lockedShortlist.includes(target.id)) {
+          throw appError('NAME_HANDLES_NOT_KEPT');
+        }
+        target.handleChecks = handleChecks;
+        session.candidates = storedCandidates;
+        return this.exposeCandidate(target, userId);
+      },
+    );
   }
 
   async addCandidates(
@@ -486,26 +572,32 @@ export class NameSessionsService {
     sessionId: string,
     dto: AddNameCandidatesDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
     const source = dto.source ?? 'human';
-    const added: CandidateRecord[] = [];
-    for (const item of dto.candidates) {
-      added.push(
-        this.upsertCandidate(session, {
-          name: item.name,
-          source,
-          family: item.family,
-          laneId: item.laneId,
-          rationale: item.rationale,
-        }),
-      );
-    }
-    await this.sessionRepository.save(session);
-    return {
-      candidates: added.map((candidate) =>
-        this.exposeCandidate(candidate, userId),
-      ),
-    };
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      (session) => {
+        const added: CandidateRecord[] = [];
+        for (const item of dto.candidates) {
+          added.push(
+            this.upsertCandidate(session, {
+              name: item.name,
+              source,
+              family: item.family,
+              laneId: item.laneId,
+              rationale: item.rationale,
+            }),
+          );
+        }
+        return {
+          candidates: added.map((candidate) =>
+            this.exposeCandidate(candidate, userId),
+          ),
+        };
+      },
+    );
   }
 
   async upsertCandidateRating(
@@ -561,27 +653,35 @@ export class NameSessionsService {
       favorited?: boolean;
     },
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    const candidates = this.asCandidates(session.candidates).map((item) => ({
-      ...item,
-    }));
-    const target = candidates.find((item) => item.id === candidateId);
-    if (!target) {
-      throw appError('NAME_CANDIDATE_NOT_FOUND');
-    }
-    target.userRatings = upsertUserRating(
-      asUserRatings(target.userRatings),
+    return this.withSessionLock(
       userId,
-      patch,
-      new Date().toISOString(),
+      orgId,
+      projectId,
+      sessionId,
+      (session) => {
+        const candidates = this.asCandidates(session.candidates).map(
+          (item) => ({
+            ...item,
+          }),
+        );
+        const target = candidates.find((item) => item.id === candidateId);
+        if (!target) {
+          throw appError('NAME_CANDIDATE_NOT_FOUND');
+        }
+        target.userRatings = upsertUserRating(
+          asUserRatings(target.userRatings),
+          userId,
+          patch,
+          new Date().toISOString(),
+        );
+        if (patch.reaction === null && target.status === 'rejected') {
+          target.status = 'active';
+          delete target.batchNumber;
+        }
+        session.candidates = candidates;
+        return this.toView(session, userId);
+      },
     );
-    if (patch.reaction === null && target.status === 'rejected') {
-      target.status = 'active';
-      delete target.batchNumber;
-    }
-    session.candidates = candidates;
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
   }
 
   async startBatch(
@@ -591,31 +691,37 @@ export class NameSessionsService {
     sessionId: string,
     dto: StartBatchDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    await this.assertCanManageFeedback(userId, session);
-    const batches = asBatches(session.batches);
-    if (hasOpenBatch(batches)) {
-      throw appError('NAME_BATCH_OPEN');
-    }
-    const candidates = this.asCandidates(session.candidates);
-    const parsed = validateNewBatch(
-      dto.candidateIds,
-      candidates,
-      session.recommendedCandidateId,
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      async (session) => {
+        await this.assertCanManageFeedback(userId, session);
+        const batches = asBatches(session.batches);
+        if (hasOpenBatch(batches)) {
+          throw appError('NAME_BATCH_OPEN');
+        }
+        const candidates = this.asCandidates(session.candidates);
+        const parsed = validateNewBatch(
+          dto.candidateIds,
+          candidates,
+          session.recommendedCandidateId,
+        );
+        if (!parsed.ok) {
+          throw appError(batchValidationAppError(parsed.error));
+        }
+        stampOpenBatch(
+          candidates,
+          batches,
+          parsed,
+          new Date().toISOString(),
+        );
+        session.candidates = candidates;
+        session.batches = batches;
+        return this.toView(session, userId);
+      },
     );
-    if (!parsed.ok) {
-      throw appError(batchValidationAppError(parsed.error));
-    }
-    stampOpenBatch(
-      candidates,
-      batches,
-      parsed,
-      new Date().toISOString(),
-    );
-    session.candidates = candidates;
-    session.batches = batches;
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
   }
 
   async crownBatchWinner(
@@ -626,34 +732,40 @@ export class NameSessionsService {
     batchNumber: number,
     dto: CrownBatchWinnerDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    await this.assertCanManageFeedback(userId, session);
-    const batches = asBatches(session.batches);
-    const batch = batches.find((item) => item.number === batchNumber);
-    if (!batch) {
-      throw appError('NAME_BATCH_NOT_FOUND');
-    }
-    const crown = canCrown(batch, batches);
-    if (!crown.ok) {
-      throw appError(
-        crown.error === 'decided' ? 'NAME_BATCH_DECIDED' : 'NAME_BATCH_OPEN',
-      );
-    }
-    if (!batch.candidateIds.includes(dto.candidateId)) {
-      throw appError('NAME_BATCH_WINNER');
-    }
-    await this.assertWinnerReason(
-      session,
-      dto.candidateId,
-      dto.decisionNote,
-      batch.candidateIds,
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      async (session) => {
+        await this.assertCanManageFeedback(userId, session);
+        const batches = asBatches(session.batches);
+        const batch = batches.find((item) => item.number === batchNumber);
+        if (!batch) {
+          throw appError('NAME_BATCH_NOT_FOUND');
+        }
+        const crown = canCrown(batch, batches);
+        if (!crown.ok) {
+          throw appError(
+            crown.error === 'decided' ? 'NAME_BATCH_DECIDED' : 'NAME_BATCH_OPEN',
+          );
+        }
+        if (!batch.candidateIds.includes(dto.candidateId)) {
+          throw appError('NAME_BATCH_WINNER');
+        }
+        await this.assertWinnerReason(
+          session,
+          dto.candidateId,
+          dto.decisionNote,
+          batch.candidateIds,
+        );
+        const now = new Date().toISOString();
+        decideBatch(batch, dto.candidateId, dto.decisionNote, now);
+        session.batches = batches;
+        this.applyRecommend(session, dto);
+        return this.toView(session, userId);
+      },
     );
-    const now = new Date().toISOString();
-    decideBatch(batch, dto.candidateId, dto.decisionNote, now);
-    session.batches = batches;
-    this.applyRecommend(session, dto);
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
   }
 
   async recommend(
@@ -663,16 +775,22 @@ export class NameSessionsService {
     sessionId: string,
     dto: RecommendNameDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    await this.assertCanManageFeedback(userId, session);
-    await this.assertWinnerReason(
-      session,
-      dto.candidateId,
-      dto.decisionNote,
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      async (session) => {
+        await this.assertCanManageFeedback(userId, session);
+        await this.assertWinnerReason(
+          session,
+          dto.candidateId,
+          dto.decisionNote,
+        );
+        this.applyRecommend(session, dto);
+        return this.toView(session, userId);
+      },
     );
-    this.applyRecommend(session, dto);
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
   }
 
   private applyRecommend(
@@ -729,28 +847,34 @@ export class NameSessionsService {
     batchNumber: number,
     dto: SetBatchFinalistsDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    await this.assertCanManageFeedback(userId, session);
-    const batches = asBatches(session.batches);
-    const batch = batches.find((item) => item.number === batchNumber);
-    if (!batch) {
-      throw appError('NAME_BATCH_NOT_FOUND');
-    }
-    const roundOpen = asRounds(session.feedbackRounds).some(
-      (round) => round.status === 'open',
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      async (session) => {
+        await this.assertCanManageFeedback(userId, session);
+        const batches = asBatches(session.batches);
+        const batch = batches.find((item) => item.number === batchNumber);
+        if (!batch) {
+          throw appError('NAME_BATCH_NOT_FOUND');
+        }
+        const roundOpen = asRounds(session.feedbackRounds).some(
+          (round) => round.status === 'open',
+        );
+        const parsed = validateFinalists(
+          dto.candidateIds,
+          batch.candidateIds,
+          roundOpen,
+        );
+        if (!parsed.ok) {
+          throw appError(finalistAppError(parsed.error));
+        }
+        batch.finalistCandidateIds = parsed.ids;
+        session.batches = batches;
+        return this.toView(session, userId);
+      },
     );
-    const parsed = validateFinalists(
-      dto.candidateIds,
-      batch.candidateIds,
-      roundOpen,
-    );
-    if (!parsed.ok) {
-      throw appError(finalistAppError(parsed.error));
-    }
-    batch.finalistCandidateIds = parsed.ids;
-    session.batches = batches;
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
   }
 
   async startFeedbackRound(
@@ -760,39 +884,45 @@ export class NameSessionsService {
     sessionId: string,
     dto: StartFeedbackRoundDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    await this.assertCanManageFeedback(userId, session);
-    const mode = resolveParticipationMode(
-      session.participationMode,
-      session.feedbackRounds,
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      async (session) => {
+        await this.assertCanManageFeedback(userId, session);
+        const mode = resolveParticipationMode(
+          session.participationMode,
+          session.feedbackRounds,
+        );
+        if (!canStartFeedbackRound(mode)) {
+          throw appError('NAME_PARTICIPATION_SOLO');
+        }
+        const ids = [...new Set(dto.candidateIds)];
+        if (ids.length < 2 || ids.length > 5) {
+          throw appError('NAME_ROUND_SIZE');
+        }
+        const candidates = this.asCandidates(session.candidates);
+        for (const id of ids) {
+          if (!candidates.some((item) => item.id === id)) {
+            throw appError('NAME_ROUND_UNKNOWN');
+          }
+        }
+        const rounds = asRounds(session.feedbackRounds);
+        if (rounds.some((round) => round.status === 'open')) {
+          throw appError('NAME_ROUND_OPEN');
+        }
+        rounds.push({
+          id: randomUUID(),
+          candidateIds: ids,
+          status: 'open',
+          createdAt: new Date().toISOString(),
+          closedAt: null,
+        });
+        session.feedbackRounds = rounds;
+        return this.toView(session, userId);
+      },
     );
-    if (!canStartFeedbackRound(mode)) {
-      throw appError('NAME_PARTICIPATION_SOLO');
-    }
-    const ids = [...new Set(dto.candidateIds)];
-    if (ids.length < 2 || ids.length > 5) {
-      throw appError('NAME_ROUND_SIZE');
-    }
-    const candidates = this.asCandidates(session.candidates);
-    for (const id of ids) {
-      if (!candidates.some((item) => item.id === id)) {
-        throw appError('NAME_ROUND_UNKNOWN');
-      }
-    }
-    const rounds = asRounds(session.feedbackRounds);
-    if (rounds.some((round) => round.status === 'open')) {
-      throw appError('NAME_ROUND_OPEN');
-    }
-    rounds.push({
-      id: randomUUID(),
-      candidateIds: ids,
-      status: 'open',
-      createdAt: new Date().toISOString(),
-      closedAt: null,
-    });
-    session.feedbackRounds = rounds;
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
   }
 
   async upsertFeedback(
@@ -858,18 +988,24 @@ export class NameSessionsService {
     sessionId: string,
     roundId: string,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
-    await this.assertCanManageFeedback(userId, session);
-    const rounds = asRounds(session.feedbackRounds);
-    const round = rounds.find((item) => item.id === roundId);
-    if (!round) {
-      throw appError('NAME_ROUND_NOT_FOUND');
-    }
-    round.status = 'closed';
-    round.closedAt = new Date().toISOString();
-    session.feedbackRounds = rounds;
-    const saved = await this.sessionRepository.save(session);
-    return this.toView(saved, userId);
+    return this.withSessionLock(
+      userId,
+      orgId,
+      projectId,
+      sessionId,
+      async (session) => {
+        await this.assertCanManageFeedback(userId, session);
+        const rounds = asRounds(session.feedbackRounds);
+        const round = rounds.find((item) => item.id === roundId);
+        if (!round) {
+          throw appError('NAME_ROUND_NOT_FOUND');
+        }
+        round.status = 'closed';
+        round.closedAt = new Date().toISOString();
+        session.feedbackRounds = rounds;
+        return this.toView(session, userId);
+      },
+    );
   }
 
   private async assertCanManageFeedback(

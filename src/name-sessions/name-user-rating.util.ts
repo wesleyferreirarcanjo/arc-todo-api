@@ -367,6 +367,22 @@ if (require.main === module) {
     batchNumber?: number;
     userRatings?: unknown;
   };
+  const racedPatch = mergeIncomingCandidates(
+    [
+      {
+        id: 'n1',
+        name: 'Nova',
+        userRatings: {
+          [alice]: { reaction: 'loved', reactedAt: 't2', updatedAt: 't2' },
+        },
+      },
+    ],
+    // PATCH body captured before Alice's Love committed carries no reaction.
+    [{ id: 'n1', name: 'Nova' }],
+    alice,
+    () => 'x',
+    'now',
+  )[0];
   const checks: Array<[string, boolean]> = [
     ['alice sees her score', aliceView.ratings.overall === 9],
     ['alice sees her note', aliceView.notes === 'Alice note'],
@@ -392,6 +408,7 @@ if (require.main === module) {
     ['leftover top-level reaction does not survive a cleared map', !('reaction' in leftoverCleared) && !('favorited' in leftoverCleared) && leftoverCleared.ratings?.overall === 8],
     ['incoming reaction null clears stored Like without a prior PUT', mergeUndo.status === 'active' && !asUserRatings(mergeUndo.userRatings)[alice]?.reaction && mergeUndo.batchNumber === undefined],
     ['restore overlay keeps other names Like/Love and batch', restoreOnly.length === 2 && asUserRatings(keptLike.userRatings)[alice]?.reaction === 'loved' && keptLike.batchNumber === 1 && restoredPass.status === 'active' && !asUserRatings(restoredPass.userRatings)[alice]?.reaction && restoredPass.batchNumber === undefined],
+    ['stale PATCH body cannot drop a committed reaction', asUserRatings(racedPatch.userRatings)[alice]?.reaction === 'loved'],
   ];
   const failed = checks.filter(([, ok]) => !ok);
   if (failed.length) {
