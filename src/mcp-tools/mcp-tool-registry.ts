@@ -50,6 +50,32 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     sortOrder: 11,
   },
   {
+    key: 'create_organization',
+    group: 'context',
+    displayName: 'Create organization',
+    description:
+      'Create an organization. If the caller already has one with the same trimmed name, return that row instead of inserting a duplicate.',
+    defaultEnabled: true,
+    sortOrder: 15,
+  },
+  {
+    key: 'update_organization',
+    group: 'context',
+    displayName: 'Update organization',
+    description: 'Update an organization name, slug, or color. Admin-only.',
+    defaultEnabled: true,
+    sortOrder: 15,
+  },
+  {
+    key: 'delete_organization',
+    group: 'context',
+    displayName: 'Delete organization',
+    description:
+      'Delete an organization. This will remove the organization and its projects.',
+    defaultEnabled: true,
+    sortOrder: 15,
+  },
+  {
     key: 'list_organization_members',
     group: 'context',
     displayName: 'List organization members',
@@ -85,7 +111,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     key: 'create_project',
     group: 'context',
     displayName: 'Create project',
-    description: 'Create a project in an organization.',
+    description: 'Create a project in an organization. If the caller already has one with the same trimmed name in that organization, return that row instead of inserting a duplicate.',
     defaultEnabled: true,
     sortOrder: 17,
   },
@@ -96,6 +122,23 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     description: 'Fetch one project by organization and project ID.',
     defaultEnabled: true,
     sortOrder: 18,
+  },
+  {
+    key: 'update_project',
+    group: 'context',
+    displayName: 'Update project',
+    description: 'Update a project name, description, or color. Admin-only.',
+    defaultEnabled: true,
+    sortOrder: 19,
+  },
+  {
+    key: 'delete_project',
+    group: 'context',
+    displayName: 'Delete project',
+    description:
+      'Delete a project from an organization. This will remove the project and its tasks.',
+    defaultEnabled: true,
+    sortOrder: 19,
   },
   {
     key: 'list_persons',

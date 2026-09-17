@@ -115,6 +115,155 @@
     "type": "object",
     "additionalProperties": false
   },
+  "create_organization": {
+    "properties": {
+      "name": {
+        "description": "Organization name",
+        "title": "Name",
+        "type": "string"
+      },
+      "slug": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional lowercase slug with hyphens",
+        "title": "Slug"
+      },
+      "color": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional hex color (e.g. #737373)",
+        "title": "Color"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "CreateOrganizationInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_organization": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Organization name",
+        "title": "Name"
+      },
+      "slug": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional lowercase slug with hyphens",
+        "title": "Slug"
+      },
+      "color": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional hex color (e.g. #737373)",
+        "title": "Color"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id"
+    ],
+    "title": "UpdateOrganizationInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "delete_organization": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id"
+    ],
+    "title": "GetOrganizationInput",
+    "type": "object",
+    "additionalProperties": false
+  },
   "list_organization_members": {
     "properties": {
       "organization_id": {
@@ -328,6 +477,113 @@
     "additionalProperties": false
   },
   "get_project": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
+    "title": "GetProjectInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "update_project": {
+    "properties": {
+      "organization_id": {
+        "description": "Organization UUID",
+        "title": "Organization Id",
+        "type": "string"
+      },
+      "project_id": {
+        "description": "Project UUID",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project name",
+        "title": "Name"
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Project description",
+        "title": "Description"
+      },
+      "color": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional hex color (e.g. #8778a3)",
+        "title": "Color"
+      },
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "required": [
+      "organization_id",
+      "project_id"
+    ],
+    "title": "UpdateProjectInput",
+    "type": "object",
+    "additionalProperties": false
+  },
+  "delete_project": {
     "properties": {
       "organization_id": {
         "description": "Organization UUID",
