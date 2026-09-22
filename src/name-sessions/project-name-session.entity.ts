@@ -15,8 +15,8 @@ export class ProjectNameSession {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'project_id' })
-  projectId: string;
+  @Column({ name: 'project_id', type: 'uuid', nullable: true })
+  projectId: string | null;
 
   @Column()
   title: string;
@@ -60,9 +60,9 @@ export class ProjectNameSession {
   @Column({ name: 'created_by_id' })
   createdById: string;
 
-  @ManyToOne(() => Project, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Project, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'project_id' })
-  project: Project;
+  project: Project | null;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'created_by_id' })

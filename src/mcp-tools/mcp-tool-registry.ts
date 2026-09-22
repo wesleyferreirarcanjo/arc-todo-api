@@ -476,7 +476,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'names',
     displayName: 'List project name sessions',
     description:
-      'List naming sessions for a project (id, title, recommendedName, candidateCount, timestamps; omits bulky candidates).',
+      'List naming sessions (id, title, recommendedName, candidateCount, timestamps; omits bulky candidates). Not scoped to a project.',
     defaultEnabled: true,
     sortOrder: 70,
   },

@@ -4,7 +4,6 @@ import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { appError } from '../errors/app-errors';
 import { ProjectAccessService } from '../projects/project-access.service';
-import { ProjectsService } from '../projects/projects.service';
 import { CreateNameSessionDto } from './dto/create-name-session.dto';
 import {
   AddNameCandidatesDto,
@@ -109,7 +108,6 @@ export class NameSessionsService {
     private readonly sessionRepository: Repository<ProjectNameSession>,
     @InjectRepository(NameCandidateFeedback)
     private readonly feedbackRepository: Repository<NameCandidateFeedback>,
-    private readonly projectsService: ProjectsService,
     private readonly projectAccess: ProjectAccessService,
     private readonly nameCheckService: NameCheckService,
     private readonly nameHistoryService: NameHistoryService,
@@ -143,14 +141,8 @@ export class NameSessionsService {
     return match?.name ?? null;
   }
 
-  async findAll(
-    userId: string,
-    orgId: string,
-    projectId: string,
-  ): Promise<ProjectNameSessionSummary[]> {
-    await this.projectsService.findOne(userId, orgId, projectId);
+  async findAll(): Promise<ProjectNameSessionSummary[]> {
     const rows = await this.sessionRepository.find({
-      where: { projectId },
       select: [
         'id',
         'title',
@@ -181,11 +173,8 @@ export class NameSessionsService {
 
   async create(
     userId: string,
-    orgId: string,
-    projectId: string,
     dto: CreateNameSessionDto,
   ): Promise<ProjectNameSession> {
-    await this.projectsService.findOne(userId, orgId, projectId);
     let namingGoal = DEFAULT_NAMING_GOAL;
     if (dto.namingGoal) {
       if (!isNamingGoal(dto.namingGoal)) {
@@ -201,7 +190,7 @@ export class NameSessionsService {
       participationMode = dto.participationMode;
     }
     const session = this.sessionRepository.create({
-      projectId,
+      projectId: null,
       title: this.requireTitle(dto.title),
       brief: dto.brief?.trim() ?? '',
       namingGoal,
@@ -219,15 +208,9 @@ export class NameSessionsService {
     return this.sessionRepository.save(session);
   }
 
-  async findOne(
-    userId: string,
-    orgId: string,
-    projectId: string,
-    sessionId: string,
-  ): Promise<ProjectNameSession> {
-    await this.projectsService.findOne(userId, orgId, projectId);
+  async findOne(sessionId: string): Promise<ProjectNameSession> {
     const session = await this.sessionRepository.findOne({
-      where: { id: sessionId, projectId },
+      where: { id: sessionId },
     });
     if (!session) {
       throw appError('NAME_SESSION_NOT_FOUND');
@@ -237,11 +220,9 @@ export class NameSessionsService {
 
   async getView(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    const session = await this.findOne(sessionId);
     return this.toView(session, userId);
   }
 
@@ -249,16 +230,12 @@ export class NameSessionsService {
   // reaction PUT vs a candidates PATCH, or two members) cannot clobber each
   // other's committed changes. Slow external probes must run before locking.
   private async withSessionLock<T>(
-    userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     work: (session: ProjectNameSession) => Promise<T> | T,
   ): Promise<T> {
-    await this.projectsService.findOne(userId, orgId, projectId);
     return this.sessionRepository.manager.transaction(async (manager) => {
       const session = await manager.findOne(ProjectNameSession, {
-        where: { id: sessionId, projectId },
+        where: { id: sessionId },
         lock: { mode: 'pessimistic_write' },
       });
       if (!session) {
@@ -272,15 +249,10 @@ export class NameSessionsService {
 
   async update(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: UpdateNameSessionDto,
   ): Promise<unknown> {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       async (session) => {
         if (dto.title !== undefined) {
@@ -339,34 +311,24 @@ export class NameSessionsService {
     );
   }
 
-  async remove(
-    userId: string,
-    orgId: string,
-    projectId: string,
-    sessionId: string,
-  ): Promise<void> {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
+  async remove(sessionId: string): Promise<void> {
+    const session = await this.findOne(sessionId);
     await this.sessionRepository.remove(session);
   }
 
   async check(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: CheckNameDto,
     source: CandidateSource = 'human',
   ) {
-    await this.findOne(userId, orgId, projectId, sessionId);
+    await this.findOne(sessionId);
     const name = dto.name.trim();
     if (!name) {
       throw appError('NAME_REQUIRED');
     }
     const evidence = await this.collectCheckEvidence(name);
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       (session) => {
         const candidate = this.upsertCandidate(session, {
@@ -389,13 +351,11 @@ export class NameSessionsService {
 
   async checkBatch(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: CheckNamesBatchDto,
     source: CandidateSource = 'human',
   ) {
-    await this.findOne(userId, orgId, projectId, sessionId);
+    await this.findOne(sessionId);
     const names = [
       ...new Set(
         dto.names
@@ -412,9 +372,6 @@ export class NameSessionsService {
       async (name) => ({ name, evidence: await this.collectCheckEvidence(name) }),
     );
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       (session) => {
         const candidates = evidenceByName.map(({ name, evidence }) =>
@@ -443,12 +400,10 @@ export class NameSessionsService {
 
   async checkHistory(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: CheckNameDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    const session = await this.findOne(sessionId);
     const name = dto.name.trim();
     const candidates = this.asCandidates(session.candidates);
     const existing = candidates.find(
@@ -481,9 +436,6 @@ export class NameSessionsService {
     }
     const domainHistory = await this.nameHistoryService.checkHistory(hosts);
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       (session) => {
         const storedCandidates = this.asCandidates(session.candidates);
@@ -516,12 +468,10 @@ export class NameSessionsService {
 
   async checkHandles(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: CheckNameDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    const session = await this.findOne(sessionId);
     const name = dto.name.trim();
     const candidates = this.asCandidates(session.candidates);
     const existing = candidates.find(
@@ -540,9 +490,6 @@ export class NameSessionsService {
       existing.name,
     );
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       (session) => {
         const storedCandidates = this.asCandidates(session.candidates);
@@ -567,16 +514,11 @@ export class NameSessionsService {
 
   async addCandidates(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: AddNameCandidatesDto,
   ) {
     const source = dto.source ?? 'human';
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       (session) => {
         const added: CandidateRecord[] = [];
@@ -602,13 +544,11 @@ export class NameSessionsService {
 
   async upsertCandidateRating(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     candidateId: string,
     dto: UpsertCandidateRatingDto,
   ) {
-    return this.patchUserRating(userId, orgId, projectId, sessionId, candidateId, {
+    return this.patchUserRating(userId, sessionId, candidateId, {
       ...(dto.overall !== undefined ? { overall: dto.overall } : {}),
       ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
     });
@@ -616,34 +556,28 @@ export class NameSessionsService {
 
   async setCandidateReaction(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     candidateId: string,
     dto: SetCandidateReactionDto,
   ) {
-    return this.patchUserRating(userId, orgId, projectId, sessionId, candidateId, {
+    return this.patchUserRating(userId, sessionId, candidateId, {
       reaction: dto.reaction,
     });
   }
 
   async setCandidateFavorite(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     candidateId: string,
     dto: SetCandidateFavoriteDto,
   ) {
-    return this.patchUserRating(userId, orgId, projectId, sessionId, candidateId, {
+    return this.patchUserRating(userId, sessionId, candidateId, {
       favorited: dto.favorited,
     });
   }
 
   private async patchUserRating(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     candidateId: string,
     patch: {
@@ -654,9 +588,6 @@ export class NameSessionsService {
     },
   ) {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       (session) => {
         const candidates = this.asCandidates(session.candidates).map(
@@ -686,15 +617,10 @@ export class NameSessionsService {
 
   async startBatch(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: StartBatchDto,
   ) {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       async (session) => {
         await this.assertCanManageFeedback(userId, session);
@@ -726,16 +652,11 @@ export class NameSessionsService {
 
   async crownBatchWinner(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     batchNumber: number,
     dto: CrownBatchWinnerDto,
   ) {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       async (session) => {
         await this.assertCanManageFeedback(userId, session);
@@ -770,15 +691,10 @@ export class NameSessionsService {
 
   async recommend(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: RecommendNameDto,
   ) {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       async (session) => {
         await this.assertCanManageFeedback(userId, session);
@@ -841,16 +757,11 @@ export class NameSessionsService {
 
   async setBatchFinalists(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     batchNumber: number,
     dto: SetBatchFinalistsDto,
   ) {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       async (session) => {
         await this.assertCanManageFeedback(userId, session);
@@ -879,15 +790,10 @@ export class NameSessionsService {
 
   async startFeedbackRound(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     dto: StartFeedbackRoundDto,
   ) {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       async (session) => {
         await this.assertCanManageFeedback(userId, session);
@@ -927,13 +833,11 @@ export class NameSessionsService {
 
   async upsertFeedback(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     roundId: string,
     dto: UpsertFeedbackResponseDto,
   ) {
-    const session = await this.findOne(userId, orgId, projectId, sessionId);
+    const session = await this.findOne(sessionId);
     const round = asRounds(session.feedbackRounds).find(
       (item) => item.id === roundId,
     );
@@ -983,15 +887,10 @@ export class NameSessionsService {
 
   async closeFeedbackRound(
     userId: string,
-    orgId: string,
-    projectId: string,
     sessionId: string,
     roundId: string,
   ) {
     return this.withSessionLock(
-      userId,
-      orgId,
-      projectId,
       sessionId,
       async (session) => {
         await this.assertCanManageFeedback(userId, session);
@@ -1172,9 +1071,7 @@ export class NameSessionsService {
       session.participationMode,
       rounds,
     );
-    const eligibleCount = await this.projectAccess.countProjectMembers(
-      session.projectId,
-    );
+    const eligibleCount = await this.projectAccess.countRegisteredUsers();
     const openRound = rounds.find((round) => round.status === 'open');
     const participationProgress = shapeParticipationProgress({
       openRound,

@@ -35,89 +35,61 @@ interface AuthRequest extends Request {
   user: { id: string; username: string };
 }
 
-@Controller('organizations/:orgId/projects/:projectId/name-sessions')
+@Controller('name-sessions')
 @UseGuards(JwtAuthGuard)
 export class NameSessionsController {
   constructor(private readonly nameSessionsService: NameSessionsService) {}
 
   @Get()
-  findAll(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
-    @Req() req: AuthRequest,
-  ) {
-    return this.nameSessionsService.findAll(req.user.id, orgId, projectId);
+  findAll() {
+    return this.nameSessionsService.findAll();
   }
 
   @Post()
   create(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Body() dto: CreateNameSessionDto,
     @Req() req: AuthRequest,
   ) {
-    return this.nameSessionsService.create(req.user.id, orgId, projectId, dto);
+    return this.nameSessionsService.create(req.user.id, dto);
   }
 
   @Get(':sessionId')
   findOne(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.getView(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
     );
   }
 
   @Patch(':sessionId')
   update(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: UpdateNameSessionDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.update(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
   }
 
   @Delete(':sessionId')
-  remove(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
-    @Param('sessionId') sessionId: string,
-    @Req() req: AuthRequest,
-  ) {
-    return this.nameSessionsService.remove(
-      req.user.id,
-      orgId,
-      projectId,
-      sessionId,
-    );
+  remove(@Param('sessionId') sessionId: string) {
+    return this.nameSessionsService.remove(sessionId);
   }
 
   @Post(':sessionId/check')
   check(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: CheckNameDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.check(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -125,16 +97,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/check-batch')
   checkBatch(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: CheckNamesBatchDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.checkBatch(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -142,16 +110,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/check-handles')
   checkHandles(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: CheckNameDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.checkHandles(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -159,16 +123,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/check-history')
   checkHistory(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: CheckNameDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.checkHistory(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -176,16 +136,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/candidates')
   addCandidates(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: AddNameCandidatesDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.addCandidates(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -193,8 +149,6 @@ export class NameSessionsController {
 
   @Put(':sessionId/candidates/:candidateId/rating')
   upsertCandidateRating(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('candidateId') candidateId: string,
     @Body() dto: UpsertCandidateRatingDto,
@@ -202,8 +156,6 @@ export class NameSessionsController {
   ) {
     return this.nameSessionsService.upsertCandidateRating(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       candidateId,
       dto,
@@ -212,8 +164,6 @@ export class NameSessionsController {
 
   @Put(':sessionId/candidates/:candidateId/reaction')
   setCandidateReaction(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('candidateId') candidateId: string,
     @Body() dto: SetCandidateReactionDto,
@@ -221,8 +171,6 @@ export class NameSessionsController {
   ) {
     return this.nameSessionsService.setCandidateReaction(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       candidateId,
       dto,
@@ -231,8 +179,6 @@ export class NameSessionsController {
 
   @Put(':sessionId/candidates/:candidateId/favorite')
   setCandidateFavorite(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('candidateId') candidateId: string,
     @Body() dto: SetCandidateFavoriteDto,
@@ -240,8 +186,6 @@ export class NameSessionsController {
   ) {
     return this.nameSessionsService.setCandidateFavorite(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       candidateId,
       dto,
@@ -250,16 +194,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/batches')
   startBatch(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: StartBatchDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.startBatch(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -267,8 +207,6 @@ export class NameSessionsController {
 
   @Post(':sessionId/batches/:batchNumber/winner')
   crownBatchWinner(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('batchNumber', ParseIntPipe) batchNumber: number,
     @Body() dto: CrownBatchWinnerDto,
@@ -276,8 +214,6 @@ export class NameSessionsController {
   ) {
     return this.nameSessionsService.crownBatchWinner(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       batchNumber,
       dto,
@@ -286,8 +222,6 @@ export class NameSessionsController {
 
   @Post(':sessionId/batches/:batchNumber/finalists')
   setBatchFinalists(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('batchNumber', ParseIntPipe) batchNumber: number,
     @Body() dto: SetBatchFinalistsDto,
@@ -295,8 +229,6 @@ export class NameSessionsController {
   ) {
     return this.nameSessionsService.setBatchFinalists(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       batchNumber,
       dto,
@@ -305,16 +237,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/recommend')
   recommend(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: RecommendNameDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.recommend(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -322,16 +250,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/feedback-rounds')
   startFeedbackRound(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Body() dto: StartFeedbackRoundDto,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.startFeedbackRound(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       dto,
     );
@@ -339,8 +263,6 @@ export class NameSessionsController {
 
   @Put(':sessionId/feedback-rounds/:roundId/responses')
   upsertFeedback(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('roundId') roundId: string,
     @Body() dto: UpsertFeedbackResponseDto,
@@ -348,8 +270,6 @@ export class NameSessionsController {
   ) {
     return this.nameSessionsService.upsertFeedback(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       roundId,
       dto,
@@ -358,16 +278,12 @@ export class NameSessionsController {
 
   @Post(':sessionId/feedback-rounds/:roundId/close')
   closeFeedbackRound(
-    @Param('orgId') orgId: string,
-    @Param('projectId') projectId: string,
     @Param('sessionId') sessionId: string,
     @Param('roundId') roundId: string,
     @Req() req: AuthRequest,
   ) {
     return this.nameSessionsService.closeFeedbackRound(
       req.user.id,
-      orgId,
-      projectId,
       sessionId,
       roundId,
     );

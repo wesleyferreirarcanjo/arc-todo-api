@@ -1473,7 +1473,7 @@
       },
       "include": {
         "default": "ack",
-        "description": "Response shape: ack | summary | plan | qa | full. Default ack (id/title/status only). Do not use this tool to only change status — use move_task.",
+        "description": "Response shape: ack | summary | plan | qa | full. Default ack (id/title/status only). Do not use this tool to only change status \u2014 use move_task.",
         "title": "Include",
         "type": "string"
       },
@@ -3422,7 +3422,7 @@
           }
         ],
         "default": null,
-        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted → two-screen starter.",
+        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted \u2192 two-screen starter.",
         "title": "Html"
       },
       "arc_todo_token": {
@@ -3556,16 +3556,6 @@
   },
   "list_project_name_sessions": {
     "properties": {
-      "organization_id": {
-        "description": "Organization UUID",
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "description": "Project UUID",
-        "title": "Project Id",
-        "type": "string"
-      },
       "arc_todo_token": {
         "anyOf": [
           {
@@ -3580,26 +3570,12 @@
         "title": "Arc Todo Token"
       }
     },
-    "required": [
-      "organization_id",
-      "project_id"
-    ],
     "title": "ListProjectNameSessionsInput",
     "type": "object",
     "additionalProperties": false
   },
   "get_name_session": {
     "properties": {
-      "organization_id": {
-        "description": "Organization UUID",
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "description": "Project UUID",
-        "title": "Project Id",
-        "type": "string"
-      },
       "name_session_id": {
         "description": "Name session UUID",
         "title": "Name Session Id",
@@ -3620,8 +3596,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "name_session_id"
     ],
     "title": "GetNameSessionInput",
@@ -3630,16 +3604,6 @@
   },
   "update_name_session": {
     "properties": {
-      "organization_id": {
-        "description": "Organization UUID",
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "description": "Project UUID",
-        "title": "Project Id",
-        "type": "string"
-      },
       "name_session_id": {
         "description": "Name session UUID",
         "title": "Name Session Id",
@@ -3697,8 +3661,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "name_session_id"
     ],
     "title": "UpdateNameSessionInput",
@@ -3707,16 +3669,6 @@
   },
   "add_name_candidates": {
     "properties": {
-      "organization_id": {
-        "description": "Organization UUID",
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "description": "Project UUID",
-        "title": "Project Id",
-        "type": "string"
-      },
       "name_session_id": {
         "description": "Name session UUID",
         "title": "Name Session Id",
@@ -3787,8 +3739,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "name_session_id",
       "candidates"
     ],
@@ -3798,16 +3748,6 @@
   },
   "check_name_candidate": {
     "properties": {
-      "organization_id": {
-        "description": "Organization UUID",
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "description": "Project UUID",
-        "title": "Project Id",
-        "type": "string"
-      },
       "name_session_id": {
         "description": "Name session UUID",
         "title": "Name Session Id",
@@ -3833,8 +3773,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "name_session_id",
       "candidate_id"
     ],
@@ -3844,16 +3782,6 @@
   },
   "recommend_name_candidate": {
     "properties": {
-      "organization_id": {
-        "description": "Organization UUID",
-        "title": "Organization Id",
-        "type": "string"
-      },
-      "project_id": {
-        "description": "Project UUID",
-        "title": "Project Id",
-        "type": "string"
-      },
       "name_session_id": {
         "description": "Name session UUID",
         "title": "Name Session Id",
@@ -3884,8 +3812,6 @@
       }
     },
     "required": [
-      "organization_id",
-      "project_id",
       "name_session_id",
       "candidate_id",
       "decision_note"
@@ -4311,7 +4237,7 @@
           }
         ],
         "default": null,
-        "description": "What evidence was reviewed (filenames, timestamps, checklist). Use a short note like 'sem evidência' when none exists.",
+        "description": "What evidence was reviewed (filenames, timestamps, checklist). Use a short note like 'sem evid\u00eancia' when none exists.",
         "title": "Evidence"
       },
       "task_score": {
