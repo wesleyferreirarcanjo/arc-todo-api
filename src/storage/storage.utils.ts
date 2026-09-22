@@ -6,15 +6,6 @@ export function sanitizeFilename(filename: string): string {
   return sanitized.length > 0 ? sanitized.slice(0, 200) : 'file';
 }
 
-export function buildKnowledgeObjectKey(
-  knowledgeId: string,
-  attachmentId: string,
-  originalFilename: string,
-): string {
-  const safeName = sanitizeFilename(originalFilename);
-  return `knowledge/${knowledgeId}/${attachmentId}/${safeName}`;
-}
-
 export function buildTaskEvidenceObjectKey(
   taskId: string,
   evidenceId: string,

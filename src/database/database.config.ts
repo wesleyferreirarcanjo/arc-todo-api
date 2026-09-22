@@ -11,14 +11,9 @@ import { ProjectQaProfile } from '../qa-info/project-qa-profile.entity';
 import { ProjectWireframe } from '../wireframes/project-wireframe.entity';
 import { ProjectNameSession } from '../name-sessions/project-name-session.entity';
 import { NameCandidateFeedback } from '../name-sessions/name-candidate-feedback.entity';
-import { RagSetting } from '../rag-settings/rag-setting.entity';
-import { KnowledgeEntry } from '../knowledge/knowledge-entry.entity';
-import { KnowledgeAttachment } from '../knowledge/knowledge-attachment.entity';
-import { KnowledgeAccessGrant } from '../knowledge/knowledge-access-grant.entity';
 import { McpToolSetting } from '../mcp-tools/mcp-tool-setting.entity';
 import { OrganizationMember } from '../organizations/organization-member.entity';
 import { Organization } from '../organizations/organization.entity';
-import { Person } from '../persons/person.entity';
 import { ProjectMember } from '../projects/project-member.entity';
 import { Project } from '../projects/project.entity';
 import { PushPreference } from '../push/push-preference.entity';
@@ -54,10 +49,6 @@ export const entities = [
   QaQueueItem,
   BoardCycle,
   BoardCycleHistoryEntry,
-  Person,
-  KnowledgeEntry,
-  KnowledgeAttachment,
-  KnowledgeAccessGrant,
   ProjectDiagram,
   ProjectQaProfile,
   ProjectWireframe,
@@ -65,7 +56,6 @@ export const entities = [
   NameCandidateFeedback,
   McpToolSetting,
   ChatbotSetting,
-  RagSetting,
   Conversation,
   ConversationMessage,
   ConversationTaskContext,

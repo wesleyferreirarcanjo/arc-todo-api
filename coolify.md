@@ -74,7 +74,6 @@ Secrets are stored in Coolify only. Do not commit real values.
 | `MINIO_SECRET_KEY` | *(redacted — Coolify secret)* |
 | `MINIO_BUCKET` | `arc-todo` |
 | `MINIO_MAX_UPLOAD_BYTES` | `104857600` (100 MB) |
-| `ARC_TODO_RAG_BASE_URL` | RAG service URL (`https://tqfgi4rhtndy3xtgdep04xnd.72.60.59.203.sslip.io`) |
 | `VAPID_PUBLIC_KEY` | Web Push VAPID public key (shared with clients via `GET /push/vapid-public-key`) |
 | `VAPID_PRIVATE_KEY` | Web Push VAPID private key *(redacted — Coolify secret; never expose to web)* |
 | `VAPID_SUBJECT` | VAPID contact URI, e.g. `mailto:wesleyferreirarcanjo@gmail.com` |
@@ -84,21 +83,19 @@ Secrets are stored in Coolify only. Do not commit real values.
 1. Ensure `arc-todo-postgres-pgvector` is `running:healthy`.
 2. Ensure `arc-todo-minio` is `running:healthy`.
 3. Deploy / restart `arc-todo-api` (runs migrations and connects to MinIO on startup).
-4. Deploy / restart `arc-todo-rag` after Postgres (pgvector) and MinIO are healthy; set `ARC_TODO_RAG_BASE_URL` on this API to the RAG service URL.
-5. Deploy / restart `arc-todo-chatbot` so it can load chatbot settings from this API.
-6. Deploy `arc-todo-web` after the API, chatbot, and RAG URLs are known (frontend bakes `VITE_API_BASE_URL`, `VITE_CHAT_API_BASE_URL`, and `VITE_RAG_API_BASE_URL` at build time).
-7. Configure chatbot settings at `/settings/chatbot`, RAG settings at `/settings/rag`, and MCP tools in the web app.
-8. Deploy / restart `arc-todo-mcp` after MCP tools are configured.
+4. Deploy / restart `arc-todo-chatbot` so it can load chatbot settings from this API.
+5. Deploy `arc-todo-web` after the API and chatbot URLs are known (frontend bakes `VITE_API_BASE_URL` and `VITE_CHAT_API_BASE_URL` at build time).
+6. Configure chatbot settings at `/settings/chatbot` and MCP tools in the web app.
+7. Deploy / restart `arc-todo-mcp` after MCP tools are configured.
 
 ## Notes
 
 - Coolify **v4.2+** deploy is **POST** `/api/v1/deploy?uuid=lmsx2avrg1k29ex12w6e3gce&force=true`. GET fails. Cursor `user-coolify` `deploy` needs `@masonator/coolify-mcp` **2.19.4+** (reload the MCP session after upgrade).
 - TypeORM migrations run automatically on startup when `DB_MIGRATE_ON_START=true`. Keep `DB_SYNCHRONIZE=false` in production.
-- MinIO is internal-only; knowledge attachment downloads are streamed through the authenticated API, not via public MinIO URLs.
+- MinIO is internal-only; file downloads are streamed through the authenticated API, not via public MinIO URLs.
 - The API auto-creates the `arc-todo` bucket on startup if it does not exist.
 - Git source uses the Coolify deploy key (`private_key_uuid`: `lms2y9fjpybdznft4t7uf3td`). Repositories are public for clone access during setup.
 - Chatbot provider settings are stored in PostgreSQL and exposed via `/chatbot-settings`; the chatbot service reads them at runtime.
 - See [../arc-todo-web/coolify.md](../arc-todo-web/coolify.md) for the frontend Coolify reference.
 - See [../arc-todo-chatbot/coolify.md](../arc-todo-chatbot/coolify.md) for the chatbot service Coolify reference.
 - See [../arc-todo-mcp/coolify.md](../arc-todo-mcp/coolify.md) for the MCP server Coolify reference.
-- See [../arc-todo-rag/coolify.md](../arc-todo-rag/coolify.md) for the RAG service Coolify reference.

@@ -13,13 +13,10 @@ import { QaQueueModule } from './qa-queue/qa-queue.module';
 import { WireframesModule } from './wireframes/wireframes.module';
 import { NameSessionsModule } from './name-sessions/name-sessions.module';
 import { HealthModule } from './health/health.module';
-import { KnowledgeModule } from './knowledge/knowledge.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { ChatbotSettingsModule } from './chatbot-settings/chatbot-settings.module';
-import { RagSettingsModule } from './rag-settings/rag-settings.module';
 import { McpToolsModule } from './mcp-tools/mcp-tools.module';
 import { OrganizationsModule } from './organizations/organizations.module';
-import { PersonsModule } from './persons/persons.module';
 import { ProjectsModule } from './projects/projects.module';
 import { PushModule } from './push/push.module';
 import { ScopeResolverModule } from './scope-resolver/scope-resolver.module';
@@ -47,9 +44,7 @@ import { UsersModule } from './users/users.module';
     ScopeResolverModule,
     TasksModule,
     BoardCyclesModule,
-    PersonsModule,
     StorageModule,
-    KnowledgeModule,
     DiagramsModule,
     QaInfoModule,
     QaQueueModule,
@@ -58,7 +53,6 @@ import { UsersModule } from './users/users.module';
     SeoModule,
     McpToolsModule,
     ChatbotSettingsModule,
-    RagSettingsModule,
     ConversationsModule,
     UserActivityModule,
     PushModule,

@@ -81,18 +81,6 @@ export const APP_ERRORS = {
     message:
       'You do not have access to this project. Ask an administrator to add you.',
   },
-  ACL_KNOWLEDGE_DENIED: {
-    code: 'ERR-ARC-ACL-03',
-    status: HttpStatus.FORBIDDEN,
-    message:
-      'You do not have access to this knowledge base. Ask an administrator to grant knowledge access.',
-  },
-  ACL_KNOWLEDGE_ENTRY_DENIED: {
-    code: 'ERR-ARC-ACL-04',
-    status: HttpStatus.FORBIDDEN,
-    message:
-      'You do not have access to this knowledge entry. Ask an administrator if you need it.',
-  },
   ACL_NAME_FEEDBACK: {
     code: 'ERR-ARC-ACL-05',
     status: HttpStatus.FORBIDDEN,
@@ -307,35 +295,6 @@ export const APP_ERRORS = {
     status: HttpStatus.NOT_FOUND,
     message: 'That session log is gone. Refresh the task and try again.',
   },
-  FILE_ATTACHMENT_NOT_FOUND: {
-    code: 'ERR-ARC-FILE-08',
-    status: HttpStatus.NOT_FOUND,
-    message: 'That attachment is gone. Refresh the knowledge entry and try again.',
-  },
-
-  KNOW_NOT_FOUND: {
-    code: 'ERR-ARC-KNOW-01',
-    status: HttpStatus.NOT_FOUND,
-    message:
-      'That knowledge entry is not available. It may have been removed, or you do not have access.',
-  },
-  KNOW_TASK_SCOPE: {
-    code: 'ERR-ARC-KNOW-02',
-    status: HttpStatus.BAD_REQUEST,
-    message: 'A linked task can only be set on project knowledge.',
-  },
-  KNOW_TASK_PROJECT: {
-    code: 'ERR-ARC-KNOW-03',
-    status: HttpStatus.BAD_REQUEST,
-    message: 'That task belongs to a different project than this knowledge entry.',
-  },
-  KNOW_RAG_NOT_CONFIGURED: {
-    code: 'ERR-ARC-KNOW-04',
-    status: HttpStatus.BAD_REQUEST,
-    message:
-      'Knowledge indexing is not set up. Ask an administrator to configure RAG.',
-  },
-
   NAME_TITLE_REQUIRED: {
     code: 'ERR-ARC-NAME-01',
     status: HttpStatus.BAD_REQUEST,
@@ -571,13 +530,6 @@ export const APP_ERRORS = {
     message: 'That Google email is already assigned to another user.',
   },
 
-  PERS_NOT_FOUND: {
-    code: 'ERR-ARC-PERS-01',
-    status: HttpStatus.NOT_FOUND,
-    message:
-      'That person is not available. They may have been removed, or you do not have access.',
-  },
-
   CHAT_CONVERSATION_NOT_FOUND: {
     code: 'ERR-ARC-CHAT-07',
     status: HttpStatus.NOT_FOUND,
@@ -598,30 +550,6 @@ export const APP_ERRORS = {
     code: 'ERR-ARC-CHAT-10',
     status: HttpStatus.NOT_FOUND,
     message: 'Chatbot settings are not available. Refresh Settings and try again.',
-  },
-
-  RAG_SETTINGS_NOT_FOUND: {
-    code: 'ERR-ARC-RAG-01',
-    status: HttpStatus.NOT_FOUND,
-    message: 'RAG settings are not available. Refresh Settings and try again.',
-  },
-  RAG_NOT_CONFIGURED: {
-    code: 'ERR-ARC-RAG-02',
-    status: HttpStatus.SERVICE_UNAVAILABLE,
-    message:
-      'Knowledge search is not set up. Ask an administrator to configure the RAG service.',
-  },
-  RAG_UNAVAILABLE: {
-    code: 'ERR-ARC-RAG-03',
-    status: HttpStatus.SERVICE_UNAVAILABLE,
-    message:
-      'Knowledge search is unavailable right now. Try again in a moment.',
-  },
-  RAG_UPSTREAM: {
-    code: 'ERR-ARC-RAG-04',
-    status: HttpStatus.BAD_GATEWAY,
-    message:
-      'Knowledge search could not complete this request. Try again in a moment.',
   },
 
   MCP_TOOL_NOT_FOUND: {

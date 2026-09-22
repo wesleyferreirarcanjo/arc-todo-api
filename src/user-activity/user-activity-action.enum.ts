@@ -8,7 +8,4 @@ export enum UserActivityAction {
   MEMBER_REMOVED = 'member.removed',
   MEMBER_ROLE_CHANGED = 'member.role_changed',
   USER_CREATED = 'user.created',
-  KNOWLEDGE_CREATED = 'knowledge.created',
-  KNOWLEDGE_UPDATED = 'knowledge.updated',
-  KNOWLEDGE_DELETED = 'knowledge.deleted',
 }

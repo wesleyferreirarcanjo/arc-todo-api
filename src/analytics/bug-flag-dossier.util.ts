@@ -100,7 +100,7 @@ if (require.main === module) {
   const defect = normalizeBugFlagFields({
     primary: 'real_defect',
     secondary: ['Regression', 'not-deployed', 'regression', ''],
-    motivo: '  URL goes to /knowledge  ',
+    motivo: '  URL goes to the wrong page  ',
     evidence: ' image.png ',
     taskScore: 7,
     flagScore: '9',
@@ -158,7 +158,7 @@ if (require.main === module) {
       defect.ok &&
         defect.value.secondary.join(',') === 'regression,not_deployed',
     ],
-    ['motivo trim', defect.ok && defect.value.motivo === 'URL goes to /knowledge'],
+    ['motivo trim', defect.ok && defect.value.motivo === 'URL goes to the wrong page'],
     ['evidence trim', defect.ok && defect.value.evidence === 'image.png'],
     ['empty secondary ok', missing.ok && missing.value.secondary.length === 2],
     ['blank evidence null', missing.ok && missing.value.evidence === null],
