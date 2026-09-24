@@ -69,6 +69,46 @@ export const APP_ERRORS = {
     message:
       'Service sign-in is not ready. Ask an administrator to check ADMIN_USERNAME.',
   },
+  AUTH_DESKTOP_CODE_INVALID: {
+    code: 'ERR-ARC-AUTH-13',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'That Arc IDE sign-in code is not valid. Start the connection again.',
+  },
+  AUTH_DESKTOP_CODE_EXPIRED: {
+    code: 'ERR-ARC-AUTH-14',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'That Arc IDE sign-in code expired. Start the connection again.',
+  },
+  AUTH_DESKTOP_CODE_REUSED: {
+    code: 'ERR-ARC-AUTH-15',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'That Arc IDE sign-in code was already used. Start the connection again.',
+  },
+  AUTH_DESKTOP_VERIFIER: {
+    code: 'ERR-ARC-AUTH-16',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'Arc IDE could not confirm this sign-in. Start the connection again.',
+  },
+  AUTH_DESKTOP_REFRESH_INVALID: {
+    code: 'ERR-ARC-AUTH-17',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'Arc IDE needs you to sign in again.',
+  },
+  AUTH_DESKTOP_REFRESH_EXPIRED: {
+    code: 'ERR-ARC-AUTH-18',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'Arc IDE sign-in expired. Sign in again to continue.',
+  },
+  AUTH_DESKTOP_REFRESH_REUSED: {
+    code: 'ERR-ARC-AUTH-19',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'Arc IDE sign-in was already renewed. Sign in again to continue.',
+  },
+  AUTH_DESKTOP_REVOKED: {
+    code: 'ERR-ARC-AUTH-20',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'Arc IDE was disconnected. Sign in again to continue.',
+  },
 
   ACL_ADMIN_REQUIRED: {
     code: 'ERR-ARC-ACL-01',
@@ -629,6 +669,18 @@ export const APP_ERRORS = {
     status: HttpStatus.SERVICE_UNAVAILABLE,
     message:
       'Browser notifications are not set up. Ask an administrator to configure Web Push.',
+  },
+
+  DEVICE_HUB_NOT_CONFIGURED: {
+    code: 'ERR-ARC-DEV-01',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      'Machine control is not set up. Ask an administrator to configure Arc Hub.',
+  },
+  DEVICE_ACTION_REFUSED: {
+    code: 'ERR-ARC-DEV-02',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'That machine action is not allowed.',
   },
 
   VAL_REQUEST: {

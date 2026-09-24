@@ -1,9 +1,12 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { DesktopAuthorizeDto } from './dto/desktop-authorize.dto';
+import { DesktopRefreshDto } from './dto/desktop-refresh.dto';
+import { DesktopTokenDto } from './dto/desktop-token.dto';
 import { GoogleSsoDto } from './dto/google-sso.dto';
 import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 interface AuthRequest extends Request {
   user: { id: string; username: string };
@@ -27,5 +30,31 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@Req() req: AuthRequest) {
     return this.authService.me(req.user.id);
+  }
+
+  @Post('desktop/authorize')
+  @UseGuards(JwtAuthGuard)
+  authorizeDesktop(@Req() req: AuthRequest, @Body() dto: DesktopAuthorizeDto) {
+    return this.authService.authorizeDesktop(req.user.id, dto);
+  }
+
+  @Post('desktop/token')
+  exchangeDesktopCode(@Body() dto: DesktopTokenDto) {
+    return this.authService.exchangeDesktopCode(dto);
+  }
+
+  @Post('desktop/refresh')
+  refreshDesktop(@Body() dto: DesktopRefreshDto) {
+    return this.authService.refreshDesktop(dto);
+  }
+
+  @Delete('desktop/session')
+  @HttpCode(204)
+  revokeDesktop(
+    @Body() dto: DesktopRefreshDto,
+    @Headers('x-arc-refresh') refreshHeader?: string,
+  ) {
+    const refreshToken = dto.refreshToken || refreshHeader || '';
+    return this.authService.revokeDesktop({ refreshToken });
   }
 }

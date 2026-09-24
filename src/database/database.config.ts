@@ -25,6 +25,7 @@ import { TaskLog } from '../tasks/task-log.entity';
 import { QaQueueItem } from '../qa-queue/qa-queue-item.entity';
 import { TaskBugFlagDossier } from '../analytics/task-bug-flag-dossier.entity';
 import { Task } from '../tasks/task.entity';
+import { DesktopAuthSession } from '../auth/desktop-auth-session.entity';
 import { User } from '../users/user.entity';
 import { UserActivity } from '../user-activity/user-activity.entity';
 import { ProjectSeoAuditPage } from '../seo/project-seo-audit-page.entity';
@@ -36,6 +37,7 @@ import { SeoSetting } from '../seo/seo-setting.entity';
 
 export const entities = [
   User,
+  DesktopAuthSession,
   Organization,
   OrganizationMember,
   Project,
