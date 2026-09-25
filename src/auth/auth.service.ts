@@ -172,7 +172,11 @@ export class AuthService {
   }
 
   async refreshDesktop(dto: DesktopRefreshDto) {
-    const presented = sha256Hex(dto.refreshToken);
+    const incoming = dto.refreshToken;
+    if (!incoming) {
+      throw appError('AUTH_DESKTOP_REFRESH_INVALID');
+    }
+    const presented = sha256Hex(incoming);
     const found = await this.desktopSessions.findOne({
       where: [{ refreshHash: presented }, { previousRefreshHash: presented }],
     });
@@ -210,15 +214,19 @@ export class AuthService {
     return this.desktopCredentials(userId, refreshToken);
   }
 
-  async revokeDesktop(dto: DesktopRefreshDto): Promise<void> {
+  async revokeDesktop(userId: string, dto: DesktopRefreshDto): Promise<void> {
     if (!dto.refreshToken) {
       throw appError('AUTH_DESKTOP_REFRESH_INVALID');
     }
-    const presented = sha256Hex(dto.refreshToken);
+    const incoming = dto.refreshToken;
+    if (!incoming) {
+      throw appError('AUTH_DESKTOP_REFRESH_INVALID');
+    }
+    const presented = sha256Hex(incoming);
     const found = await this.desktopSessions.findOne({
       where: [{ refreshHash: presented }, { previousRefreshHash: presented }],
     });
-    if (!found || found.revokedAt) return;
+    if (!found || found.revokedAt || found.userId !== userId) return;
     found.revokedAt = new Date();
     await this.desktopSessions.save(found);
   }

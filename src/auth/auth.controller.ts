@@ -50,11 +50,13 @@ export class AuthController {
 
   @Delete('desktop/session')
   @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
   revokeDesktop(
+    @Req() req: AuthRequest,
     @Body() dto: DesktopRefreshDto,
     @Headers('x-arc-refresh') refreshHeader?: string,
   ) {
-    const refreshToken = dto.refreshToken || refreshHeader || '';
-    return this.authService.revokeDesktop({ refreshToken });
+    const refreshToken = refreshHeader || dto?.refreshToken || '';
+    return this.authService.revokeDesktop(req.user.id, { refreshToken });
   }
 }

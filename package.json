@@ -34,11 +34,11 @@
     "test:bug-flags": "npm run build && node dist/analytics/bug-flag-dossier.util.js",
     "test:assigned-to-me": "npm run build && node dist/tasks/list-tasks-assigned-to-me.util.js",
     "test:cors-origin": "npm run build && node dist/cors-origin.util.js",
+    "test:desktop-auth": "npm run build && node dist/auth/desktop-auth.util.js",
+    "test:device-control": "npm run build && node dist/device-control/device-control.util.js",
     "test:task-logs": "npm run build && node dist/tasks/task-log.util.js",
     "test:qa-queue": "npm run build && node dist/qa-queue/qa-queue.util.js && node dist/qa-queue/qa-queue.routes.util.js && node dist/qa-queue/qa-queue-sse.util.js",
-    "test:seo": "npm run build && node dist/seo/seo-host.util.js",
-    "test:device-control": "npm run build && node dist/device-control/device-control.util.js",
-    "test:desktop-auth": "npm run build && node dist/auth/desktop-auth.util.js"
+    "test:seo": "npm run build && node dist/seo/seo-host.util.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
