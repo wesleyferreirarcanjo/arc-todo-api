@@ -683,6 +683,24 @@ export const APP_ERRORS = {
     message: 'That machine action is not allowed.',
   },
 
+  METRICS_NOT_CONFIGURED: {
+    code: 'ERR-ARC-METRICS-01',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      'The metrics service is not set up. Ask an administrator to configure it.',
+  },
+  METRICS_UNAVAILABLE: {
+    code: 'ERR-ARC-METRICS-02',
+    status: HttpStatus.BAD_GATEWAY,
+    message: 'The metrics service is unavailable. Try again in a moment.',
+  },
+  METRICS_NOT_FOUND: {
+    code: 'ERR-ARC-METRICS-03',
+    status: HttpStatus.NOT_FOUND,
+    message:
+      'That metrics item is not available. It may have been removed, or you do not have access.',
+  },
+
   VAL_REQUEST: {
     code: 'ERR-ARC-VAL-01',
     status: HttpStatus.BAD_REQUEST,
