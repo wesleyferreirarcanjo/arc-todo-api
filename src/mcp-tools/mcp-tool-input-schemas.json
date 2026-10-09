@@ -1399,7 +1399,7 @@
       },
       "include": {
         "default": "ack",
-        "description": "Response shape: ack | summary | plan | qa | full. Default ack (id/title/status only). Do not use this tool to only change status — use move_task.",
+        "description": "Response shape: ack | summary | plan | qa | full. Default ack (id/title/status only). Do not use this tool to only change status \u2014 use move_task.",
         "title": "Include",
         "type": "string"
       },
@@ -2250,7 +2250,7 @@
           }
         ],
         "default": null,
-        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted → two-screen starter.",
+        "description": "Optional HTML document (inline CSS/JS; may contain several #page- sections). Omitted \u2192 two-screen starter.",
         "title": "Html"
       },
       "arc_todo_token": {
@@ -3065,7 +3065,7 @@
           }
         ],
         "default": null,
-        "description": "What evidence was reviewed (filenames, timestamps, checklist). Use a short note like 'sem evidência' when none exists.",
+        "description": "What evidence was reviewed (filenames, timestamps, checklist). Use a short note like 'sem evid\u00eancia' when none exists.",
         "title": "Evidence"
       },
       "task_score": {
@@ -3313,5 +3313,2394 @@
     "title": "ListSeoKeywordsInput",
     "type": "object",
     "additionalProperties": false
+  },
+  "cloud_list_servers": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "CloudListServersInput",
+    "type": "object"
+  },
+  "cloud_add_ssh_server": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "name": {
+        "description": "Unique server name",
+        "title": "Name",
+        "type": "string"
+      },
+      "role": {
+        "default": "target",
+        "description": "target | build \u2014 build machines are never deploy targets",
+        "title": "Role",
+        "type": "string"
+      },
+      "ssh_host": {
+        "description": "SSH host IP or hostname",
+        "title": "Ssh Host",
+        "type": "string"
+      },
+      "ssh_port": {
+        "default": 22,
+        "maximum": 65535,
+        "minimum": 1,
+        "title": "Ssh Port",
+        "type": "integer"
+      },
+      "ssh_user": {
+        "default": "root",
+        "title": "Ssh User",
+        "type": "string"
+      },
+      "ssh_private_key": {
+        "description": "PEM/OpenSSH private key for the SSH user. Stored encrypted by arc-cloud and never returned or logged.",
+        "title": "Ssh Private Key",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "ssh_host",
+      "ssh_private_key"
+    ],
+    "title": "CloudAddSshServerInput",
+    "type": "object"
+  },
+  "cloud_add_agent_server": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "name": {
+        "description": "Unique server name",
+        "title": "Name",
+        "type": "string"
+      },
+      "role": {
+        "default": "target",
+        "description": "target | build \u2014 build machines are never deploy targets",
+        "title": "Role",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "CloudAddAgentServerInput",
+    "type": "object"
+  },
+  "cloud_list_containers": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "CloudServerIdInput",
+    "type": "object"
+  },
+  "cloud_refresh_server": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "CloudServerIdInput",
+    "type": "object"
+  },
+  "cloud_remove_server": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to actually remove the server",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "CloudRemoveServerInput",
+    "type": "object"
+  },
+  "cloud_proxy_status": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "CloudServerIdInput",
+    "type": "object"
+  },
+  "cloud_install_proxy": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to run this proxy action",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "CloudProxyConfirmInput",
+    "type": "object"
+  },
+  "cloud_rollback_proxy": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to run this proxy action",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "CloudProxyConfirmInput",
+    "type": "object"
+  },
+  "cloud_list_apps": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional arc-cloud server UUID filter",
+        "title": "Server Id"
+      }
+    },
+    "title": "CloudListAppsInput",
+    "type": "object"
+  },
+  "cloud_create_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "name": {
+        "description": "Unique app slug: ^[a-z0-9][a-z0-9-]{0,61}$",
+        "title": "Name",
+        "type": "string"
+      },
+      "server_id": {
+        "description": "Target server UUID \u2014 build machines are refused",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "source": {
+        "default": "image",
+        "description": "image | compose",
+        "title": "Source",
+        "type": "string"
+      },
+      "image": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Image ref, e.g. ghcr.io/org/app:tag",
+        "title": "Image"
+      },
+      "compose_yaml": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Compose file for source=compose",
+        "title": "Compose Yaml"
+      },
+      "port": {
+        "default": 80,
+        "maximum": 65535,
+        "minimum": 1,
+        "title": "Port",
+        "type": "integer"
+      },
+      "health_path": {
+        "default": "/",
+        "title": "Health Path",
+        "type": "string"
+      },
+      "domains": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Domains",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name",
+      "server_id"
+    ],
+    "title": "CloudCreateAppInput",
+    "type": "object"
+  },
+  "cloud_update_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Name"
+      },
+      "server_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Server Id"
+      },
+      "image": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Image"
+      },
+      "compose_yaml": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Compose Yaml"
+      },
+      "port": {
+        "anyOf": [
+          {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Port"
+      },
+      "health_path": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Health Path"
+      },
+      "domains": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Domains"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudUpdateAppInput",
+    "type": "object"
+  },
+  "cloud_set_env": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "env": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "description": "Full environment map \u2014 replaces all existing values. Stored encrypted by arc-cloud and masked in every output.",
+        "title": "Env",
+        "type": "object"
+      }
+    },
+    "required": [
+      "app_id",
+      "env"
+    ],
+    "title": "CloudSetEnvInput",
+    "type": "object"
+  },
+  "cloud_get_env": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "reveal": {
+        "default": false,
+        "description": "false returns masked values. true returns plaintext and is recorded in the arc-cloud audit log.",
+        "title": "Reveal",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudGetEnvInput",
+    "type": "object"
+  },
+  "cloud_deploy": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "image_ref": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Image ref override; blank deploys the stored image",
+        "title": "Image Ref"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudDeployInput",
+    "type": "object"
+  },
+  "cloud_get_deployment": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "deployment_id": {
+        "description": "arc-cloud deployment UUID",
+        "title": "Deployment Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "deployment_id"
+    ],
+    "title": "CloudDeploymentIdInput",
+    "type": "object"
+  },
+  "cloud_list_deployments": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudAppIdInput",
+    "type": "object"
+  },
+  "cloud_rollback": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudAppIdInput",
+    "type": "object"
+  },
+  "cloud_restart_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudAppIdInput",
+    "type": "object"
+  },
+  "cloud_start_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudAppIdInput",
+    "type": "object"
+  },
+  "cloud_stop_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to stop a running app",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudStopInput",
+    "type": "object"
+  },
+  "cloud_delete_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true \u2014 deletes the app, its containers, and history",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudDeleteAppInput",
+    "type": "object"
+  },
+  "cloud_app_logs": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "tail": {
+        "default": 200,
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Tail",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudAppLogsInput",
+    "type": "object"
+  },
+  "cloud_build_and_deploy": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "ref": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Branch or pushed commit sha; empty builds the configured branch tip. Unknown commits fail commit_not_pushed.",
+        "title": "Ref"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudBuildDeployInput",
+    "type": "object"
+  },
+  "cloud_set_app_source": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "git_provider": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "github_app | deploy_key | public \u2014 empty string clears the git source and reverts to image/compose deploys",
+        "title": "Git Provider"
+      },
+      "repo": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "owner/repo (GitHub) or a full URL / absolute path (lab)",
+        "title": "Repo"
+      },
+      "branch": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Branch"
+      },
+      "dockerfile": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "default Dockerfile",
+        "title": "Dockerfile"
+      },
+      "context": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "default .",
+        "title": "Context"
+      },
+      "auto_deploy": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Deploy on every signed push webhook to this branch",
+        "title": "Auto Deploy"
+      },
+      "registry": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "ghcr | private \u2014 set with registry_repo",
+        "title": "Registry"
+      },
+      "registry_repo": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Image base the build tags, e.g. ghcr.io/owner/app",
+        "title": "Registry Repo"
+      },
+      "registry_user": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Registry User"
+      },
+      "registry_pass": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Registry password \u2014 stored encrypted, never returned",
+        "title": "Registry Pass"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudSetAppSourceInput",
+    "type": "object"
+  },
+  "cloud_set_build_policy": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "build_policy": {
+        "description": "local_preferred (build machine if online, else target) | local_only (queue until a machine is online) | server_only (always the target)",
+        "title": "Build Policy",
+        "type": "string"
+      },
+      "allowed_build_servers": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Build machine UUIDs allowed for this app; empty = any",
+        "title": "Allowed Build Servers"
+      }
+    },
+    "required": [
+      "app_id",
+      "build_policy"
+    ],
+    "title": "CloudSetBuildPolicyInput",
+    "type": "object"
+  },
+  "cloud_set_build_machine": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "accept_builds": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Whether this build machine accepts builds",
+        "title": "Accept Builds"
+      },
+      "build_priority": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Higher wins when several machines are free",
+        "title": "Build Priority"
+      },
+      "max_parallel_builds": {
+        "anyOf": [
+          {
+            "maximum": 16,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Concurrent build slots",
+        "title": "Max Parallel Builds"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "CloudSetBuildMachineInput",
+    "type": "object"
+  },
+  "cloud_set_build_checkout": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "arc-cloud server UUID",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      },
+      "path": {
+        "description": "Existing checkout path on the build machine \u2014 reused with fetch + detached worktree. Empty clears the mapping.",
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_id",
+      "app_id",
+      "path"
+    ],
+    "title": "CloudSetBuildCheckoutInput",
+    "type": "object"
+  },
+  "cloud_github_app_status": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "CallerTokenInput",
+    "type": "object"
+  },
+  "cloud_create_deploy_key": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudAppIdInput",
+    "type": "object"
+  },
+  "cloud_list_coolify_apps": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "CallerTokenInput",
+    "type": "object"
+  },
+  "cloud_import_coolify_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "coolify_app_uuid": {
+        "description": "Coolify application UUID",
+        "title": "Coolify App Uuid",
+        "type": "string"
+      },
+      "server_id": {
+        "description": "arc-cloud target server UUID for the new draft app",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional app slug; defaults to the panel name",
+        "title": "Name"
+      }
+    },
+    "required": [
+      "coolify_app_uuid",
+      "server_id"
+    ],
+    "title": "CloudImportCoolifyInput",
+    "type": "object"
+  },
+  "cloud_list_easypanel_apps": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "CallerTokenInput",
+    "type": "object"
+  },
+  "cloud_import_easypanel_app": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "project": {
+        "description": "Easypanel project name (a-z0-9-_)",
+        "title": "Project",
+        "type": "string"
+      },
+      "service": {
+        "description": "Easypanel app service name",
+        "title": "Service",
+        "type": "string"
+      },
+      "server_id": {
+        "description": "arc-cloud target server UUID for the new draft app",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional app slug; defaults to project-service",
+        "title": "Name"
+      }
+    },
+    "required": [
+      "project",
+      "service",
+      "server_id"
+    ],
+    "title": "CloudImportEasypanelInput",
+    "type": "object"
+  },
+  "cloud_confirm_import": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app_id": {
+        "description": "arc-cloud app UUID",
+        "title": "App Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "app_id"
+    ],
+    "title": "CloudAppIdInput",
+    "type": "object"
+  },
+  "observer_search": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Server name or UUID. Omit to search all servers.",
+        "title": "Server"
+      },
+      "app": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Application/container name filter.",
+        "title": "App"
+      },
+      "q": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Free-text substring filter on the log message.",
+        "title": "Q"
+      },
+      "level": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "trace | debug | info | warn | error",
+        "title": "Level"
+      },
+      "from_ms": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Inclusive lower bound, epoch milliseconds.",
+        "title": "From Ms"
+      },
+      "to_ms": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Inclusive upper bound, epoch milliseconds.",
+        "title": "To Ms"
+      },
+      "before_ms": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Pagination: exclusive upper bound for the next older page.",
+        "title": "Before Ms"
+      },
+      "limit": {
+        "anyOf": [
+          {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Max lines, 1-1000 (default 200).",
+        "title": "Limit"
+      }
+    },
+    "title": "ObserverSearchInput",
+    "type": "object"
+  },
+  "observer_tail": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Server name or UUID filter.",
+        "title": "Server"
+      },
+      "app": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "App/container filter.",
+        "title": "App"
+      },
+      "after_ms": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Only lines newer than this epoch-millis cursor.",
+        "title": "After Ms"
+      },
+      "limit": {
+        "anyOf": [
+          {
+            "maximum": 500,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Max lines, 1-500 (default 100).",
+        "title": "Limit"
+      }
+    },
+    "title": "ObserverTailInput",
+    "type": "object"
+  },
+  "observer_explain": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional server UUID scope.",
+        "title": "Server Id"
+      },
+      "app": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional app scope.",
+        "title": "App"
+      },
+      "minutes": {
+        "anyOf": [
+          {
+            "maximum": 1440,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Look-back window in minutes (default 60, max 1440).",
+        "title": "Minutes"
+      },
+      "query": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional question, e.g. 'why did the app restart'.",
+        "title": "Query"
+      }
+    },
+    "title": "ObserverExplainInput",
+    "type": "object"
+  },
+  "observer_list_tokens": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "ObserverListTokensInput",
+    "type": "object"
+  },
+  "observer_create_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_name": {
+        "description": "Server name for the token (lowercase, e.g. arc-lab-1).",
+        "title": "Server Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_name"
+    ],
+    "title": "ObserverCreateTokenInput",
+    "type": "object"
+  },
+  "observer_revoke_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "token_id": {
+        "description": "Observer token UUID from observer_list_tokens",
+        "title": "Token Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to revoke the token",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "token_id"
+    ],
+    "title": "ObserverRevokeTokenInput",
+    "type": "object"
+  },
+  "observer_list_app_tokens": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "ObserverListAppTokensInput",
+    "type": "object"
+  },
+  "observer_create_app_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app": {
+        "description": "App key the token writes for, e.g. arccloud:my-app or a free-form name. All logs sent with the token land under this app.",
+        "title": "App",
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "app"
+    ],
+    "title": "ObserverCreateAppTokenInput",
+    "type": "object"
+  },
+  "observer_revoke_app_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "token_id": {
+        "description": "App token UUID from observer_list_app_tokens",
+        "title": "Token Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to revoke the token",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "token_id"
+    ],
+    "title": "ObserverRevokeAppTokenInput",
+    "type": "object"
+  },
+  "metrics_list_servers": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "MetricsListServersInput",
+    "type": "object"
+  },
+  "metrics_server_resources": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "Metrics server UUID from metrics_list_servers",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "window": {
+        "default": "24h",
+        "description": "Time window: 1h | 24h | 7d | 30d | 1y",
+        "title": "Window",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "MetricsServerResourcesInput",
+    "type": "object"
+  },
+  "metrics_server_series": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_id": {
+        "description": "Metrics server UUID from metrics_list_servers",
+        "title": "Server Id",
+        "type": "string"
+      },
+      "window": {
+        "default": "24h",
+        "description": "Time window: 1h | 24h | 7d | 30d | 1y",
+        "title": "Window",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_id"
+    ],
+    "title": "MetricsServerSeriesInput",
+    "type": "object"
+  },
+  "metrics_resource_series": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "resource_id": {
+        "description": "Resource id from metrics_server_resources",
+        "minimum": 1,
+        "title": "Resource Id",
+        "type": "integer"
+      },
+      "window": {
+        "default": "24h",
+        "description": "Time window: 1h | 24h | 7d | 30d | 1y",
+        "title": "Window",
+        "type": "string"
+      }
+    },
+    "required": [
+      "resource_id"
+    ],
+    "title": "MetricsResourceSeriesInput",
+    "type": "object"
+  },
+  "metrics_list_agent_tokens": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "MetricsListAgentTokensInput",
+    "type": "object"
+  },
+  "metrics_create_agent_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "server_name": {
+        "description": "Server name for the token (lowercase, e.g. arc-lab-1).",
+        "title": "Server Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "server_name"
+    ],
+    "title": "MetricsCreateAgentTokenInput",
+    "type": "object"
+  },
+  "metrics_revoke_agent_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "token_id": {
+        "description": "Agent token UUID from metrics_list_agent_tokens",
+        "title": "Token Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to revoke the token",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "token_id"
+    ],
+    "title": "MetricsRevokeAgentTokenInput",
+    "type": "object"
+  },
+  "metrics_list_app_tokens": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "MetricsListAppTokensInput",
+    "type": "object"
+  },
+  "metrics_create_app_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app": {
+        "description": "App key the token writes for, e.g. arccloud:my-app or a free-form name. All metrics sent with the token land under this app.",
+        "title": "App",
+        "maxLength": 200,
+        "minLength": 1,
+        "type": "string"
+      }
+    },
+    "required": [
+      "app"
+    ],
+    "title": "MetricsCreateAppTokenInput",
+    "type": "object"
+  },
+  "metrics_revoke_app_token": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "token_id": {
+        "description": "App token UUID from metrics_list_app_tokens",
+        "title": "Token Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to revoke the token",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "token_id"
+    ],
+    "title": "MetricsRevokeAppTokenInput",
+    "type": "object"
+  },
+  "metrics_app_metrics": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional app key filter, e.g. arccloud:my-app.",
+        "title": "App"
+      }
+    },
+    "title": "MetricsAppMetricsInput",
+    "type": "object"
+  },
+  "metrics_app_series": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "app": {
+        "description": "App key, e.g. arccloud:my-app.",
+        "title": "App",
+        "type": "string"
+      },
+      "metric": {
+        "description": "Custom metric name from metrics_app_metrics.",
+        "title": "Metric",
+        "type": "string"
+      },
+      "window": {
+        "default": "24h",
+        "description": "Time window: 1h | 24h | 7d | 30d | 1y",
+        "title": "Window",
+        "type": "string"
+      }
+    },
+    "required": [
+      "app",
+      "metric"
+    ],
+    "title": "MetricsAppSeriesInput",
+    "type": "object"
+  },
+  "hub_list_devices": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "HubListDevicesInput",
+    "type": "object"
+  },
+  "hub_devices_presence": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "HubDevicesPresenceInput",
+    "type": "object"
+  },
+  "hub_list_releases": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      }
+    },
+    "title": "HubListReleasesInput",
+    "type": "object"
+  },
+  "hub_yank_release": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "version": {
+        "description": "Release version to yank, e.g. 1.4.2 (leading v optional).",
+        "title": "Version",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to yank the release",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "version"
+    ],
+    "title": "HubYankReleaseInput",
+    "type": "object"
+  },
+  "hub_revoke_device": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "device_id": {
+        "description": "Device id from hub_list_devices / hub_devices_presence",
+        "title": "Device Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to revoke the device",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "device_id"
+    ],
+    "title": "HubRevokeDeviceInput",
+    "type": "object"
+  },
+  "hub_list_shares": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "session_id": {
+        "description": "Sync session id the shares were published for",
+        "title": "Session Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "session_id"
+    ],
+    "title": "HubListSharesInput",
+    "type": "object"
+  },
+  "hub_revoke_share": {
+    "properties": {
+      "arc_todo_token": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional Arc Todo JWT when the HTTP connector drops Authorization (Grok/cloud). Same value as the arc_todo_token secret; Bearer prefix optional. Omit when mcp.json already sends Authorization.",
+        "title": "Arc Todo Token"
+      },
+      "share_id": {
+        "description": "Share id from hub_list_shares (not the public token)",
+        "title": "Share Id",
+        "type": "string"
+      },
+      "confirm": {
+        "default": false,
+        "description": "Must be true to revoke the share",
+        "title": "Confirm",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "share_id"
+    ],
+    "title": "HubRevokeShareInput",
+    "type": "object"
   }
 }

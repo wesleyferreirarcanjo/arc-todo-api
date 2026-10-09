@@ -701,6 +701,42 @@ export const APP_ERRORS = {
       'That metrics item is not available. It may have been removed, or you do not have access.',
   },
 
+  CLOUD_NOT_CONFIGURED: {
+    code: 'ERR-ARC-CLOUD-01',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      'The cloud service is not set up. Ask an administrator to configure it.',
+  },
+  CLOUD_UNAVAILABLE: {
+    code: 'ERR-ARC-CLOUD-02',
+    status: HttpStatus.BAD_GATEWAY,
+    message: 'The cloud service is unavailable. Try again in a moment.',
+  },
+  CLOUD_NOT_FOUND: {
+    code: 'ERR-ARC-CLOUD-03',
+    status: HttpStatus.NOT_FOUND,
+    message:
+      'That cloud server is not available. It may have been removed, or you do not have access.',
+  },
+
+  OBSERVER_NOT_CONFIGURED: {
+    code: 'ERR-ARC-OBS-01',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      'The logs service is not set up. Ask an administrator to configure it.',
+  },
+  OBSERVER_UNAVAILABLE: {
+    code: 'ERR-ARC-OBS-02',
+    status: HttpStatus.BAD_GATEWAY,
+    message: 'The logs service is unavailable. Try again in a moment.',
+  },
+  OBSERVER_NOT_FOUND: {
+    code: 'ERR-ARC-OBS-03',
+    status: HttpStatus.NOT_FOUND,
+    message:
+      'That logs item is not available. It may have been removed, or you do not have access.',
+  },
+
   VAL_REQUEST: {
     code: 'ERR-ARC-VAL-01',
     status: HttpStatus.BAD_REQUEST,

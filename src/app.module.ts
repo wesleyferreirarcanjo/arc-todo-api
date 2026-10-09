@@ -20,7 +20,9 @@ import { OrganizationsModule } from './organizations/organizations.module';
 import { ProjectsModule } from './projects/projects.module';
 import { PushModule } from './push/push.module';
 import { DeviceControlModule } from './device-control/device-control.module';
+import { CloudModule } from './cloud/cloud.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { ObserverModule } from './observer/observer.module';
 import { ScopeResolverModule } from './scope-resolver/scope-resolver.module';
 import { SeoModule } from './seo/seo.module';
 import { StorageModule } from './storage/storage.module';
@@ -60,6 +62,8 @@ import { UsersModule } from './users/users.module';
     PushModule,
     DeviceControlModule,
     MetricsModule,
+    ObserverModule,
+    CloudModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: AppExceptionFilter }],
 })

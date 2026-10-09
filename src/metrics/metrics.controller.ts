@@ -15,6 +15,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { appError } from '../errors/app-errors';
 import { AdminGuard } from '../projects/admin.guard';
 import { CreateAgentTokenDto } from './dto/create-agent-token.dto';
+import { CreateAppTokenDto } from './dto/create-app-token.dto';
 import { MetricsWindowDto } from './dto/metrics-window.dto';
 import { MetricsService } from './metrics.service';
 
@@ -69,5 +70,38 @@ export class MetricsController {
   @HttpCode(204)
   revokeAgentToken(@Param('id', ParseUUIDPipe) id: string) {
     return this.metrics.revokeAgentToken(id);
+  }
+
+  @Get('app-tokens')
+  listAppTokens() {
+    return this.metrics.listAppTokens();
+  }
+
+  @Post('app-tokens')
+  createAppToken(@Body() dto: CreateAppTokenDto) {
+    return this.metrics.createAppToken(dto.app);
+  }
+
+  @Delete('app-tokens/:id')
+  @HttpCode(204)
+  revokeAppToken(@Param('id', ParseUUIDPipe) id: string) {
+    return this.metrics.revokeAppToken(id);
+  }
+
+  @Get('app-metrics')
+  listAppMetrics(@Query('app') app?: string) {
+    return this.metrics.listAppMetrics(app);
+  }
+
+  @Get('app-series')
+  getAppSeries(
+    @Query() query: MetricsWindowDto,
+    @Query('app') app?: string,
+    @Query('metric') metric?: string,
+  ) {
+    if (!app || !metric) {
+      throw appError('VAL_REQUEST');
+    }
+    return this.metrics.getAppSeries(app, metric, query.window);
   }
 }

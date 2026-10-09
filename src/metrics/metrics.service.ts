@@ -41,6 +41,28 @@ export class MetricsService {
     return this.call('DELETE', `/v1/tokens/${encodeURIComponent(id)}`);
   }
 
+  listAppTokens() {
+    return this.call('GET', '/v1/app-tokens');
+  }
+
+  createAppToken(app: string) {
+    return this.call('POST', '/v1/app-tokens', { app });
+  }
+
+  revokeAppToken(id: string) {
+    return this.call('DELETE', `/v1/app-tokens/${encodeURIComponent(id)}`);
+  }
+
+  listAppMetrics(app?: string) {
+    const qs = app ? `?app=${encodeURIComponent(app)}` : '';
+    return this.call('GET', `/v1/app-metrics${qs}`);
+  }
+
+  getAppSeries(app: string, metric: string, window: MetricsWindow) {
+    const params = new URLSearchParams({ app, metric, window });
+    return this.call('GET', `/v1/app-series?${params.toString()}`);
+  }
+
   private async call(method: string, path: string, body?: unknown): Promise<unknown> {
     const base = this.config.get<string>('ARC_METRICS_URL')?.replace(/\/$/, '');
     const token = this.config.get<string>('ARC_METRICS_TOKEN');
