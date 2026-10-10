@@ -14,6 +14,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { appError } from '../errors/app-errors';
 import { AdminGuard } from '../projects/admin.guard';
+import { AppSeriesQueryDto } from './dto/app-series.dto';
 import { CreateAgentTokenDto } from './dto/create-agent-token.dto';
 import { CreateAppTokenDto } from './dto/create-app-token.dto';
 import { MetricsWindowDto } from './dto/metrics-window.dto';
@@ -94,14 +95,7 @@ export class MetricsController {
   }
 
   @Get('app-series')
-  getAppSeries(
-    @Query() query: MetricsWindowDto,
-    @Query('app') app?: string,
-    @Query('metric') metric?: string,
-  ) {
-    if (!app || !metric) {
-      throw appError('VAL_REQUEST');
-    }
-    return this.metrics.getAppSeries(app, metric, query.window);
+  getAppSeries(@Query() query: AppSeriesQueryDto) {
+    return this.metrics.getAppSeries(query.app, query.metric, query.window);
   }
 }
