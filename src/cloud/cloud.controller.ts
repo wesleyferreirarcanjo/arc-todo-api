@@ -241,6 +241,15 @@ export class CloudController {
     );
   }
 
+  @Get('apps/:id/stats')
+  appStats(
+    @Req() req: AuthRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-arc-source') source?: string,
+  ) {
+    return this.cloud.appStats(req.user.id, cloudSource(source), id);
+  }
+
   // ------------------------------------------------------------------
   // Git builds
   // ------------------------------------------------------------------

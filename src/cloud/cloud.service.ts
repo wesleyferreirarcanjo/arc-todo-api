@@ -146,6 +146,10 @@ export class CloudService {
     return this.call(actor, source, 'GET', `${this.appPath(appId)}/logs${query}`);
   }
 
+  appStats(actor: string, source: CloudSource, appId: string) {
+    return this.call(actor, source, 'GET', `${this.appPath(appId)}/stats`);
+  }
+
   // ------------------------------------------------------------------
   // Git builds — source, registry, build policy, machines, GitHub App.
   // ------------------------------------------------------------------
@@ -343,19 +347,26 @@ export class CloudService {
       throw appError('CLOUD_NOT_FOUND');
     }
     if (response.status === 400 || response.status === 409) {
+      const message =
+        (await readServiceMessage(response)) ??
+        (response.status === 409 ? 'Conflict' : 'Bad Request');
       throw new HttpException(
-        { statusCode: response.status, message: await readServiceMessage(response) },
+        { statusCode: response.status, message },
         response.status,
       );
     }
-    if (!response.ok || response.status >= 500) {
-      throw appError('CLOUD_UNAVAILABLE');
+    if (!response.ok) {
+      // Upstream failures (unreachable server, SSH auth refused, panel 401…)
+      // carry a `message` from the master — forward it as the real cause
+      // instead of the generic "service unavailable".
+      const message = await readServiceMessage(response);
+      throw appError('CLOUD_UNAVAILABLE', message ?? undefined);
     }
     return response.json();
   }
 }
 
-async function readServiceMessage(response: Response): Promise<string> {
+async function readServiceMessage(response: Response): Promise<string | null> {
   try {
     const data: unknown = await response.json();
     if (typeof data === 'object' && data !== null && 'message' in data) {
@@ -367,5 +378,5 @@ async function readServiceMessage(response: Response): Promise<string> {
   } catch {
     // Body is not JSON; fall through to a generic status phrase.
   }
-  return response.status === 409 ? 'Conflict' : 'Bad Request';
+  return null;
 }
