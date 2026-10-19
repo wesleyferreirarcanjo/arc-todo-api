@@ -327,6 +327,10 @@ export class CloudService {
     try {
       response = await fetch(`${base}${path}`, {
         method,
+        // Every master call is bounded transport-side (15 s per command,
+        // async 202 for installs/builds) — 60 s only trips on a genuinely
+        // stuck master, instead of hanging the UI request forever.
+        signal: AbortSignal.timeout(60_000),
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: 'application/json',
@@ -336,8 +340,12 @@ export class CloudService {
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });
-    } catch {
-      throw appError('CLOUD_UNAVAILABLE');
+    } catch (e) {
+      const timedOut = e instanceof Error && e.name === 'TimeoutError';
+      throw appError(
+        'CLOUD_UNAVAILABLE',
+        timedOut ? 'cloud request timed out' : undefined,
+      );
     }
 
     if (response.status === 204) {
