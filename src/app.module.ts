@@ -21,6 +21,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { PushModule } from './push/push.module';
 import { DeviceControlModule } from './device-control/device-control.module';
 import { CloudModule } from './cloud/cloud.module';
+import { ControlModule } from './control/control.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { ObserverModule } from './observer/observer.module';
 import { ScopeResolverModule } from './scope-resolver/scope-resolver.module';
@@ -64,6 +65,7 @@ import { UsersModule } from './users/users.module';
     MetricsModule,
     ObserverModule,
     CloudModule,
+    ControlModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: AppExceptionFilter }],
 })

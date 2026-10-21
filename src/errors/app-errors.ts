@@ -737,6 +737,84 @@ export const APP_ERRORS = {
       'That logs item is not available. It may have been removed, or you do not have access.',
   },
 
+  CONTROL_NOT_FOUND: {
+    code: 'ERR-ARC-CTRL-01',
+    status: HttpStatus.NOT_FOUND,
+    message:
+      'That PC is not available. It may have been revoked, or you do not have access.',
+  },
+  CONTROL_TOKEN_INVALID: {
+    code: 'ERR-ARC-CTRL-02',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'That machine credential is not valid.',
+  },
+  CONTROL_REVOKED: {
+    code: 'ERR-ARC-CTRL-03',
+    status: HttpStatus.FORBIDDEN,
+    message: 'This PC was revoked. Connect it again to keep using it.',
+  },
+  CONTROL_DENIED: {
+    code: 'ERR-ARC-CTRL-04',
+    status: HttpStatus.FORBIDDEN,
+    message: 'Only the owner can control this PC.',
+  },
+  CONTROL_SESSION_CONFLICT: {
+    code: 'ERR-ARC-CTRL-05',
+    status: HttpStatus.CONFLICT,
+    message: 'This PC already has an active control session.',
+  },
+  CONTROL_SESSION_NOT_FOUND: {
+    code: 'ERR-ARC-CTRL-06',
+    status: HttpStatus.NOT_FOUND,
+    message: 'That control session is no longer active.',
+  },
+  CONTROL_DISABLED: {
+    code: 'ERR-ARC-CTRL-07',
+    status: HttpStatus.FORBIDDEN,
+    message: 'Remote control is not turned on for this PC.',
+  },
+  CONTROL_PAUSED: {
+    code: 'ERR-ARC-CTRL-08',
+    status: HttpStatus.FORBIDDEN,
+    message: 'This PC is paused.',
+  },
+  CONTROL_CODE_INVALID: {
+    code: 'ERR-ARC-CTRL-09',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'That connect code is not valid. Start the connection again.',
+  },
+  CONTROL_CODE_EXPIRED: {
+    code: 'ERR-ARC-CTRL-10',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'That connect code expired. Start the connection again.',
+  },
+  CONTROL_CODE_REUSED: {
+    code: 'ERR-ARC-CTRL-11',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'That connect code was already used. Start the connection again.',
+  },
+  CONTROL_VERIFIER: {
+    code: 'ERR-ARC-CTRL-12',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'The PC could not confirm this connection. Start it again.',
+  },
+  CONTROL_INTERNAL_NOT_CONFIGURED: {
+    code: 'ERR-ARC-CTRL-13',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      'The machine control service is not set up. Ask an administrator to configure it.',
+  },
+  CONTROL_INTERNAL_UNAUTHORIZED: {
+    code: 'ERR-ARC-CTRL-14',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'This service credential is not valid.',
+  },
+  CONTROL_USAGE_USER_MISMATCH: {
+    code: 'ERR-ARC-CTRL-15',
+    status: HttpStatus.FORBIDDEN,
+    message: 'Usage can only be reported for your own account.',
+  },
+
   VAL_REQUEST: {
     code: 'ERR-ARC-VAL-01',
     status: HttpStatus.BAD_REQUEST,

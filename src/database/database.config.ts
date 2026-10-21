@@ -34,6 +34,11 @@ import { ProjectSeoGscRow } from '../seo/project-seo-gsc-row.entity';
 import { ProjectSeoLighthouseRun } from '../seo/project-seo-lighthouse-run.entity';
 import { ProjectSeoSite } from '../seo/project-seo-site.entity';
 import { SeoSetting } from '../seo/seo-setting.entity';
+import { Machine } from '../control/machine.entity';
+import { MachineConnectSession } from '../control/machine-connect-session.entity';
+import { ControlSession } from '../control/control-session.entity';
+import { ControlToolCall } from '../control/control-tool-call.entity';
+import { TokenUsage } from '../control/token-usage.entity';
 
 export const entities = [
   User,
@@ -70,6 +75,11 @@ export const entities = [
   ProjectSeoLighthouseRun,
   ProjectSeoGscRow,
   SeoSetting,
+  Machine,
+  MachineConnectSession,
+  ControlSession,
+  ControlToolCall,
+  TokenUsage,
 ];
 
 export function getDatabaseConfig(
