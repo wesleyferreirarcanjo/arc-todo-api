@@ -46,6 +46,18 @@ export class ProjectSeoAuditPage {
   @Column({ name: 'broken_link', type: 'boolean', default: false })
   brokenLink: boolean;
 
+  @Column({ name: 'h1_count', type: 'int', nullable: true })
+  h1Count: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  canonical: string | null;
+
+  @Column({ name: 'word_count', type: 'int', nullable: true })
+  wordCount: number | null;
+
+  @Column({ type: 'boolean', nullable: true })
+  noindex: boolean | null;
+
   @ManyToOne(() => ProjectSeoAuditRun, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'run_id' })
   run: ProjectSeoAuditRun;

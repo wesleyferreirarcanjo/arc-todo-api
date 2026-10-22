@@ -28,6 +28,10 @@ export type SeoPageRecord = {
   robotsAllowed: boolean;
   inSitemap: boolean;
   brokenLink: boolean;
+  h1Count: number | null;
+  canonical: string | null;
+  wordCount: number | null;
+  noindex: boolean | null;
 };
 
 export type SeoCrawlResult = {
@@ -66,6 +70,33 @@ function parseJsonLd($: CheerioAPI): boolean {
     }
   }
   return false;
+}
+
+function pageSignals(
+  $: CheerioAPI,
+  url: string,
+  xRobotsTag: string | string[] | undefined,
+): Pick<SeoPageRecord, 'h1Count' | 'canonical' | 'wordCount' | 'noindex'> {
+  const h1Count = $('h1').length;
+  const href = $('link[rel="canonical"]').first().attr('href')?.trim();
+  let canonical: string | null = null;
+  if (href) {
+    try {
+      canonical = new URL(href, url).href;
+    } catch {
+      canonical = href;
+    }
+  }
+  const body = $('body').clone();
+  body.find('script, style, noscript, template').remove();
+  const wordCount = body.text().split(/\s+/).filter(Boolean).length;
+  const meta = $('meta[name="robots"], meta[name="googlebot"]')
+    .toArray()
+    .map((el) => $(el).attr('content') ?? '')
+    .join(' ');
+  const header = Array.isArray(xRobotsTag) ? xRobotsTag.join(' ') : (xRobotsTag ?? '');
+  const noindex = /\bnoindex\b|\bnone\b/i.test(`${meta} ${header}`);
+  return { h1Count, canonical, wordCount, noindex };
 }
 
 async function ogOkFromHtml(url: string, html: string): Promise<boolean> {
@@ -253,6 +284,7 @@ export class SeoCrawlService {
         const robotsAllowed = robots.isAllowed(url, SEO_CRAWL_UA) !== false;
         const inSitemap = sitemapSet.has(url.replace(/\/+$/, '') || url);
         const brokenLink = statusCode !== null && statusCode >= 400;
+        const signals = pageSignals($, url, response.headers['x-robots-tag']);
         pages.push({
           url,
           statusCode,
@@ -266,6 +298,7 @@ export class SeoCrawlService {
           robotsAllowed,
           inSitemap,
           brokenLink,
+          ...signals,
         });
 
         if (pages.length >= maxPages) return;
@@ -299,6 +332,10 @@ export class SeoCrawlService {
           robotsAllowed: robots.isAllowed(url, SEO_CRAWL_UA) !== false,
           inSitemap: sitemapSet.has(url.replace(/\/+$/, '') || url),
           brokenLink: true,
+          h1Count: null,
+          canonical: null,
+          wordCount: null,
+          noindex: null,
         });
       },
     });

@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { ProjectSeoSite } from './project-seo-site.entity';
+import type { SeoSiteProbe } from './seo-site-probe';
 
 export type SeoAuditRunStatus = 'queued' | 'running' | 'complete' | 'failed';
 
@@ -38,6 +39,9 @@ export class ProjectSeoAuditRun {
 
   @Column({ name: 'sitemap_urls', type: 'jsonb', default: [] })
   sitemapUrls: string[];
+
+  @Column({ name: 'site_probe', type: 'jsonb', nullable: true })
+  siteProbe: SeoSiteProbe | null;
 
   @ManyToOne(() => ProjectSeoSite, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'site_id' })

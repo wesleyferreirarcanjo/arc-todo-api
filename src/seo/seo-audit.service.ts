@@ -9,7 +9,9 @@ import { ProjectSeoSite } from './project-seo-site.entity';
 import { SeoCrawlError, SeoCrawlService } from './seo-crawl.service';
 import { homepageUrl } from './seo-host.util';
 import { SeoLighthouseService } from './seo-lighthouse.service';
+import { evaluateSeoRules, type SeoFinding } from './seo-rules';
 import { SeoSettingsService } from './seo-settings.service';
+import { probeSite, type SeoSiteProbe } from './seo-site-probe';
 
 export type SeoAuditView = {
   id: string;
@@ -21,9 +23,11 @@ export type SeoAuditView = {
   finishedAt: Date | null;
   robotsTxt: string | null;
   sitemapUrls: string[];
+  siteProbe: SeoSiteProbe | null;
   createdAt: Date;
   pages: ProjectSeoAuditPage[];
   lighthouse: ProjectSeoLighthouseRun | null;
+  findings: SeoFinding[];
 };
 
 @Injectable()
@@ -92,6 +96,7 @@ export class SeoAuditService {
         finishedAt: null,
         robotsTxt: null,
         sitemapUrls: [],
+        siteProbe: null,
       }),
     );
     void this.processRun(site, run.id).finally(() => {
@@ -112,6 +117,12 @@ export class SeoAuditService {
       const crawl = await this.crawlService.crawlSite(site.hostname, maxPages);
       run.robotsTxt = crawl.robotsTxt;
       run.sitemapUrls = crawl.sitemapUrls;
+      run.siteProbe = await probeSite(site.hostname).catch((error: unknown) => {
+        this.logger.warn(
+          `SEO site probe ${run.id} failed: ${String(error)}`,
+        );
+        return null;
+      });
       if (crawl.pages.length) {
         await this.pagesRepository.save(
           crawl.pages.map((page) =>
@@ -177,9 +188,20 @@ export class SeoAuditService {
       finishedAt: run.finishedAt,
       robotsTxt: run.robotsTxt,
       sitemapUrls: run.sitemapUrls,
+      siteProbe: run.siteProbe,
       createdAt: run.createdAt,
       pages,
       lighthouse,
+      findings:
+        run.status === 'complete'
+          ? evaluateSeoRules({
+              pages,
+              sitemapUrls: run.sitemapUrls,
+              robotsTxt: run.robotsTxt,
+              siteProbe: run.siteProbe,
+              lighthouse,
+            })
+          : [],
     };
   }
 }
