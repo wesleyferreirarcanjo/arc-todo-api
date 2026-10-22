@@ -11,7 +11,7 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ControlService } from './control.service';
-import { MachineRenameDto } from './dto/machine-rename.dto';
+import { UpdateMachineDto } from './dto/update-machine.dto';
 import { UsageUploadDto } from './dto/usage-upload.dto';
 
 interface AuthRequest extends Request {
@@ -29,12 +29,12 @@ export class ControlController {
   }
 
   @Patch('machines/:id')
-  renameMachine(
+  updateMachine(
     @Param('id') id: string,
     @Req() req: AuthRequest,
-    @Body() dto: MachineRenameDto,
+    @Body() dto: UpdateMachineDto,
   ) {
-    return this.control.renameMachine(id, req.user.id, dto);
+    return this.control.updateMachine(id, req.user.id, dto);
   }
 
   @Post('machines/:id/revoke')

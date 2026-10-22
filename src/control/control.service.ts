@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
 import { DataSource, IsNull, Repository } from 'typeorm';
@@ -29,14 +30,17 @@ import { InternalSessionTouchDto } from './dto/internal-session-touch.dto';
 import { InternalToolCallDto } from './dto/internal-tool-call.dto';
 import { MachineConnectAuthorizeDto } from './dto/machine-connect-authorize.dto';
 import { MachineConnectTokenDto } from './dto/machine-connect-token.dto';
-import { MachineRenameDto } from './dto/machine-rename.dto';
+import { UpdateMachineDto } from './dto/update-machine.dto';
 import { UsageUploadDto } from './dto/usage-upload.dto';
 
 const TOOL_CALL_LIMIT = 200;
 
 @Injectable()
 export class ControlService {
+  private readonly logger = new Logger(ControlService.name);
+
   constructor(
+    private readonly config: ConfigService,
     private readonly usersService: UsersService,
     @InjectRepository(Machine)
     private readonly machines: Repository<Machine>,
@@ -74,10 +78,18 @@ export class ControlService {
     );
   }
 
-  async renameMachine(id: string, userId: string, dto: MachineRenameDto) {
+  async updateMachine(id: string, userId: string, dto: UpdateMachineDto) {
     const machine = await this.ownedMachine(id, userId);
-    machine.name = dto.name.trim();
+    if (dto.name !== undefined) {
+      machine.name = dto.name.trim();
+    }
+    if (dto.remoteEnabled !== undefined) {
+      machine.remoteEnabled = dto.remoteEnabled;
+    }
     await this.machines.save(machine);
+    if (dto.remoteEnabled !== undefined) {
+      this.pushRemoteEnabled(machine.id, dto.remoteEnabled);
+    }
     return this.serializeMachine(machine);
   }
 
@@ -369,6 +381,43 @@ export class ControlService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Fire-and-forget push to the arc-control relay so a live agent applies
+   * the toggle now. Never fails the PATCH: an offline PC (or a missing
+   * relay) reconciles on the agent's next connect (BR-WIN-01).
+   */
+  private pushRemoteEnabled(machineId: string, on: boolean) {
+    const base = this.config.get<string>('ARC_CONTROL_URL')?.replace(/\/$/, '');
+    const token = this.config.get<string>('ARC_CONTROL_INTERNAL_TOKEN');
+    if (!base || !token) {
+      this.logger.warn(
+        'ARC_CONTROL_URL/ARC_CONTROL_INTERNAL_TOKEN not set — the PC applies remoteEnabled on its next agent connect',
+      );
+      return;
+    }
+    void fetch(`${base}/internal/machines/enable`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(10_000),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ machineId, on }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          this.logger.warn(
+            `arc-control enable push answered ${response.status} for machine ${machineId}`,
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `arc-control enable push failed for machine ${machineId}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
   }
 
   private async ownedMachine(id: string, userId: string): Promise<Machine> {
