@@ -71,6 +71,15 @@ export class CloudService {
     );
   }
 
+  removePanel(actor: string, source: CloudSource, serverId: string) {
+    return this.call(
+      actor,
+      source,
+      'DELETE',
+      `/v1/servers/${encodeURIComponent(serverId)}/panel`,
+    );
+  }
+
   // ------------------------------------------------------------------
   // Apps
   // ------------------------------------------------------------------

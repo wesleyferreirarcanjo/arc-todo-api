@@ -89,6 +89,15 @@ export class CloudController {
     return this.cloud.rollbackProxy(req.user.id, cloudSource(source), id);
   }
 
+  @Delete('servers/:id/panel')
+  removePanel(
+    @Req() req: AuthRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-arc-source') source?: string,
+  ) {
+    return this.cloud.removePanel(req.user.id, cloudSource(source), id);
+  }
+
   @Delete('servers/:id')
   @HttpCode(204)
   removeServer(
