@@ -39,6 +39,7 @@ import { MachineConnectSession } from '../control/machine-connect-session.entity
 import { ControlSession } from '../control/control-session.entity';
 import { ControlToolCall } from '../control/control-tool-call.entity';
 import { TokenUsage } from '../control/token-usage.entity';
+import { ProjectVideo } from '../videos/project-video.entity';
 
 export const entities = [
   User,
@@ -80,6 +81,7 @@ export const entities = [
   ControlSession,
   ControlToolCall,
   TokenUsage,
+  ProjectVideo,
 ];
 
 export function getDatabaseConfig(

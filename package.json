@@ -40,7 +40,8 @@
     "test:qa-queue": "npm run build && node dist/qa-queue/qa-queue.util.js && node dist/qa-queue/qa-queue.routes.util.js && node dist/qa-queue/qa-queue-sse.util.js",
     "test:seo": "npm run build && node dist/seo/seo-host.util.js",
     "test:cloud": "npm run build && node dist/cloud/cloud.util.js",
-    "test:control-machines": "npm run build && node dist/control/machine-token.util.js"
+    "test:control-machines": "npm run build && node dist/control/machine-token.util.js",
+    "test:video-edit-state": "npm run build && node dist/videos/video-edit-state.util.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

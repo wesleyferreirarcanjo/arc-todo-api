@@ -10,6 +10,7 @@ import { BoardCyclesModule } from './board-cycles/board-cycles.module';
 import { DiagramsModule } from './diagrams/diagrams.module';
 import { QaInfoModule } from './qa-info/qa-info.module';
 import { QaQueueModule } from './qa-queue/qa-queue.module';
+import { VideosModule } from './videos/videos.module';
 import { WireframesModule } from './wireframes/wireframes.module';
 import { NameSessionsModule } from './name-sessions/name-sessions.module';
 import { HealthModule } from './health/health.module';
@@ -54,6 +55,7 @@ import { UsersModule } from './users/users.module';
     QaInfoModule,
     QaQueueModule,
     WireframesModule,
+    VideosModule,
     NameSessionsModule,
     SeoModule,
     McpToolsModule,

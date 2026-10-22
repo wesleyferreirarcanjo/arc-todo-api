@@ -24,6 +24,15 @@ export function buildTaskLogObjectKey(
   return `tasks/${taskId}/logs/${logId}/${safeName}`;
 }
 
+export function buildProjectVideoObjectKey(
+  projectId: string,
+  videoId: string,
+  kind: string,
+  ext: string,
+): string {
+  return `projects/${projectId}/videos/${videoId}/${kind}.${ext}`;
+}
+
 export function newAttachmentId(): string {
   return randomUUID();
 }

@@ -539,6 +539,38 @@ export const APP_ERRORS = {
     message: 'That wireframe HTML could not be saved. Check the markup and try again.',
   },
 
+  VIDEO_TITLE_REQUIRED: {
+    code: 'ERR-ARC-VIDEO-01',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Enter a video name to continue.',
+  },
+  VIDEO_NOT_FOUND: {
+    code: 'ERR-ARC-VIDEO-02',
+    status: HttpStatus.NOT_FOUND,
+    message:
+      'That video is not available. It may have been removed, or you do not have access.',
+  },
+  VIDEO_INVALID_EDIT_STATE: {
+    code: 'ERR-ARC-VIDEO-03',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'That video edit could not be saved. Reload the editor and try again.',
+  },
+  VIDEO_FILE_TYPE: {
+    code: 'ERR-ARC-VIDEO-04',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'That file type is not supported for this video.',
+  },
+  VIDEO_FILE_NOT_FOUND: {
+    code: 'ERR-ARC-VIDEO-05',
+    status: HttpStatus.NOT_FOUND,
+    message: 'That video file has not been uploaded yet.',
+  },
+  VIDEO_FILE_KIND: {
+    code: 'ERR-ARC-VIDEO-06',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Unknown video file kind.',
+  },
+
   USER_USERNAME_TAKEN: {
     code: 'ERR-ARC-USER-01',
     status: HttpStatus.CONFLICT,
