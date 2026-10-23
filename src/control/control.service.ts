@@ -2,16 +2,31 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomBytes } from 'crypto';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { sha256Hex, inspectCode, pkceMatches } from '../auth/desktop-auth.util';
-import { appError } from '../errors/app-errors';
+import { DevicesService } from '../devices/devices.service';
+import {
+  WINDOWS_REMOTE_ENABLED_DEFAULT,
+  isWindowsKind,
+  windowsListWhere,
+  windowsRevokeAccess,
+  windowsSurfaceAccess,
+} from '../devices/device.util';
+import {
+  InternalDeviceAuditDto,
+  InternalDeviceSessionOpenDto,
+} from '../devices/dto/internal-devices.dto';
+import {
+  APP_ERRORS,
+  AppHttpException,
+  appError,
+} from '../errors/app-errors';
 import { UsersService } from '../users/users.service';
 import { ControlSession } from './control-session.entity';
 import { ControlToolCall } from './control-tool-call.entity';
 import { MachineConnectSession } from './machine-connect-session.entity';
 import { Machine } from './machine.entity';
 import { TokenUsage } from './token-usage.entity';
-import { idleMsForKind, sessionOpenPlan } from '../devices/device.util';
 import {
   CONNECT_CODE_TTL_MS,
   hashMachineToken,
@@ -20,7 +35,6 @@ import {
   machineConnectCallbackUrl,
   machineStatus,
   mintMachineToken,
-  sanitizeToolInputs,
 } from './machine-token.util';
 import { InternalMachineAuthenticateDto } from './dto/internal-machine-authenticate.dto';
 import { InternalSessionCloseDto } from './dto/internal-session-close.dto';
@@ -41,6 +55,7 @@ export class ControlService {
   constructor(
     private readonly config: ConfigService,
     private readonly usersService: UsersService,
+    private readonly devices: DevicesService,
     @InjectRepository(Machine)
     private readonly machines: Repository<Machine>,
     @InjectRepository(MachineConnectSession)
@@ -59,15 +74,10 @@ export class ControlService {
   /** Owners see their own Windows rows; admins see all Windows rows for the revoke UI. */
   async listMachines(userId: string) {
     const me = await this.usersService.findById(userId);
-    const rows = me?.isAdmin
-      ? await this.machines.find({
-          where: { kind: 'windows' },
-          order: { createdAt: 'DESC' },
-        })
-      : await this.machines.find({
-          where: { ownerUserId: userId, kind: 'windows' },
-          order: { createdAt: 'DESC' },
-        });
+    const rows = await this.machines.find({
+      where: windowsListWhere(!!me?.isAdmin, userId),
+      order: { createdAt: 'DESC' },
+    });
     const usernames = new Map<string, string>();
     for (const row of rows) {
       if (!usernames.has(row.ownerUserId)) {
@@ -99,19 +109,10 @@ export class ControlService {
   async revokeMachine(id: string, userId: string) {
     const machine = await this.machines.findOne({ where: { id } });
     const me = await this.usersService.findById(userId);
-    if (!machine || (machine.ownerUserId !== userId && !me?.isAdmin)) {
+    if (windowsRevokeAccess(machine, userId, !!me?.isAdmin) === 'missing') {
       throw appError('CONTROL_NOT_FOUND');
     }
-    if (!machine.revokedAt) {
-      machine.revokedAt = new Date();
-      await this.machines.save(machine);
-      // A revoked machine can never be controlled — drop live sessions now.
-      await this.sessions.update(
-        { machineId: machine.id, closedAt: IsNull() },
-        { closedAt: new Date(), closeReason: 'revoke' },
-      );
-    }
-    return { revoked: true };
+    return this.devices.revokeInternal({ deviceId: id });
   }
 
   /** Owner-only detail — admins do not get sessions/tool calls/usage. */
@@ -204,7 +205,7 @@ export class ControlService {
         name: locked.machineName || 'Windows PC',
         tokenHash: hashMachineToken(machineToken),
         consentMode: 'ask',
-        remoteEnabled: false,
+        remoteEnabled: WINDOWS_REMOTE_ENABLED_DEFAULT,
         paused: false,
       });
       const saved = await manager.getRepository(Machine).save(machine);
@@ -229,7 +230,7 @@ export class ControlService {
       machine ? { tokenHash: machine.tokenHash, revokedAt: machine.revokedAt } : null,
       presented,
     );
-    if (verdict === 'mismatch' || !machine || machine.kind !== 'windows') {
+    if (verdict === 'mismatch' || !machine || !isWindowsKind(machine.kind)) {
       throw appError('CONTROL_TOKEN_INVALID');
     }
     const revoked = verdict === 'revoked';
@@ -250,101 +251,58 @@ export class ControlService {
     const machine = await this.machines.findOne({
       where: { id: dto.machineId },
     });
-    const plan = sessionOpenPlan(machine, dto.callerUserId);
-    if (!plan.insert || !machine) {
-      if (!plan.insert && plan.error === 'denied') {
-        throw appError('CONTROL_DENIED');
-      }
-      if (!plan.insert && plan.error === 'revoked') {
-        throw appError('CONTROL_REVOKED');
-      }
-      if (!plan.insert && plan.error === 'disabled') {
-        throw appError('CONTROL_DISABLED');
-      }
-      if (!plan.insert && plan.error === 'paused') {
-        throw appError('CONTROL_PAUSED');
-      }
+    if (!machine || !isWindowsKind(machine.kind)) {
       throw appError('CONTROL_NOT_FOUND');
     }
-
-    const active = await this.sessions.findOne({
-      where: { machineId: machine.id, closedAt: IsNull() },
-    });
-    if (active) {
-      throw appError('CONTROL_SESSION_CONFLICT');
-    }
     try {
-      const row = await this.sessions.save(
-        this.sessions.create({
-          machineId: machine.id,
-          callerUserId: dto.callerUserId,
-          lastActivityAt: new Date(),
-        }),
-      );
-      return { sessionId: row.id };
+      const body = Object.assign(new InternalDeviceSessionOpenDto(), {
+        deviceId: dto.machineId,
+        callerUserId: dto.callerUserId,
+      });
+      return await this.devices.openSession(body);
     } catch (error) {
-      // Two races past the check hit the partial unique index.
-      if (isUniqueViolation(error)) {
-        throw appError('CONTROL_SESSION_CONFLICT');
-      }
-      throw error;
+      rethrowWindowsAlias(error);
     }
   }
 
   async touchSession(dto: InternalSessionTouchDto) {
-    const session = await this.requireSession(dto.sessionId);
-    const machine = await this.machines.findOne({
-      where: { id: session.machineId },
-    });
-    if (machine?.revokedAt) {
-      return this.closeSessionRow(session, 'revoke');
+    try {
+      return await this.devices.touchSession(dto);
+    } catch (error) {
+      rethrowWindowsAlias(error);
     }
-    if (machine?.paused) {
-      return this.closeSessionRow(session, 'pause');
-    }
-    const idleMs = idleMsForKind(machine?.kind ?? 'windows');
-    if (Date.now() - session.lastActivityAt.getTime() > idleMs) {
-      return this.closeSessionRow(session, 'idle');
-    }
-    session.lastActivityAt = new Date();
-    await this.sessions.save(session);
-    return { closed: false };
   }
 
   async closeSession(dto: InternalSessionCloseDto) {
-    const session = await this.sessions.findOne({
-      where: { id: dto.sessionId },
-    });
-    if (!session) {
-      throw appError('CONTROL_SESSION_NOT_FOUND');
+    try {
+      return await this.devices.closeSession(dto);
+    } catch (error) {
+      rethrowWindowsAlias(error);
     }
-    return this.closeSessionRow(session, dto.reason);
   }
 
   async recordToolCall(dto: InternalToolCallDto) {
-    const session = await this.sessions.findOne({
-      where: { id: dto.sessionId },
+    const machine = await this.machines.findOne({
+      where: { id: dto.machineId },
     });
-    if (
-      !session ||
-      session.machineId !== dto.machineId ||
-      session.callerUserId !== dto.userId
-    ) {
+    if (!machine || !isWindowsKind(machine.kind)) {
       throw appError('CONTROL_SESSION_NOT_FOUND');
     }
-    const row = await this.toolCalls.save(
-      this.toolCalls.create({
-        sessionId: session.id,
-        machineId: dto.machineId,
+    try {
+      const body = Object.assign(new InternalDeviceAuditDto(), {
         userId: dto.userId,
+        deviceId: dto.machineId,
+        sessionId: dto.sessionId,
         tool: dto.tool,
-        durationMs: dto.durationMs ?? null,
+        durationMs: dto.durationMs,
         success: dto.success,
-        error: dto.error ?? null,
-        inputsRedacted: sanitizeToolInputs(dto.inputsRedacted),
-      }),
-    );
-    return { id: row.id };
+        error: dto.error,
+        inputsRedacted: dto.inputsRedacted,
+      });
+      return await this.devices.appendAudit(body);
+    } catch (error) {
+      rethrowWindowsAlias(error);
+    }
   }
 
   recordUsageInternal(dto: UsageUploadDto) {
@@ -435,29 +393,12 @@ export class ControlService {
 
   private async ownedMachine(id: string, userId: string): Promise<Machine> {
     const machine = await this.machines.findOne({ where: { id } });
-    // Non-owners (including admins) see the same not-found as a missing
-    // row — no existence leak. BR-ACL-20 applies to every kind.
-    if (!machine || machine.ownerUserId !== userId) {
+    // Non-owners (including admins) and non-windows rows see the same
+    // not-found as a missing row — no existence leak. BR-ACL-20.
+    if (windowsSurfaceAccess(machine, userId) === 'missing') {
       throw appError('CONTROL_NOT_FOUND');
     }
-    return machine;
-  }
-
-  private async requireSession(id: string): Promise<ControlSession> {
-    const session = await this.sessions.findOne({ where: { id } });
-    if (!session || session.closedAt) {
-      throw appError('CONTROL_SESSION_NOT_FOUND');
-    }
-    return session;
-  }
-
-  private async closeSessionRow(session: ControlSession, reason: string) {
-    if (!session.closedAt) {
-      session.closedAt = new Date();
-      session.closeReason = reason;
-      await this.sessions.save(session);
-    }
-    return { closed: true, reason: session.closeReason };
+    return machine!;
   }
 
   private serializeMachine(machine: Machine, ownerUsername?: string) {
@@ -529,4 +470,15 @@ function connectCodeError(verdict: string) {
   if (verdict === 'expired') return 'CONTROL_CODE_EXPIRED' as const;
   if (verdict === 'reused') return 'CONTROL_CODE_REUSED' as const;
   return 'CONTROL_CODE_INVALID' as const;
+}
+
+/** Keep CONTROL_* codes on the Windows alias; DEVICE_NOT_FOUND is the shared miss. */
+function rethrowWindowsAlias(error: unknown): never {
+  if (
+    error instanceof AppHttpException &&
+    error.appCode === APP_ERRORS.DEVICE_NOT_FOUND.code
+  ) {
+    throw appError('CONTROL_NOT_FOUND');
+  }
+  throw error;
 }

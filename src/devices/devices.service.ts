@@ -17,6 +17,7 @@ import {
   deviceRevokeAccess,
   idleMsForKind,
   sessionOpenPlan,
+  WINDOWS_REMOTE_ENABLED_DEFAULT,
 } from './device.util';
 import {
   InternalDeviceAuditDto,
@@ -139,7 +140,7 @@ export class DevicesService {
           name: dto.name.trim(),
           tokenHash: dto.tokenHash,
           consentMode: dto.consentMode ?? 'ask',
-          remoteEnabled: dto.remoteEnabled ?? false,
+          remoteEnabled: dto.remoteEnabled ?? WINDOWS_REMOTE_ENABLED_DEFAULT,
           paused: false,
           lastSeenAt: new Date(),
         }),

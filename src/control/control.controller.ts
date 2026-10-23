@@ -18,6 +18,7 @@ interface AuthRequest extends Request {
   user: { id: string; username: string };
 }
 
+/** Windows-only JWT surface (`kind=windows`). Shared device list is GET /devices. */
 @Controller()
 @UseGuards(JwtAuthGuard)
 export class ControlController {

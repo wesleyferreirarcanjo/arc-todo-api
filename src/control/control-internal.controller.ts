@@ -9,8 +9,10 @@ import { InternalToolCallDto } from './dto/internal-tool-call.dto';
 import { UsageUploadDto } from './dto/usage-upload.dto';
 
 /**
- * Service-token routes consumed by the control relay (#ard-291) and the
- * Arc IDE usage upload. Bearer `ARC_CONTROL_INTERNAL_TOKEN`, never a user JWT.
+ * Windows alias onto the shared device model (`kind=windows`). Session,
+ * audit, and authenticate stay on these paths so the relay does not move
+ * to `/internal/devices/*`. Bearer `ARC_CONTROL_INTERNAL_TOKEN`, never a
+ * user JWT.
  */
 @Controller('internal/control')
 @UseGuards(ControlInternalGuard)

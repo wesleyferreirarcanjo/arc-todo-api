@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DevicesModule } from '../devices/devices.module';
 import { UsersModule } from '../users/users.module';
 import { ControlInternalController } from './control-internal.controller';
 import { ControlInternalGuard } from './control-internal.guard';
@@ -15,6 +16,7 @@ import { TokenUsage } from './token-usage.entity';
 @Module({
   imports: [
     UsersModule,
+    DevicesModule,
     TypeOrmModule.forFeature([
       Machine,
       MachineConnectSession,

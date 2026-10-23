@@ -30,6 +30,15 @@ export const DEVICE_INTERNAL_TOKEN_ENVS = [
 ] as const;
 export const MIN_INTERNAL_TOKEN_LENGTH = 32;
 
+/** BR-WIN-01: remote control stays off until the owner flips it. */
+export const WINDOWS_REMOTE_ENABLED_DEFAULT = false;
+
+/**
+ * Tray Take over and MCP `release_session` close the shared API session
+ * with this reason. DesktopUnavailable handling in the relay is #arc-624.
+ */
+export const TAKEOVER_CLOSE_REASON: DeviceCloseReason = 'release';
+
 export type ControlOpenVerdict =
   | 'ok'
   | 'denied'
@@ -97,6 +106,46 @@ export function deviceRevokeAccess(
   if (!device) return 'missing';
   if (device.ownerUserId === callerUserId || isAdmin) return 'ok';
   return 'missing';
+}
+
+export function isWindowsKind(
+  kind: DeviceKind | string | undefined | null,
+): boolean {
+  return kind === 'windows';
+}
+
+/**
+ * GET /machines where-clause: Windows rows only. Members see their own;
+ * admins see every Windows PC for the revoke UI (BR-ACL-20 / BR-ACL-21).
+ * Browser and IDE rows stay off this surface.
+ */
+export function windowsListWhere(
+  isAdmin: boolean,
+  userId: string,
+): { kind: 'windows' } | { kind: 'windows'; ownerUserId: string } {
+  if (deviceListScope(isAdmin) === 'all') return { kind: 'windows' };
+  return { kind: 'windows', ownerUserId: userId };
+}
+
+type WindowsSurfaceRow = { ownerUserId: string; kind?: DeviceKind };
+
+/** `/machines/:id` detail/PATCH/sessions/tool-calls: non-windows looks missing. */
+export function windowsSurfaceAccess(
+  device: WindowsSurfaceRow | null,
+  callerUserId: string,
+): DeviceDetailAccess {
+  if (!device || !isWindowsKind(device.kind)) return 'missing';
+  return deviceDetailAccess(device, callerUserId);
+}
+
+/** `/machines/:id/revoke`: owner or admin, Windows rows only. */
+export function windowsRevokeAccess(
+  device: WindowsSurfaceRow | null,
+  callerUserId: string,
+  isAdmin: boolean,
+): DeviceDetailAccess {
+  if (!device || !isWindowsKind(device.kind)) return 'missing';
+  return deviceRevokeAccess(device, callerUserId, isAdmin);
 }
 
 /**
@@ -326,6 +375,60 @@ function selfCheck(): void {
   assert(
     collectInternalTokens({}).length === 0,
     'no tokens → unconfigured',
+  );
+
+  // Windows alias (#arc-639): GET /machines is kind=windows only.
+  assert(isWindowsKind('windows'), 'windows kind is on GET /machines');
+  assert(!isWindowsKind('browser'), 'browser is not on GET /machines');
+  assert(!isWindowsKind('ide'), 'ide is not on GET /machines');
+  const memberWhere = windowsListWhere(false, 'u-owner');
+  assert(memberWhere.kind === 'windows', 'member list is windows-only');
+  assert(
+    'ownerUserId' in memberWhere && memberWhere.ownerUserId === 'u-owner',
+    'member lists own PCs only (BR-ACL-20)',
+  );
+  const adminWhere = windowsListWhere(true, 'u-admin');
+  assert(adminWhere.kind === 'windows', 'admin list is still windows-only');
+  assert(
+    !('ownerUserId' in adminWhere),
+    'admin lists every Windows PC for revoke, not other kinds',
+  );
+
+  const browserPc: WindowsSurfaceRow = {
+    ownerUserId: 'u-owner',
+    kind: 'browser',
+  };
+  assert(
+    windowsSurfaceAccess(browserPc, 'u-owner') === missing,
+    'owner PATCH /machines/:id on a browser UUID is missing',
+  );
+  assert(
+    windowsRevokeAccess(browserPc, 'u-admin', true) === missing,
+    'admin cannot revoke a browser via /machines',
+  );
+  assert(
+    windowsSurfaceAccess(ownerPc, 'u-admin') === missing,
+    'admin cannot see someone else tool-calls (BR-ACL-21)',
+  );
+  assert(
+    windowsRevokeAccess(ownerPc, 'u-admin', true) === 'ok',
+    'admin may revoke a Windows PC',
+  );
+  assert(
+    windowsRevokeAccess(ownerPc, 'u-owner', false) === 'ok',
+    'owner may revoke their PC',
+  );
+  assert(
+    WINDOWS_REMOTE_ENABLED_DEFAULT === false,
+    'BR-WIN-01 remoteEnabled defaults false',
+  );
+  assert(
+    TAKEOVER_CLOSE_REASON === 'release',
+    'Take over / release_session closes the shared API session with reason release',
+  );
+  assert(
+    (DEVICE_CLOSE_REASONS as readonly string[]).includes(TAKEOVER_CLOSE_REASON),
+    'Take over close reason lives in the shared session model, not a second store',
   );
 }
 

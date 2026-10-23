@@ -14,7 +14,8 @@ import {
 /**
  * Relay write surface for the shared device model. Bearer service token
  * (ARC_CONTROL_INTERNAL_TOKEN and/or ARC_BROWSER_INTERNAL_TOKEN /
- * ARC_HUB_INTERNAL_TOKEN). Relays are not pointed here in this card.
+ * ARC_HUB_INTERNAL_TOKEN). The Windows relay stays on `/internal/control/*`
+ * (#arc-639); browser and Hub point here in their own cards.
  */
 @Controller('internal/devices')
 @UseGuards(DevicesInternalGuard)
