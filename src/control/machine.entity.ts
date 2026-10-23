@@ -34,6 +34,11 @@ export class Machine {
   @Column({ name: 'token_hash' })
   tokenHash: string;
 
+  /** Relay-native id. Hub IDE devices store Hub `devices.id` here. */
+  @Index()
+  @Column({ name: 'source_id', type: 'varchar', nullable: true })
+  sourceId: string | null;
+
   /** Owner opt-in for remote control; off until the PC flips it on. */
   @Column({ name: 'remote_enabled', default: false })
   remoteEnabled: boolean;

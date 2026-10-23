@@ -19,6 +19,47 @@ export function assertRemoteAction(action: string): asserts action is RemoteActi
   }
 }
 
+export type DeviceControlPresence = {
+  id: string;
+  name: string;
+  lastSeen: string;
+  remoteEnabled: boolean;
+  revoked: boolean;
+  paused: boolean;
+  paired: boolean;
+  activeSessions: number;
+  state?: string;
+  sessions?: unknown;
+};
+
+/**
+ * Admin `/device-control/devices` during migration: Hub ids (commands still
+ * go to Hub) plus API kind `ide` rows so the page is not Hub-only.
+ */
+export function mergeDeviceControlPresence(
+  hubRows: DeviceControlPresence[],
+  apiRows: DeviceControlPresence[],
+): DeviceControlPresence[] {
+  const byId = new Map(apiRows.map((row) => [row.id, row]));
+  const out: DeviceControlPresence[] = hubRows.map((row) => {
+    const api = byId.get(row.id);
+    if (!api) return row;
+    return {
+      ...row,
+      lastSeen: api.lastSeen || row.lastSeen,
+      remoteEnabled: api.remoteEnabled,
+      revoked: api.revoked,
+      paused: api.paused,
+      paired: row.paired || api.paired,
+    };
+  });
+  const seen = new Set(out.map((row) => row.id));
+  for (const row of apiRows) {
+    if (!seen.has(row.id)) out.push(row);
+  }
+  return out;
+}
+
 export function payloadAllowed(action: string, payload: Record<string, unknown> | undefined): boolean {
   const body = payload ?? {};
   const keys = Object.keys(body);
@@ -47,6 +88,61 @@ if (require.main === module) {
     ['open_ui empty', payloadAllowed('open_ui', {})],
     ['cancel session', payloadAllowed('request_cancel_session', { session: 's1' })],
   ];
+  const merged = mergeDeviceControlPresence(
+    [
+      {
+        id: 'desk-1',
+        name: 'hub',
+        lastSeen: '2026-10-23T12:00:00Z',
+        remoteEnabled: true,
+        revoked: false,
+        paused: false,
+        paired: true,
+        activeSessions: 1,
+        sessions: [{ id: 's1', title: 'Fix' }],
+      },
+    ],
+    [
+      {
+        id: 'desk-1',
+        name: 'api',
+        lastSeen: '2026-10-23T12:00:05Z',
+        remoteEnabled: false,
+        revoked: false,
+        paused: true,
+        paired: true,
+        activeSessions: 0,
+      },
+      {
+        id: 'desk-2',
+        name: 'api-only',
+        lastSeen: '2026-10-23T11:00:00Z',
+        remoteEnabled: false,
+        revoked: false,
+        paused: false,
+        paired: true,
+        activeSessions: 0,
+      },
+    ],
+  );
+  checks.push(['merge overlays API presence', merged[0]?.paused === true]);
+  checks.push(['merge keeps Hub sessions', Array.isArray(merged[0]?.sessions)]);
+  checks.push(['merge appends API-only', merged.some((row) => row.id === 'desk-2')]);
+  checks.push([
+    'merge empty Hub lists API',
+    mergeDeviceControlPresence([], [
+      {
+        id: 'desk-1',
+        name: 'api',
+        lastSeen: '',
+        remoteEnabled: false,
+        revoked: false,
+        paused: false,
+        paired: true,
+        activeSessions: 0,
+      },
+    ]).length === 1,
+  ]);
   let refused = false;
   try {
     assertRemoteAction('shell');

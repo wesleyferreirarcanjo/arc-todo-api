@@ -45,6 +45,13 @@ export class UsersService implements OnModuleInit {
     return this.usersRepository.findOne({ where: { id } });
   }
 
+  async findFirstAdmin(): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { isAdmin: true },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
   async findBySsoAssign(email: string): Promise<User | null> {
     const normalized = this.normalizeSsoAssign(email);
     if (!normalized) return null;
