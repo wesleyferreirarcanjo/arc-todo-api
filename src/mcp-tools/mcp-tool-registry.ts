@@ -843,7 +843,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'observer',
     displayName: 'Create observer agent token',
     description:
-      'Create an ingest token for a server name. The aob_ token is returned exactly once — copy it into the agent OBSERVER_AGENT_TOKEN.',
+      'Create an ingest token for a server name. The asv_ token is returned exactly once — copy it into the agent OBSERVER_AGENT_TOKEN.',
     defaultEnabled: true,
     sortOrder: 144,
   },
@@ -933,7 +933,7 @@ export const MCP_TOOL_REGISTRY: McpToolRegistryEntry[] = [
     group: 'metrics',
     displayName: 'Create metrics agent token',
     description:
-      'Create an ingest token for a server name. The amt_ token is returned exactly once — copy it into the agent METRICS_AGENT_TOKEN.',
+      'Create an ingest token for a server name. The asv_ token is returned exactly once — copy it into the agent METRICS_AGENT_TOKEN.',
     defaultEnabled: true,
     sortOrder: 155,
   },
