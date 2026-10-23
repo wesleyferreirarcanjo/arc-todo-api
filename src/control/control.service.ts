@@ -11,10 +11,9 @@ import { ControlToolCall } from './control-tool-call.entity';
 import { MachineConnectSession } from './machine-connect-session.entity';
 import { Machine } from './machine.entity';
 import { TokenUsage } from './token-usage.entity';
+import { idleMsForKind, sessionOpenPlan } from '../devices/device.util';
 import {
   CONNECT_CODE_TTL_MS,
-  SESSION_IDLE_MS,
-  controlOpenVerdict,
   hashMachineToken,
   inspectMachineAuth,
   isUniqueViolation,
@@ -57,13 +56,16 @@ export class ControlService {
 
   // ----- Owner/admin user-facing routes (JWT) -----
 
-  /** Owners see their own rows; admins see all rows for the revoke UI. */
+  /** Owners see their own Windows rows; admins see all Windows rows for the revoke UI. */
   async listMachines(userId: string) {
     const me = await this.usersService.findById(userId);
     const rows = me?.isAdmin
-      ? await this.machines.find({ order: { createdAt: 'DESC' } })
+      ? await this.machines.find({
+          where: { kind: 'windows' },
+          order: { createdAt: 'DESC' },
+        })
       : await this.machines.find({
-          where: { ownerUserId: userId },
+          where: { ownerUserId: userId, kind: 'windows' },
           order: { createdAt: 'DESC' },
         });
     const usernames = new Map<string, string>();
@@ -198,8 +200,10 @@ export class ControlService {
 
       const machine = manager.getRepository(Machine).create({
         ownerUserId: locked.userId,
+        kind: 'windows',
         name: locked.machineName || 'Windows PC',
         tokenHash: hashMachineToken(machineToken),
+        consentMode: 'ask',
         remoteEnabled: false,
         paused: false,
       });
@@ -225,7 +229,7 @@ export class ControlService {
       machine ? { tokenHash: machine.tokenHash, revokedAt: machine.revokedAt } : null,
       presented,
     );
-    if (verdict === 'mismatch' || !machine) {
+    if (verdict === 'mismatch' || !machine || machine.kind !== 'windows') {
       throw appError('CONTROL_TOKEN_INVALID');
     }
     const revoked = verdict === 'revoked';
@@ -246,14 +250,22 @@ export class ControlService {
     const machine = await this.machines.findOne({
       where: { id: dto.machineId },
     });
-    if (!machine) {
+    const plan = sessionOpenPlan(machine, dto.callerUserId);
+    if (!plan.insert || !machine) {
+      if (!plan.insert && plan.error === 'denied') {
+        throw appError('CONTROL_DENIED');
+      }
+      if (!plan.insert && plan.error === 'revoked') {
+        throw appError('CONTROL_REVOKED');
+      }
+      if (!plan.insert && plan.error === 'disabled') {
+        throw appError('CONTROL_DISABLED');
+      }
+      if (!plan.insert && plan.error === 'paused') {
+        throw appError('CONTROL_PAUSED');
+      }
       throw appError('CONTROL_NOT_FOUND');
     }
-    const verdict = controlOpenVerdict(machine, dto.callerUserId);
-    if (verdict === 'denied') throw appError('CONTROL_DENIED');
-    if (verdict === 'revoked') throw appError('CONTROL_REVOKED');
-    if (verdict === 'disabled') throw appError('CONTROL_DISABLED');
-    if (verdict === 'paused') throw appError('CONTROL_PAUSED');
 
     const active = await this.sessions.findOne({
       where: { machineId: machine.id, closedAt: IsNull() },
@@ -290,7 +302,8 @@ export class ControlService {
     if (machine?.paused) {
       return this.closeSessionRow(session, 'pause');
     }
-    if (Date.now() - session.lastActivityAt.getTime() > SESSION_IDLE_MS) {
+    const idleMs = idleMsForKind(machine?.kind ?? 'windows');
+    if (Date.now() - session.lastActivityAt.getTime() > idleMs) {
       return this.closeSessionRow(session, 'idle');
     }
     session.lastActivityAt = new Date();
@@ -422,7 +435,8 @@ export class ControlService {
 
   private async ownedMachine(id: string, userId: string): Promise<Machine> {
     const machine = await this.machines.findOne({ where: { id } });
-    // Non-owners see the same not-found as a missing row — no existence leak.
+    // Non-owners (including admins) see the same not-found as a missing
+    // row — no existence leak. BR-ACL-20 applies to every kind.
     if (!machine || machine.ownerUserId !== userId) {
       throw appError('CONTROL_NOT_FOUND');
     }

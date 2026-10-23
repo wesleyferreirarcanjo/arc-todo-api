@@ -41,6 +41,7 @@
     "test:seo": "npm run build && node dist/seo/seo-host.util.js && node dist/seo/seo-rules.js",
     "test:cloud": "npm run build && node dist/cloud/cloud.util.js",
     "test:control-machines": "npm run build && node dist/control/machine-token.util.js",
+    "test:devices": "npm run build && node dist/devices/device.util.js",
     "test:video-edit-state": "npm run build && node dist/videos/video-edit-state.util.js"
   },
   "dependencies": {

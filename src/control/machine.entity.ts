@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { ConsentMode, DeviceKind } from '../devices/device.util';
 
 @Entity('machines')
 export class Machine {
@@ -16,8 +17,17 @@ export class Machine {
   @Column({ name: 'owner_user_id', type: 'uuid' })
   ownerUserId: string;
 
+  /** Shared device discriminator: browser | windows | ide. */
+  @Index()
+  @Column({ name: 'kind', type: 'varchar', default: 'windows' })
+  kind: DeviceKind;
+
   @Column({ name: 'name' })
   name: string;
+
+  /** always | ask | off. Browser uses this; Windows still gates on remoteEnabled. */
+  @Column({ name: 'consent_mode', type: 'varchar', default: 'ask' })
+  consentMode: ConsentMode;
 
   /** SHA-256 hex of the `amt_…` plaintext shown once at connect time. */
   @Index()

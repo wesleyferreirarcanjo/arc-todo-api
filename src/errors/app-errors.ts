@@ -714,6 +714,23 @@ export const APP_ERRORS = {
     status: HttpStatus.BAD_REQUEST,
     message: 'That machine action is not allowed.',
   },
+  DEVICE_NOT_FOUND: {
+    code: 'ERR-ARC-DEV-03',
+    status: HttpStatus.NOT_FOUND,
+    message:
+      'That device is not available. It may have been revoked, or you do not have access.',
+  },
+  DEVICE_INTERNAL_NOT_CONFIGURED: {
+    code: 'ERR-ARC-DEV-04',
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message:
+      'The device service is not set up. Ask an administrator to configure it.',
+  },
+  DEVICE_INTERNAL_UNAUTHORIZED: {
+    code: 'ERR-ARC-DEV-05',
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'This service credential is not valid.',
+  },
 
   METRICS_NOT_CONFIGURED: {
     code: 'ERR-ARC-METRICS-01',

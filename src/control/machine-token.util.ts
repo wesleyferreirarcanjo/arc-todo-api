@@ -5,6 +5,18 @@ import {
   sha256Hex,
   statesMatch,
 } from '../auth/desktop-auth.util';
+import {
+  DEVICE_CLOSE_REASONS,
+  WINDOWS_IDLE_MS,
+  controlOpenVerdict,
+  type MachineGateRow,
+} from '../devices/device.util';
+
+export {
+  controlOpenVerdict,
+  type ControlOpenVerdict,
+  type MachineGateRow,
+} from '../devices/device.util';
 
 /**
  * Machine credentials for the Windows "Connect this machine" flow.
@@ -14,31 +26,18 @@ import {
 export const MACHINE_TOKEN_PREFIX = 'amt_';
 export const MACHINE_CONNECT_CALLBACK = 'arc-windows://connect/callback';
 export const CONNECT_CODE_TTL_MS = 10 * 60 * 1000;
-export const SESSION_IDLE_MS = 10 * 60 * 1000;
+export const SESSION_IDLE_MS = WINDOWS_IDLE_MS;
 /** Same presence window as BR-CLD-09. */
 export const ONLINE_WINDOW_MS = 60 * 1000;
-export const CLOSE_REASONS = ['release', 'idle', 'revoke', 'pause'] as const;
+export const CLOSE_REASONS = DEVICE_CLOSE_REASONS;
 export type CloseReason = (typeof CLOSE_REASONS)[number];
 
 export type MachineAuthVerdict = 'ok' | 'revoked' | 'mismatch';
 export type MachineStatus = 'online' | 'paused' | 'offline';
-export type ControlOpenVerdict =
-  | 'ok'
-  | 'denied'
-  | 'revoked'
-  | 'disabled'
-  | 'paused';
 
 export type MachineAuthRow = {
   tokenHash: string;
   revokedAt: Date | null;
-};
-
-export type MachineGateRow = {
-  ownerUserId: string;
-  revokedAt: Date | null;
-  remoteEnabled: boolean;
-  paused: boolean;
 };
 
 export function mintMachineToken(): string {
@@ -75,22 +74,6 @@ export function machineStatus(
     return 'online';
   }
   return 'offline';
-}
-
-/**
- * The control gate: only the owner may open a control session — the
- * `is_admin` bypass (BR-ACL-01) deliberately does not apply here. Revoked,
- * remote-disabled, and paused machines refuse immediately.
- */
-export function controlOpenVerdict(
-  machine: MachineGateRow,
-  callerUserId: string,
-): ControlOpenVerdict {
-  if (machine.ownerUserId !== callerUserId) return 'denied';
-  if (machine.revokedAt != null) return 'revoked';
-  if (!machine.remoteEnabled) return 'disabled';
-  if (machine.paused) return 'paused';
-  return 'ok';
 }
 
 export function machineConnectCallbackUrl(code: string, state: string): string {
