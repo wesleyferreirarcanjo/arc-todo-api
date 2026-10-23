@@ -7,5 +7,6 @@ import { ObserverService } from './observer.service';
   imports: [ProjectAccessModule],
   controllers: [ObserverController],
   providers: [ObserverService],
+  exports: [ObserverService],
 })
 export class ObserverModule {}

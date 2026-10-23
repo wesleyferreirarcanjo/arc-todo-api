@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'express';
@@ -46,6 +46,7 @@ export class TaskLogService {
   constructor(
     @InjectRepository(TaskLog)
     private readonly logRepository: Repository<TaskLog>,
+    @Inject(forwardRef(() => TasksService))
     private readonly tasksService: TasksService,
     private readonly storageService: MinioStorageService,
     private readonly configService: ConfigService,

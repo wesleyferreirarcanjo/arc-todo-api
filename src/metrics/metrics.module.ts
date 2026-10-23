@@ -7,5 +7,6 @@ import { MetricsService } from './metrics.service';
   imports: [ProjectAccessModule],
   controllers: [MetricsController],
   providers: [MetricsService],
+  exports: [MetricsService],
 })
 export class MetricsModule {}

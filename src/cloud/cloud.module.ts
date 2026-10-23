@@ -7,5 +7,6 @@ import { CloudService } from './cloud.service';
   imports: [ProjectAccessModule],
   controllers: [CloudController],
   providers: [CloudService],
+  exports: [CloudService],
 })
 export class CloudModule {}

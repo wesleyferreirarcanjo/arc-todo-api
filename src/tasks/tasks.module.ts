@@ -1,8 +1,12 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CloudModule } from '../cloud/cloud.module';
+import { MetricsModule } from '../metrics/metrics.module';
+import { ObserverModule } from '../observer/observer.module';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { ProjectsModule } from '../projects/projects.module';
 import { PushModule } from '../push/push.module';
+import { QaInfoModule } from '../qa-info/qa-info.module';
 import { QaQueueModule } from '../qa-queue/qa-queue.module';
 import { UserActivityModule } from '../user-activity/user-activity.module';
 import { TaskComment } from './task-comment.entity';
@@ -20,6 +24,7 @@ import { StorageController } from './storage.controller';
 import { TasksController } from './tasks.controller';
 import { TasksGlobalController } from './tasks-global.controller';
 import { TasksService } from './tasks.service';
+import { BugRuntimeEvidenceService } from './bug-runtime-evidence.service';
 
 @Module({
   imports: [
@@ -35,6 +40,10 @@ import { TasksService } from './tasks.service';
     UserActivityModule,
     forwardRef(() => PushModule),
     QaQueueModule,
+    QaInfoModule,
+    CloudModule,
+    ObserverModule,
+    MetricsModule,
   ],
   controllers: [
     TasksController,
@@ -45,6 +54,7 @@ import { TasksService } from './tasks.service';
   ],
   providers: [
     TasksService,
+    BugRuntimeEvidenceService,
     TaskActivityService,
     TaskEvidenceService,
     TaskLogService,

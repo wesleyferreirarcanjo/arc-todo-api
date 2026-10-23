@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository, SelectQueryBuilder } from 'typeorm';
 import {
@@ -17,6 +17,8 @@ import { queuedTaskFieldsChanged } from '../qa-queue/qa-queue-sse.util';
 import { statusLeftQaTest } from '../qa-queue/qa-queue.util';
 import { UserActivityAction } from '../user-activity/user-activity-action.enum';
 import { UserActivityService } from '../user-activity/user-activity.service';
+import { BugRuntimeEvidenceService } from './bug-runtime-evidence.service';
+import { fireAndForgetBugRuntimeEvidence } from './bug-runtime-evidence.util';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { ListTasksQueryDto } from './dto/list-tasks-query.dto';
 import {
@@ -116,6 +118,8 @@ export interface TaskWithContextResponse extends TaskResponse {
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     @InjectRepository(Task)
     private readonly tasksRepository: Repository<Task>,
@@ -131,6 +135,8 @@ export class TasksService {
     private readonly pushService: PushService,
     private readonly qaQueueEvents: QaQueueEventsService,
     private readonly qaQueueService: QaQueueService,
+    @Inject(forwardRef(() => BugRuntimeEvidenceService))
+    private readonly bugRuntimeEvidence: BugRuntimeEvidenceService,
   ) {}
 
   async findAll(
@@ -598,6 +604,23 @@ export class TasksService {
     }
 
     const saved = await this.tasksRepository.save(task);
+
+    fireAndForgetBugRuntimeEvidence(
+      dto.isBug === true,
+      () =>
+        this.bugRuntimeEvidence.attach({
+          userId,
+          orgId,
+          projectId: saved.projectId,
+          taskId: saved.id,
+        }),
+      (err) =>
+        this.logger.warn(
+          `Bug runtime evidence attach failed for task ${saved.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        ),
+    );
 
     if (statusLeftQaTest(previousStatus, saved.status)) {
       await this.qaQueueService.removeTaskFromAllQueues(saved.id);
