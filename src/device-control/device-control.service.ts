@@ -1,13 +1,26 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DevicesService } from '../devices/devices.service';
 import { appError } from '../errors/app-errors';
-import { assertRemoteAction, payloadAllowed } from './device-control.util';
+import {
+  assertRemoteAction,
+  mergeDeviceControlPresence,
+  payloadAllowed,
+  type DeviceControlPresence,
+} from './device-control.util';
 
 @Injectable()
 export class DeviceControlService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly devices: DevicesService,
+  ) {}
 
-  listDevices() {
+  async listDevices() {
+    const apiRows = await this.devices.listIdePresence();
+    const hubRows = await this.hubPresenceOrEmpty();
+    const merged = mergeDeviceControlPresence(hubRows, apiRows);
+    if (merged.length > 0) return merged;
     return this.hub('GET', '/v1/devices/presence');
   }
 
@@ -38,8 +51,25 @@ export class DeviceControlService {
     });
   }
 
-  revoke(deviceId: string) {
+  async revoke(deviceId: string) {
+    await this.devices.revokeBySourceIdIfPresent(deviceId);
     return this.hub('POST', `/v1/devices/${encodeURIComponent(deviceId)}/revoke`, {});
+  }
+
+  private hubConfigured(): boolean {
+    const base = this.config.get<string>('ARC_HUB_URL')?.replace(/\/$/, '');
+    const token = this.config.get<string>('ARC_HUB_TOKEN');
+    return !!base && !!token;
+  }
+
+  private async hubPresenceOrEmpty(): Promise<DeviceControlPresence[]> {
+    if (!this.hubConfigured()) return [];
+    try {
+      const rows = await this.hub('GET', '/v1/devices/presence');
+      return Array.isArray(rows) ? (rows as DeviceControlPresence[]) : [];
+    } catch {
+      return [];
+    }
   }
 
   private async hub(method: string, path: string, body?: unknown): Promise<unknown> {

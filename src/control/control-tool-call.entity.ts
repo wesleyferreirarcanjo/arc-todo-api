@@ -12,8 +12,8 @@ export class ControlToolCall {
   id: string;
 
   @Index()
-  @Column({ name: 'session_id', type: 'uuid' })
-  sessionId: string;
+  @Column({ name: 'session_id', type: 'uuid', nullable: true })
+  sessionId: string | null;
 
   @Index()
   @Column({ name: 'machine_id', type: 'uuid' })

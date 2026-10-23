@@ -187,6 +187,25 @@ export function sessionOpenPlan(
   return { insert: true };
 }
 
+/**
+ * Hub pairing is still admin-global. kind `ide` may omit ownerUserId and
+ * land on the first admin. Other kinds always send an owner.
+ */
+export function registerNeedsOwnerId(
+  kind: DeviceKind,
+  ownerUserId: string | undefined,
+): boolean {
+  return !ownerUserId && kind !== 'ide';
+}
+
+/** Hub may re-pair a revoked IDE host; Windows/browser hashes stay dead. */
+export function ideRegisterMayRevive(
+  kind: DeviceKind,
+  sourceId: string | undefined,
+): boolean {
+  return kind === 'ide' && !!sourceId;
+}
+
 export function collectInternalTokens(
   env: Record<string, string | undefined>,
 ): string[] {
@@ -429,6 +448,26 @@ function selfCheck(): void {
   assert(
     (DEVICE_CLOSE_REASONS as readonly string[]).includes(TAKEOVER_CLOSE_REASON),
     'Take over close reason lives in the shared session model, not a second store',
+  );
+  assert(
+    registerNeedsOwnerId('windows', undefined) === true,
+    'windows register requires ownerUserId',
+  );
+  assert(
+    registerNeedsOwnerId('ide', undefined) === false,
+    'ide register may omit owner (admin-global fallback)',
+  );
+  assert(
+    registerNeedsOwnerId('ide', 'u-owner') === false,
+    'ide register accepts an attached owner',
+  );
+  assert(
+    ideRegisterMayRevive('ide', 'desk-1') === true,
+    'ide re-pair may clear revoke',
+  );
+  assert(
+    ideRegisterMayRevive('windows', 'pc-1') === false,
+    'windows revoked hash stays dead',
   );
 }
 

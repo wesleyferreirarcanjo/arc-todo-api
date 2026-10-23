@@ -15,7 +15,8 @@ import {
  * Relay write surface for the shared device model. Bearer service token
  * (ARC_CONTROL_INTERNAL_TOKEN and/or ARC_BROWSER_INTERNAL_TOKEN /
  * ARC_HUB_INTERNAL_TOKEN). The Windows relay stays on `/internal/control/*`
- * (#arc-639); browser and Hub point here in their own cards.
+ * (#arc-639). arc-browser dual-writes here (#arc-638). Arc Hub dual-writes
+ * kind `ide` here (#arc-640).
  */
 @Controller('internal/devices')
 @UseGuards(DevicesInternalGuard)

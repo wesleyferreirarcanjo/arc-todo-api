@@ -26,8 +26,10 @@ export class InternalRegisterDeviceDto {
   @IsIn(DEVICE_KINDS)
   kind: DeviceKind;
 
+  /** Required except kind `ide`, which falls back to the first admin. */
+  @IsOptional()
   @IsUUID()
-  ownerUserId: string;
+  ownerUserId?: string;
 
   @IsString()
   @MinLength(1)
@@ -37,6 +39,13 @@ export class InternalRegisterDeviceDto {
   @IsString()
   @Matches(TOKEN_HASH)
   tokenHash: string;
+
+  /** Relay-native id (Hub `devices.id`). Commands/revoke still use this. */
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(120)
+  sourceId?: string;
 
   @IsOptional()
   @IsIn(CONSENT_MODES)
@@ -54,6 +63,14 @@ export class InternalHeartbeatDeviceDto {
   @IsOptional()
   @IsIn(CONSENT_MODES)
   consentMode?: ConsentMode;
+
+  @IsOptional()
+  @IsBoolean()
+  remoteEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  paused?: boolean;
 }
 
 export class InternalDeviceSessionOpenDto {
@@ -84,8 +101,10 @@ export class InternalDeviceAuditDto {
   @IsUUID()
   deviceId: string;
 
+  /** Hub command audit has no control session (admin cannot open one). */
+  @IsOptional()
   @IsUUID()
-  sessionId: string;
+  sessionId?: string;
 
   @IsString()
   @MaxLength(120)
