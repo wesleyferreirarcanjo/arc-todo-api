@@ -7,6 +7,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Response } from 'express';
 import { LessThan, Repository } from 'typeorm';
 import { appError } from '../errors/app-errors';
+import {
+  MEDIA_QUOTA_DISPLAY_BYTES,
+  mediaFits,
+} from '../storage/media-quota.util';
 import { MinioStorageService } from '../storage/minio-storage.service';
 import {
   buildTaskEvidenceObjectKey,
@@ -36,6 +40,9 @@ export interface EvidenceStorageUsage {
   totalBytes: number;
   retentionDays: number;
   oldestCreatedAt: string | null;
+  cloudflareBytes: number;
+  capBytes: number;
+  serverMediaBytes: number;
 }
 
 interface UploadedFilePayload {
@@ -90,11 +97,19 @@ export class TaskEvidenceService {
           : new Date(oldest).toISOString();
     }
 
+    const [cloudflareBytes, serverMediaBytes] = await Promise.all([
+      this.storageService.sumCloudflareBytes(),
+      this.storageService.sumServerMediaBytes(),
+    ]);
+
     return {
       fileCount: Number(raw?.fileCount ?? 0),
       totalBytes: Number(raw?.totalBytes ?? 0),
       retentionDays: this.getRetentionDays(),
       oldestCreatedAt,
+      cloudflareBytes,
+      capBytes: MEDIA_QUOTA_DISPLAY_BYTES,
+      serverMediaBytes,
     };
   }
 
@@ -112,7 +127,9 @@ export class TaskEvidenceService {
       return 0;
     }
 
-    await this.storageService.deleteObjects(rows.map((row) => row.objectKey));
+    await this.storageService.deleteObjects(
+      rows.map((row) => ({ objectKey: row.objectKey, bucket: row.bucket })),
+    );
     await this.evidenceRepository.remove(rows);
     this.logger.log(
       `Evidence retention: deleted ${rows.length} file(s) older than ${retentionDays} day(s) (before ${cutoff.toISOString()})`,
@@ -149,41 +166,55 @@ export class TaskEvidenceService {
       checklistItemId,
     );
 
+    if (!this.storageService.isR2Configured()) {
+      throw appError('FILE_STORAGE_UNAVAILABLE');
+    }
+
     const evidenceId = newAttachmentId();
     const objectKey = buildTaskEvidenceObjectKey(
       taskId,
       evidenceId,
       file.originalname,
     );
-    const bucket = this.storageService.getBucket();
+    const bucket = this.storageService.getR2Bucket();
 
-    await this.storageService.putObject(
-      objectKey,
-      file.buffer,
-      file.mimetype || 'application/octet-stream',
-    ).catch(() => {
-      throw appError('FILE_STORAGE_UNAVAILABLE');
+    return this.storageService.withMediaQuotaLock(async () => {
+      const usedBytes = await this.storageService.sumCloudflareBytes();
+      if (!mediaFits(usedBytes, file.size)) {
+        throw appError('FILE_STORAGE_FULL');
+      }
+
+      await this.storageService
+        .putObject(
+          objectKey,
+          file.buffer,
+          file.mimetype || 'application/octet-stream',
+          bucket,
+        )
+        .catch(() => {
+          throw appError('FILE_STORAGE_UNAVAILABLE');
+        });
+
+      const evidence = this.evidenceRepository.create({
+        id: evidenceId,
+        taskId,
+        bucket,
+        objectKey,
+        originalFilename: file.originalname,
+        mimeType: file.mimetype || 'application/octet-stream',
+        sizeBytes: String(file.size),
+        uploadedById: userId,
+        checklistItemId: normalizedChecklistItemId,
+      });
+
+      try {
+        const saved = await this.evidenceRepository.save(evidence);
+        return this.toResponse(saved);
+      } catch (error) {
+        await this.storageService.deleteObject(objectKey, bucket);
+        throw error;
+      }
     });
-
-    const evidence = this.evidenceRepository.create({
-      id: evidenceId,
-      taskId,
-      bucket,
-      objectKey,
-      originalFilename: file.originalname,
-      mimeType: file.mimetype || 'application/octet-stream',
-      sizeBytes: String(file.size),
-      uploadedById: userId,
-      checklistItemId: normalizedChecklistItemId,
-    });
-
-    try {
-      const saved = await this.evidenceRepository.save(evidence);
-      return this.toResponse(saved);
-    } catch (error) {
-      await this.storageService.deleteObject(objectKey);
-      throw error;
-    }
   }
 
   async download(
@@ -204,6 +235,7 @@ export class TaskEvidenceService {
 
     const { stream, stat } = await this.storageService.getObjectStream(
       evidence.objectKey,
+      evidence.bucket,
     );
 
     res.setHeader('Content-Type', evidence.mimeType || stat.contentType);
@@ -231,7 +263,7 @@ export class TaskEvidenceService {
     }
 
     await this.evidenceRepository.remove(evidence);
-    await this.storageService.deleteObject(evidence.objectKey);
+    await this.storageService.deleteObject(evidence.objectKey, evidence.bucket);
   }
 
   async cleanupForTask(taskId: string): Promise<void> {
@@ -240,7 +272,9 @@ export class TaskEvidenceService {
       return;
     }
 
-    await this.storageService.deleteObjects(rows.map((row) => row.objectKey));
+    await this.storageService.deleteObjects(
+      rows.map((row) => ({ objectKey: row.objectKey, bucket: row.bucket })),
+    );
     await this.evidenceRepository.remove(rows);
   }
 

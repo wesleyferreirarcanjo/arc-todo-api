@@ -4,6 +4,7 @@ import { Response } from 'express';
 import { Repository } from 'typeorm';
 import { appError } from '../errors/app-errors';
 import { ProjectsService } from '../projects/projects.service';
+import { mediaFits } from '../storage/media-quota.util';
 import { MinioStorageService } from '../storage/minio-storage.service';
 import {
   buildProjectVideoObjectKey,
@@ -13,6 +14,7 @@ import { CreateProjectVideoDto } from './dto/create-project-video.dto';
 import { UpdateProjectVideoDto } from './dto/update-project-video.dto';
 import {
   ProjectVideo,
+  ProjectVideoFileEntry,
   ProjectVideoFiles,
 } from './project-video.entity';
 import { assertVideoEditState } from './video-edit-state';
@@ -156,9 +158,13 @@ export class VideosService {
     videoId: string,
   ): Promise<void> {
     const video = await this.findVideo(userId, orgId, projectId, videoId);
+    const minioBucket = this.storageService.getBucket();
     const objectKeys = Object.values(video.files ?? {})
-      .map((entry) => entry?.objectKey)
-      .filter((key): key is string => Boolean(key));
+      .filter((entry): entry is ProjectVideoFileEntry => Boolean(entry?.objectKey))
+      .map((entry) => ({
+        objectKey: entry.objectKey,
+        bucket: entry.bucket ?? minioBucket,
+      }));
     await this.storageService.deleteObjects(objectKeys);
     await this.videoRepository.remove(video);
   }
@@ -202,47 +208,85 @@ export class VideosService {
       extensionFor(kind, mime),
     );
 
-    // ponytail: whole upload buffered in memory (FileInterceptor + putObject(buffer)); ceiling = MINIO_MAX_UPLOAD_BYTES per request; upgrade = stream multipart to MinIO
-    await this.storageService
-      .putObject(objectKey, file.buffer, file.mimetype)
-      .catch(() => {
-        throw appError('FILE_STORAGE_UNAVAILABLE');
-      });
-
-    const files: ProjectVideoFiles = { ...(video.files ?? {}) };
-    const staleKeys: string[] = [];
-
-    const previous = files[kind];
-    if (previous && previous.objectKey !== objectKey) {
-      staleKeys.push(previous.objectKey);
+    const storesOnR2 = kind !== 'cursor';
+    if (storesOnR2 && !this.storageService.isR2Configured()) {
+      throw appError('FILE_STORAGE_UNAVAILABLE');
     }
 
-    if (kind === 'recording') {
-      for (const staleKind of ['cursor', 'export'] as const) {
-        const stale = files[staleKind];
-        if (stale) {
-          staleKeys.push(stale.objectKey);
-          delete files[staleKind];
-        }
+    const minioBucket = this.storageService.getBucket();
+    const r2Bucket = this.storageService.getR2Bucket();
+    const targetBucket = storesOnR2 ? r2Bucket : minioBucket;
+
+    const saveUpload = async (): Promise<ProjectVideoResponse> => {
+      // ponytail: whole upload buffered in memory (FileInterceptor + putObject(buffer)); ceiling = MINIO_MAX_UPLOAD_BYTES per request; upgrade = stream multipart to MinIO
+      await this.storageService
+        .putObject(objectKey, file.buffer, file.mimetype, targetBucket)
+        .catch(() => {
+          throw appError('FILE_STORAGE_UNAVAILABLE');
+        });
+
+      const files: ProjectVideoFiles = { ...(video.files ?? {}) };
+      const staleRefs: Array<{ objectKey: string; bucket?: string }> = [];
+
+      const previous = files[kind];
+      if (
+        previous &&
+        (previous.objectKey !== objectKey ||
+          (previous.bucket ?? minioBucket) !== targetBucket)
+      ) {
+        staleRefs.push({
+          objectKey: previous.objectKey,
+          bucket: previous.bucket ?? minioBucket,
+        });
       }
-      const parsed = Number(durationMs);
-      video.durationMs = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-      video.editState = null;
-    }
 
-    if (staleKeys.length > 0) {
-      await this.storageService.deleteObjects(staleKeys);
-    }
+      if (kind === 'recording') {
+        for (const staleKind of ['cursor', 'export'] as const) {
+          const stale = files[staleKind];
+          if (stale) {
+            staleRefs.push({
+              objectKey: stale.objectKey,
+              bucket: stale.bucket ?? minioBucket,
+            });
+            delete files[staleKind];
+          }
+        }
+        const parsed = Number(durationMs);
+        video.durationMs = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        video.editState = null;
+      }
 
-    files[kind] = {
-      objectKey,
-      mimeType: file.mimetype,
-      sizeBytes: file.size,
-      uploadedAt: new Date().toISOString(),
+      if (staleRefs.length > 0) {
+        await this.storageService.deleteObjects(staleRefs);
+      }
+
+      files[kind] = {
+        objectKey,
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+        uploadedAt: new Date().toISOString(),
+        ...(storesOnR2 ? { bucket: r2Bucket } : {}),
+      };
+      video.files = files;
+
+      return this.toResponse(await this.videoRepository.save(video));
     };
-    video.files = files;
 
-    return this.toResponse(await this.videoRepository.save(video));
+    if (!storesOnR2) {
+      return saveUpload();
+    }
+
+    return this.storageService.withMediaQuotaLock(async () => {
+      const usedBytes = await this.storageService.sumCloudflareBytes();
+      const usedAfterFree = Math.max(
+        0,
+        usedBytes - this.r2BytesFreedByUpload(video, kind),
+      );
+      if (!mediaFits(usedAfterFree, file.size)) {
+        throw appError('FILE_STORAGE_FULL');
+      }
+      return saveUpload();
+    });
   }
 
   async downloadFile(
@@ -264,6 +308,7 @@ export class VideosService {
 
     const { stream, stat } = await this.storageService.getObjectStream(
       entry.objectKey,
+      entry.bucket ?? this.storageService.getBucket(),
     );
 
     res.setHeader('Content-Type', entry.mimeType || stat.contentType);
@@ -276,6 +321,25 @@ export class VideosService {
     );
     // ponytail: no Range; web fetches once into a blob URL. Upgrade = Range via getPartialObject or signed URLs
     stream.pipe(res);
+  }
+
+  private r2BytesFreedByUpload(
+    video: ProjectVideo,
+    kind: VideoFileKind,
+  ): number {
+    const r2Bucket = this.storageService.getR2Bucket();
+    let freed = 0;
+    const previous = video.files?.[kind];
+    if (previous?.bucket === r2Bucket) {
+      freed += previous.sizeBytes;
+    }
+    if (kind === 'recording') {
+      const staleExport = video.files?.export;
+      if (staleExport?.bucket === r2Bucket) {
+        freed += staleExport.sizeBytes;
+      }
+    }
+    return freed;
   }
 
   private toSummary(video: ProjectVideo): ProjectVideoSummary {

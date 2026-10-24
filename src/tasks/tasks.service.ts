@@ -774,7 +774,9 @@ export class TasksService {
       return;
     }
 
-    await this.storageService.deleteObjects(rows.map((row) => row.objectKey));
+    await this.storageService.deleteObjects(
+      rows.map((row) => ({ objectKey: row.objectKey, bucket: row.bucket })),
+    );
     await this.evidenceRepository.remove(rows);
   }
 

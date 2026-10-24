@@ -16,6 +16,8 @@ export interface ProjectVideoFileEntry {
   mimeType: string;
   sizeBytes: number;
   uploadedAt: string;
+  /** Object-store bucket. Missing means the MinIO bucket. */
+  bucket?: string;
 }
 
 export type ProjectVideoFiles = Partial<

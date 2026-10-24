@@ -25,6 +25,7 @@ import { TasksController } from './tasks.controller';
 import { TasksGlobalController } from './tasks-global.controller';
 import { TasksService } from './tasks.service';
 import { BugRuntimeEvidenceService } from './bug-runtime-evidence.service';
+import { ProjectVideo } from '../videos/project-video.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { BugRuntimeEvidenceService } from './bug-runtime-evidence.service';
       TaskHistoryEntry,
       TaskEvidence,
       TaskLog,
+      ProjectVideo,
     ]),
     OrganizationsModule,
     ProjectsModule,

@@ -335,6 +335,11 @@ export const APP_ERRORS = {
     status: HttpStatus.NOT_FOUND,
     message: 'That session log is gone. Refresh the task and try again.',
   },
+  FILE_STORAGE_FULL: {
+    code: 'ERR-ARC-FILE-11',
+    status: HttpStatus.BAD_REQUEST,
+    message: 'Storage is full. This image or video was not saved.',
+  },
   NAME_TITLE_REQUIRED: {
     code: 'ERR-ARC-NAME-01',
     status: HttpStatus.BAD_REQUEST,
